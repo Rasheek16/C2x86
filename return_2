@@ -1,0 +1,9 @@
+Identifier: int
+Identifier: main
+Open_parenthesis: (
+Close_parenthesis: )
+Open_brace: {
+Identifier: return
+Constant: 42
+Semicolon: ;
+Close_brace: }
