@@ -12,9 +12,9 @@ def lex(data):
         else:
             match_found = False
             for token_type , pattern in patterns:
-                print(token_type,pattern)
+                # print(token_type,pattern)
                 isMatch = re.match(pattern,data)
-                print(isMatch)
+                # print(isMatch)
                 if isMatch:
                     token_value = isMatch.group(0)
                     tokens.append((token_type,token_value))

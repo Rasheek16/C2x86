@@ -1,27 +1,48 @@
 #!/usr/bin/env python3
 import sys
-from Lexer import lex 
- 
-def compile_file(input_file, output_file):
-    with open(input_file, 'r') as file:
-        code = file.read()
+from Lexer import lex
 
-    tokens = lex (code)
-    print(tokens)
-    with open(output_file, 'w') as file:
-        for token_type , token_value in tokens:
-            file.write(f'{token_type}: {token_value}\n')
+def compile_file(input_file, output_file, lex_only=False):
+    try:
+        with open(input_file, 'r') as file:
+            code = file.read()
+
+        tokens = lex(code)
+
+        if lex_only:
+            for token_type, token_value in tokens:
+                print(f'{token_type}: {token_value}')
+        else:
+            with open(output_file, 'w') as file:
+                for token_type, token_value in tokens:
+                    file.write(f'{token_type}: {token_value}\n')
+
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def usage():
+    print("Usage: python compiler.py [options] <input_file> <output_file>")
+    print("\nOptions:")
+    print("  --lex      Perform lexical analysis only and output tokens to stdout")
+    print("  --help     Display this help message")
+    sys.exit(0)
 
 def main():
-    # if len(sys.argv) != 3:
-        # print("Usage: python compiler.py <input_file> <output_file>")
-        # sys.exit(1)
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        usage()
 
-    # input_file, output_file = sys.argv[1], sys.argv[2]
-    # compile_file(input_file, output_file)
-    data  = 'int	main	(	void)	{	return	0	;	}'
-    data = lex(data)
-    print(data)
+    lex_only = '--lex' in sys.argv
+    if '--help' in sys.argv:
+        usage()
+
+    args = [arg for arg in sys.argv[1:] if not arg.startswith('--')]
+
+    if len(args) != 2:
+        usage()
+
+    input_file, output_file = args[0], args[1]
+    compile_file(input_file, output_file, lex_only=lex_only)
 
 if __name__ == "__main__":
     main()
