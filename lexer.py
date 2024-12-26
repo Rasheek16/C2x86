@@ -1,19 +1,11 @@
-from Tokens import patterns
+from tokens import patterns
 import re
-import sys
 
 def lex(data):
     try:
        
         tokens = []   
-        # Correct regex patterns for comments
-        single_line_comment = r"//[^\n]*"
-        multi_line_comment = r"/\*.*?\*/"
 
-        # Remove comments from the data
-        data = re.sub(multi_line_comment, "", data, flags=re.DOTALL)
-        data = re.sub(single_line_comment, "", data)
-        print(data)
         while data:
             # Skip whitespaces
             if data[0].isspace():
@@ -36,7 +28,6 @@ def lex(data):
                 if not match_found:
                     # Raise an error with the relevant information
                     raise ValueError(f'Unexpected input: {data}')
-        print(tokens)
         return tokens
 
     except Exception as e:

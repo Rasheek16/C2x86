@@ -1,50 +1,155 @@
 #!/usr/bin/env python3
 import sys
-from Lexer import lex
-import re 
-def compile_file(input_file, output_file, lex_only=False):
+import subprocess
+from lexer import lex
+from parser import parse_program
+from converter import convert_to_assembly_ast
+from code_emitter import CodeEmitter
+from pathlib import Path
+
+def compile_file(input_file, output_file=None, stage=None):
+    """
+    :param input_file: Path to input .c file
+    :param output_file: Where to write .s or final executable (depending on stage).
+    :param stage: One of ['--lex', '--parse', '--codegen', '-S', 'run'].
+    """
+    preprocessed_file = None  # for clarity in finally:
     try:
-        with open(input_file, 'r') as file:
+        input_path = Path(input_file)
+        if not input_path.exists():
+            print(f"Error: Input file {input_path} does not exist.", file=sys.stderr)
+            sys.exit(1)
+
+        if stage not in ['--lex', '--parse', '--codegen', '-S', 'run']:
+            print(f"Error: Unknown stage '{stage}'", file=sys.stderr)
+            sys.exit(1)
+
+        # 1) Preprocess -> .i
+        preprocessed_file = input_path.with_suffix('.i')
+        subprocess.run(
+            ['gcc', '-E', '-P', str(input_path), '-o', str(preprocessed_file)],
+            check=False
+        )
+
+        # Read the preprocessed code
+        with open(preprocessed_file, 'r') as file:
             code = file.read()
 
+        # 2) Lex
         tokens = lex(code)
+        if stage == '--lex':
+            # Print tokens and exit
+            for t in tokens:
+                print(t)
+            return  # Done, exit code 0
 
-        if lex_only:
-            for token_type, token_value in tokens:
-                print(f'{token_type}: {token_value}')
-        else:
-            with open(output_file, 'w') as file:
-                for token_type, token_value in tokens:
-                    file.write(f'{token_type}: {token_value}\n')
+        # 3) Parse
+        ast = parse_program([token for _, token in tokens])
+        if stage == '--parse':
+            print(ast)
+            return  # Done, exit code 0
 
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        # 4) Code Generation
+        assembly_ast = convert_to_assembly_ast(ast)
+        if stage == '--codegen':
+            print(assembly_ast)
+            return  # Done, exit code 0
+
+        # 5) Emit real .s assembly
+        # If no output_file is given, default to input_file.s
+        if not output_file:
+            output_file = input_path.with_suffix('.s')
+
+        output_s_path = Path(output_file)
+        emitter = CodeEmitter(str(output_s_path))
+        emitter.emit_program(assembly_ast)
+        emitter.save()
+
+        if stage == '-S':
+            # Stop here. Do NOT assemble/link.
+            return  # exit code 0
+
+        # 6) Assemble & Link -> produce final executable
+        exe_file = input_path.with_suffix('')
+
+        # Attempt to link the .s file into an executable
+        subprocess.run(
+            ['gcc', str(output_s_path), '-o', str(exe_file)],
+            check=False,
+            capture_output=True,
+            text=True
+        )
+
+        # 7) Delete the .s file after successful linking
+        if output_s_path.exists():
+            output_s_path.unlink()
+
+        # Per the book’s instructions, do NOT run the executable here.
+        # Just exit with code 0, meaning compile success.
+
+        sys.exit(0)
+
+    except subprocess.CalledProcessError as e:
+        # If compilation or linking fails, print error and exit non-zero
+        print(f"Linking/Compilation error:\n{e.stderr}", file=sys.stderr)
         sys.exit(1)
+    except Exception as e:
+        print(f"General error: {e}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        # Always remove the .i file if it was created
+        if preprocessed_file and preprocessed_file.exists():
+            preprocessed_file.unlink()
 
 def usage():
-    print("Usage: python compiler.py [options] <input_file> <output_file>")
-    print("\nOptions:")
-    print("  --lex      Perform lexical analysis only and output tokens to stdout")
-    print("  --help     Display this help message")
+    print("Usage: python compiler.py [stage] <input_file> [<output_file>]\n")
+    print("Stages:")
+    print("  --lex      Lex only; print tokens")
+    print("  --parse    Lex + parse; print AST")
+    print("  --codegen  Lex + parse + codegen; print 'assembly AST'")
+    print("  -S         Emit real assembly to .s and stop (don’t link)")
+    print("  run        Preprocess, compile, assemble, and link to produce an executable")
+    print("  --help     This help message")
+    print("\nExamples:")
+    print("  python compiler.py --lex myprog.c")
+    print("  python compiler.py --parse myprog.c")
+    print("  python compiler.py -S myprog.c myprog.s")
+    print("  python compiler.py run myprog.c")
     sys.exit(0)
 
 def main():
-    # if len(sys.argv) < 3 or len(sys.argv) > 4:
-    #     usage()
-
-    
-    stage = [arg for arg in sys.argv if re.match(r'--[a-z]', arg)]
-    
-    if '--help' in sys.argv:
+    if '--help' in sys.argv or len(sys.argv) < 2:
         usage()
 
-    args = [arg for arg in sys.argv[1:] if not arg.startswith('--')]
+    possible_stages = ['--lex', '--parse', '--codegen', '-S', 'run']
+    stage = None
+    filenames = []
 
-    if len(args) != 2:
-        usage()
+    # Collect stage (if any) + filenames
+    for arg in sys.argv[1:]:
+        if arg in possible_stages:
+            stage = arg
+        else:
+            filenames.append(arg)
 
-    input_file, output_file = args[0], args[1]
-    compile_file(input_file, output_file, stage=stage)
+    # If no stage given, default to 'run'
+    if stage is None:
+        stage = 'run'
+
+    if not filenames:
+        usage()  # No input file
+
+    input_file = filenames[0]
+    output_file = filenames[1] if len(filenames) > 1 else None
+
+    # If user typed "foo" but there's no "foo", check if "foo.c" exists
+    path_in = Path(input_file)
+    if not path_in.exists() and not input_file.endswith('.c'):
+        candidate = path_in.with_suffix('.c')
+        if candidate.exists():
+            path_in = candidate
+
+    compile_file(path_in, output_file=output_file, stage=stage)
 
 if __name__ == "__main__":
     main()

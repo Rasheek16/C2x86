@@ -1,6 +1,7 @@
 Identifier: int
-Identifier: main
+Identifier: hello
 Open_parenthesis: (
+Identifier: void
 Close_parenthesis: )
 Open_brace: {
 Identifier: return
