@@ -15,5 +15,5 @@ patterns = [
      ("Multiplication",r"\*"),
      ("Addition",r'\+'),
      ("Division",r'/'),
-     ("Modulus",r'%'),
+     ("Remainder",r'%'),
 ]
