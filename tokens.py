@@ -10,7 +10,7 @@ patterns = [
      ("Close_brace", r"}"),
      ("Semicolon", r";"),
      ("Complement",r'~'),
+     ("Decrement",r'--'),
      ("Negation",r'-'),
-     ("Decrement",r'--')
      
 ]
