@@ -7,7 +7,7 @@ from converter import convert_to_assembly_ast
 from code_emitter import CodeEmitter
 from pathlib import Path
 from tacky_emiter import emit_tacky
-from pseduregister_replacer import replace_pseudoregisters
+from pseudoregister_replacer import replace_pseudoregisters
 from instruction_fixer import fix_up_instructions
 
 def compile_file(input_file: str, output_file: str = None, stage: str = None):
