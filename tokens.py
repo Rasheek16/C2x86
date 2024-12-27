@@ -12,5 +12,8 @@ patterns = [
      ("Complement",r'~'),
      ("Decrement",r'--'),
      ("Negation",r'-'),
-     
+     ("Multiplication",r"\*"),
+     ("Addition",r'\+'),
+     ("Division",r'/'),
+     ("Modulus",r'%'),
 ]
