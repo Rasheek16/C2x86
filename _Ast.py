@@ -42,7 +42,7 @@ class Function:
             "Function(\n"
             f"    name={repr(self.name)},\n"
             f"    body={repr(self.body)}\n"
-            ")"
+            "\t)"
         )
 
 
@@ -64,7 +64,7 @@ class Return(Statement):
         self.exp = exp
 
     def __repr__(self):
-        return f"Return(\n    {repr(self.exp)}\n)"
+        return f"Return(\n    {repr(self.exp)}\n\t\t)"
 
 
 class Expression:
@@ -110,10 +110,10 @@ class Unary(Expression):
 
     def __repr__(self):
         return (
-            "Unary(\n"
-            f"    operator={repr(self.operator)},\n"
-            f"    expr={repr(self.expr)}\n"
-            ")"
+            "\t\tUnary(\n"
+            f"    \t\toperator={repr(self.operator)},\n"
+            f"    \t\texpr={repr(self.expr)}\n"
+            "\t\t\t)"
         )
 
 
