@@ -16,7 +16,7 @@
 #                | Negate
 # ------------------------------------------------------------------
 
-class Program:
+class TackyProgram:
     """
     program = Program(function_definition)
     """
@@ -27,7 +27,7 @@ class Program:
         return f"Program(\n  {repr(self.function_definition)}\n)"
 
 
-class Function:
+class TackyFunction:
     """
     function_definition = Function(identifier, [instructions...])
     
@@ -35,9 +35,9 @@ class Function:
     - name: an identifier
     - body: a list of instructions (one or more).
     """
-    def __init__(self, name, body):
+    def __init__(self, name, body:list):
         self.name = name          # An identifier (string or Var)
-        self.body = body          # A list of instructions: Return(...) or Unary(...)
+        self.body = [body]        # A list of instructions: Return(...) or Unary(...)
     
     def __repr__(self):
         return (
@@ -54,14 +54,14 @@ class Function:
 # Instructions
 # ------------------
 
-class Instruction:
+class TackyInstruction:
     """
     Base class for instructions in the function body.
     """
     pass
 
 
-class Return(Instruction):
+class TackyReturn(TackyInstruction):
     """
     instruction = Return(val)
     """
@@ -73,7 +73,7 @@ class Return(Instruction):
         return f"Return({repr(self.val)})"
 
 
-class Unary(Instruction):
+class TackyUnary(TackyInstruction):
     """
     instruction = Unary(unary_operator, val src, val dst)
     """
@@ -96,14 +96,14 @@ class Unary(Instruction):
 # Val = Constant(int) | Var(identifier)
 # ------------------
 
-class Val:
+class TackyVal:
     """
     Base class for values.
     """
     pass
 
 
-class Constant(Val):
+class TackyConstant(TackyVal):
     """
     val = Constant(int)
     """
@@ -115,23 +115,24 @@ class Constant(Val):
         return f"Constant({self.value})"
 
 
-class Var(Val):
+class TackyVar(TackyVal):
     """
     val = Var(identifier)
     """
-    def __init__(self, name):
+    def __init__(self, identifier):
         super().__init__()
-        self.name = name
+        self.identifier = identifier
 
     def __repr__(self):
-        return f"Var({self.name})"
+        return f"Var({self.identifier})"
+        
 
 
 # ------------------
 # Operator Constants
 # ------------------
 
-class UnaryOperator:
+class TackyUnaryOperator:
     """
     unary_operator = Complement | Negate
     We store them simply as string constants or you could use an enum.

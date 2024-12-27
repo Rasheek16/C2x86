@@ -31,11 +31,11 @@ class Function:
     Represents a function definition with a name (identifier) and a single statement body.
     Grammar rule: function_definition = Function(identifier name, statement body)
     """
-    def __init__(self, name, body):
+    def __init__(self, name, body:list):
         # `name` should be an Identifier node (or a string, if you prefer).
         # `body` is a single Statement node (per the grammar).
         self.name = name
-        self.body = body
+        self.body = [body]
 
     def __repr__(self):
         return (
@@ -94,7 +94,7 @@ class UnaryOperator:
     Grammar rule: unary_operator = Complement | Negate
     """
     COMPLEMENT = "Complement"  # e.g., ~x
-    NEGATE     = "Negate"      # e.g., -x
+    NEGATE     = "Negation"      # e.g., -x
 
 
 class Unary(Expression):

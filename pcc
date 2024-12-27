@@ -6,21 +6,26 @@ from parser import parse_program
 from converter import convert_to_assembly_ast
 from code_emitter import CodeEmitter
 from pathlib import Path
+from tacky_emiter import emit_tacky
+from pseduregister_replacer import replace_pseudoregisters
+from instruction_fixer import fix_up_instructions
 
-def compile_file(input_file, output_file=None, stage=None):
+def compile_file(input_file: str, output_file: str = None, stage: str = None):
     """
+    Compiles a C source file through various compiler stages.
+
     :param input_file: Path to input .c file
     :param output_file: Where to write .s or final executable (depending on stage).
-    :param stage: One of ['--lex', '--parse', '--codegen', '-S', 'run'].
+    :param stage: One of ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run', '--help'].
     """
-    preprocessed_file = None  # for clarity in finally:
+    preprocessed_file = None  # For clarity in finally:
     try:
         input_path = Path(input_file)
         if not input_path.exists():
             print(f"Error: Input file {input_path} does not exist.", file=sys.stderr)
             sys.exit(1)
 
-        if stage not in ['--lex', '--parse', '--codegen', '-S', 'run']:
+        if stage not in ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run', '--help']:
             print(f"Error: Unknown stage '{stage}'", file=sys.stderr)
             sys.exit(1)
 
@@ -28,7 +33,7 @@ def compile_file(input_file, output_file=None, stage=None):
         preprocessed_file = input_path.with_suffix('.i')
         subprocess.run(
             ['gcc', '-E', '-P', str(input_path), '-o', str(preprocessed_file)],
-            check=False
+            check=True
         )
 
         # Read the preprocessed code
@@ -39,59 +44,81 @@ def compile_file(input_file, output_file=None, stage=None):
         tokens = lex(code)
         if stage == '--lex':
             # Print tokens and exit
-            for t in tokens:
-                print(t)
-            return  # Done, exit code 0
+            for token in tokens:
+                print(token)
+                return  # Done, exit code 0
 
         # 3) Parse
         ast = parse_program([token for _, token in tokens])
         if stage == '--parse':
+            print("Parsed AST:")
             print(ast)
             return  # Done, exit code 0
 
-        # 4) Code Generation
-        assembly_ast = convert_to_assembly_ast(ast)
-        if stage == '--codegen':
-            print(assembly_ast)
+        # 4) Emit Tacky IR
+        tacky_ir = emit_tacky(ast)
+        if stage == '--tacky':
+            print("Tacky IR:")
+            print(tacky_ir)
             return  # Done, exit code 0
 
-        # 5) Emit real .s assembly
+        # 5) Convert To Assembly Ast
+        a_ast =convert_to_assembly_ast(tacky_ir) 
+        
+        # 6) Replace Pseudoregisters
+        # This pass replaces all Pseudo operands with Stack operands and returns stack allocation
+        [a_ast,stack_allocation] = replace_pseudoregisters(a_ast)
+        # print("After Replacing Pseudoregisters:")
+        # print(a_ast)
+
+        # 7) Fixing Up Instructions
+        # This pass inserts AllocateStack and rewrites invalid Mov instructions
+        fix_up_instructions(a_ast, stack_allocation)
+        # print("After Fixing Up Instructions:")
+        # print(a_ast)
+     
+        if stage == '--codegen':
+            print("Assembly AST:")
+            print(a_ast)
+            return  # Done, exit code 0
+
+        # 8) Code Generation: Emit real .s assembly
         # If no output_file is given, default to input_file.s
         if not output_file:
             output_file = input_path.with_suffix('.s')
 
         output_s_path = Path(output_file)
         emitter = CodeEmitter(str(output_s_path))
-        emitter.emit_program(assembly_ast)
+        emitter.emit_program(a_ast)
         emitter.save()
 
         if stage == '-S':
             # Stop here. Do NOT assemble/link.
-            return  # exit code 0
+            print(f"Assembly code written to {output_s_path}")
+            return  # Exit code 0
 
-        # 6) Assemble & Link -> produce final executable
-        exe_file = input_path.with_suffix('')
+        # 9) Assemble & Link -> produce final executable
+        exe_file = input_path.with_suffix('')  # Remove extension
 
         # Attempt to link the .s file into an executable
         subprocess.run(
             ['gcc', str(output_s_path), '-o', str(exe_file)],
-            check=False,
+            check=True,
             capture_output=True,
             text=True
         )
 
-        # 7) Delete the .s file after successful linking
+        # 10) Delete the .s file after successful linking
         if output_s_path.exists():
             output_s_path.unlink()
 
-        # Per the book’s instructions, do NOT run the executable here.
-        # Just exit with code 0, meaning compile success.
-
+        # Indicate successful compilation
+        print(f"Compilation successful. Executable created at {exe_file}")
         sys.exit(0)
 
     except subprocess.CalledProcessError as e:
         # If compilation or linking fails, print error and exit non-zero
-        print(f"Linking/Compilation error:\n{e.stderr}", file=sys.stderr)
+        print(f"Compilation or Linking error:\n{e.stderr}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         print(f"General error: {e}", file=sys.stderr)
@@ -101,27 +128,39 @@ def compile_file(input_file, output_file=None, stage=None):
         if preprocessed_file and preprocessed_file.exists():
             preprocessed_file.unlink()
 
+
 def usage():
+    """
+    Displays usage information for the compiler.
+    """
     print("Usage: python compiler.py [stage] <input_file> [<output_file>]\n")
     print("Stages:")
     print("  --lex      Lex only; print tokens")
     print("  --parse    Lex + parse; print AST")
-    print("  --codegen  Lex + parse + codegen; print 'assembly AST'")
+    print("  --tacky    Lex + parse + emit Tacky IR")
+    print("  --codegen  Lex + parse + emit Tacky IR + replace pseudoregisters + fix instructions + convert to Assembly AST")
     print("  -S         Emit real assembly to .s and stop (don’t link)")
     print("  run        Preprocess, compile, assemble, and link to produce an executable")
     print("  --help     This help message")
     print("\nExamples:")
     print("  python compiler.py --lex myprog.c")
     print("  python compiler.py --parse myprog.c")
+    print("  python compiler.py --tacky myprog.c")
+    print("  python compiler.py --codegen myprog.c")
     print("  python compiler.py -S myprog.c myprog.s")
     print("  python compiler.py run myprog.c")
     sys.exit(0)
 
+
 def main():
+    """
+    The main entry point for the compiler driver.
+    Parses command-line arguments and invokes the compilation process.
+    """
     if '--help' in sys.argv or len(sys.argv) < 2:
         usage()
 
-    possible_stages = ['--lex', '--parse', '--codegen', '-S', 'run']
+    possible_stages = ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run']
     stage = None
     filenames = []
 
@@ -137,7 +176,7 @@ def main():
         stage = 'run'
 
     if not filenames:
-        usage()  # No input file
+        usage()  # No input file provided
 
     input_file = filenames[0]
     output_file = filenames[1] if len(filenames) > 1 else None
@@ -149,7 +188,8 @@ def main():
         if candidate.exists():
             path_in = candidate
 
-    compile_file(path_in, output_file=output_file, stage=stage)
+    compile_file(str(path_in), output_file=output_file, stage=stage)
+
 
 if __name__ == "__main__":
     main()

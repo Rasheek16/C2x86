@@ -31,13 +31,16 @@ class CodeEmitter:
         if not isinstance(function, AssemblyFunction):
             raise ValueError(f"Expected a FunctionAst, got {type(function)}")
         
-        name = function.name
-        print('inside emit_funtion',name)
+        func_name = function.name.name
+
         if self.platform == "macos":
-            name = f"_{name}"  # Add underscore prefix for macOS
+            func_name = f"_{func_name}"  # Add underscore prefix for macOS
         
-        self.emit_line(f".globl {name}")
-        self.emit_line(f"{name}:")
+        self.emit_line(f"   .globl {func_name}")
+        self.emit_line(f"{func_name}:")
+        self.emit_line(f'   pushq    %rbp')
+        self.emit_line(f'   movq   %rsp,   %rbp')
+        
         
         if not isinstance(function.instructions, list):
             raise ValueError(f"Expected instructions to be a list, got {type(function.instructions)}")
@@ -46,22 +49,31 @@ class CodeEmitter:
             self.emit_instruction(instruction)
 
     def emit_instruction(self, instruction):
-        print('inside emit_instruction',instruction)
+        print('Inside instruction')
         """Emit an assembly instruction."""
         if isinstance(instruction, Mov):
-            src = self.format_operand(instruction.src)
-            dest = instruction.dest
-            self.emit_line(f"    movl {src}, {dest}")
-        elif isinstance(instruction, Ret):
-            self.emit_line("    ret")
+            src = convertOperandToAssembly(instruction.src)
+            dest = convertOperandToAssembly(instruction.dest)
+            self.emit_line(f"   movl {src}, {dest}")
+        elif isinstance(instruction,Ret):
+            self.emit_line('    movq   %rbp, %rsp')
+            self.emit_line("    popq   %rbp")
+            self.emit_line('    ret')
+        elif isinstance(instruction,Unary):
+            operator = convertOperatorToAssembly(instruction.operator)
+            operand = convertOperandToAssembly(instruction.operand)
+            self.emit_line(f'   {operator} {operand}')
+        elif isinstance(instruction,AllocateStack):
+            self.emit_line(f'   subq    ${instruction.value},%rsp')
         else:
             raise ValueError(f"Unsupported instruction type: {type(instruction)}")
 
     def format_operand(self, operand):
+        print(operand)
         """Format the operand for assembly."""
-        if isinstance(operand, Imm):
-            return f"${operand.value}"
-        return operand
+        if isinstance(operand,Stack):
+            return f'operand.value'
+        return operand.value 
     
     def save(self):
         """Writes the emitted code to the file."""
@@ -85,3 +97,27 @@ class CodeEmitter:
         except Exception as e:
             # Catch any file-related errors
             print(f"Error writing to file: {e}")
+            
+            
+
+def convertOperatorToAssembly(operator):
+    if operator =='Neg':
+        return 'negl'
+    elif operator =='Not':
+        return 'notl'
+    else:
+        raise ValueError('Invalid operator',operator)
+    
+    
+def convertOperandToAssembly(operand):
+    if isinstance(operand,Reg):
+        return '%eax'
+    elif operand==Registers.R10:
+        return '%r10d'
+    elif isinstance(operand,Stack):
+        return f'{operand.value}(%rbp)'
+    elif isinstance(operand,Imm):
+        return f'${operand.value}'
+    else:
+        raise ValueError('Invalid operator',operand)
+    

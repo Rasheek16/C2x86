@@ -45,7 +45,6 @@ def lex(data):
 
                 # "Consume" the matched substring by slicing
                 data = data[len(token_value):]
-                print(data)
                 match_found = True
                 break  # Stop checking other patterns
 
