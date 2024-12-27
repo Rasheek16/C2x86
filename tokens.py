@@ -8,5 +8,9 @@ patterns = [
      ("Close_parenthesis", r"\)"),
      ("Open_brace", r"{"),
      ("Close_brace", r"}"),
-     ("Semicolon", r";")
+     ("Semicolon", r";"),
+     ("Complement",r'~'),
+     ("Negation",r'-'),
+     ("Decrement",r'--')
+     
 ]
