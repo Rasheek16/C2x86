@@ -1,6 +1,23 @@
+# ---------------------------------------------------------------------------
+# Grammar Recap:
+#
+# program = Program(function_definition)
+#
+# function_definition = Function(identifier name, statement body)
+#
+# statement = Return(exp)
+#
+# exp = Constant(int)
+#     | Unary(unary_operator, exp)
+#
+# unary_operator = Complement
+#                | Negate
+# ---------------------------------------------------------------------------
+
 class Program:
     """
     Represents a top-level program consisting of a single function definition.
+    Grammar rule: program = Program(function_definition)
     """
     def __init__(self, function_definition):
         self.function_definition = function_definition
@@ -11,9 +28,12 @@ class Program:
 
 class Function:
     """
-    Represents a function definition with a name and a body (list of statements).
+    Represents a function definition with a name (identifier) and a single statement body.
+    Grammar rule: function_definition = Function(identifier name, statement body)
     """
     def __init__(self, name, body):
+        # `name` should be an Identifier node (or a string, if you prefer).
+        # `body` is a single Statement node (per the grammar).
         self.name = name
         self.body = body
 
@@ -28,19 +48,20 @@ class Function:
 
 class Statement:
     """
-    Base class for statements in the AST (e.g., return statements).
+    Base class for statements in the AST.
+    In this grammar, the only statement is 'Return(exp)'.
     """
-    def __init__(self, expression):
-        self.expression = expression
+    pass
 
 
 class Return(Statement):
     """
     A 'return' statement containing an expression to return.
+    Grammar rule: statement = Return(exp)
     """
     def __init__(self, exp):
-        super().__init__(exp)
-        self.exp = exp  # Redundant but clear; same as self.expression
+        # exp should be an Expression node
+        self.exp = exp
 
     def __repr__(self):
         return f"Return(\n    {repr(self.exp)}\n)"
@@ -48,29 +69,61 @@ class Return(Statement):
 
 class Expression:
     """
-    Base class for expressions, e.g., constants, identifiers, function calls.
+    Base class for expressions.
+    Grammar rule: exp = Constant(int) | Unary(unary_operator, exp)
     """
-    def __init__(self, value):
-        self.value = value
+    pass
 
 
 class Constant(Expression):
     """
-    An integer or other literal constant.
+    An integer literal constant.
+    Example: Constant(42)
+    Grammar rule: exp = Constant(int)
     """
     def __init__(self, value):
-        super().__init__(value)
+        self.value = value  # integer value
 
     def __repr__(self):
         return f"Constant({self.value})"
 
 
-class Identifier(Expression):
+class UnaryOperator:
     """
-    An identifier (variable name, function name, etc.).
+    Represents the unary operators in the grammar.
+    Grammar rule: unary_operator = Complement | Negate
     """
-    def __init__(self, name):
-        super().__init__(name)
+    COMPLEMENT = "Complement"  # e.g., ~x
+    NEGATE     = "Negate"      # e.g., -x
+
+
+class Unary(Expression):
+    """
+    A unary expression (unary_operator applied to a sub-expression).
+    Grammar rule: exp = Unary(unary_operator, exp)
+    """
+    def __init__(self, operator, expr):
+        # operator should be one of {UnaryOperator.COMPLEMENT, UnaryOperator.NEGATE}.
+        # expr is another Expression node.
+        self.operator = operator
+        self.expr = expr
 
     def __repr__(self):
-        return f"Identifier({self.value})"
+        return (
+            "Unary(\n"
+            f"    operator={repr(self.operator)},\n"
+            f"    expr={repr(self.expr)}\n"
+            ")"
+        )
+
+
+class Identifier(Expression):
+    """
+    An identifier (used for function names, variable names, etc.).
+    You can store it as a string internally.
+    """
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return f"Identifier({self.name})"
