@@ -9,9 +9,11 @@
 #
 # exp = Constant(int)
 #     | Unary(unary_operator, exp)
+#     | Binary(binary_operator, exp, exp)
 #
 # unary_operator = Complement
 #                | Negate
+# binary_operator = Add | Subtract | Multiply | Divide | Remainder
 # ---------------------------------------------------------------------------
 
 class Program:
@@ -95,6 +97,18 @@ class UnaryOperator:
     """
     COMPLEMENT = "Complement"  # e.g., ~x
     NEGATE     = "Negation"      # e.g., -x
+
+class BinaryOperator:
+    """
+    Represents the binary operators in the grammar.
+    Grammar rule: binary_operator = Add | Substract | Multiply | Divide | Remainder (Modulus)
+    """
+    
+    ADD='Add'              # e.g, a + b
+    SUBTRACT='Subtract'    # e.g, a - b
+    MULTIPLY='Multiply'    # e.g, a * b
+    DIVIDE = 'Divide'      # e.g, a / b
+    REMAINDER='Remainder'  # e.g, a % b
 
 
 class Unary(Expression):
