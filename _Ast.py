@@ -130,6 +130,19 @@ class Unary(Expression):
             "\t\t\t)"
         )
 
+class Binary:
+    """
+    Represents a binary operation in the AST.
+    """
+    def __init__(self, operator: str, left, right):
+        self.operator = operator  # e.g., '+', '-', '*', '/', '%'
+        self.left = left          # Left operand (expression)
+        self.right = right        # Right operand (expression)
+
+    def __repr__(self):
+        return f"Binary(operator='{self.operator}', left={self.left}, right={self.right})"
+
+
 
 class Identifier(Expression):
     """
