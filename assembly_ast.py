@@ -241,10 +241,12 @@ class UnaryOperator:
 
 class Registers:
     """
-    Grammar rule: reg = AX | R10
+    Grammar rule: reg = AX | DX | R10 | R11
     """
     AX = "AX"
     R10 = "R10"
+    DX = 'DX'
+    R11 = 'R11'
     
     
 # ------------------
