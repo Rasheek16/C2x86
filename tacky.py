@@ -102,10 +102,10 @@ class TackyBinary(TackyInstruction):
     """
     Represents a binary operation in the AST.
     """
-    def __init__(self, operator: str, left, right,dst):
+    def __init__(self, operator: str, src1, src2 ,dst):
         self.operator = operator  # e.g., '+', '-', '*', '/', '%'
-        self.left = left          # Left operand (expression)
-        self.right = right        # Right operand (expression)
+        self.src1 = src1          # Left operand (expression)
+        self.src2 = src2        # Right operand (expression)
         self.dst = dst            # temporary dest variable
 
     def __repr__(self):
