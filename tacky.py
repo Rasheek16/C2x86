@@ -139,3 +139,15 @@ class TackyUnaryOperator:
     """
     COMPLEMENT = "Complement"  # e.g. ~
     NEGATE     = "Negation"      # e.g. -
+
+class TackyBinaryOperator:
+    """
+    Represents the binary operators in the grammar.
+    Grammar rule: binary_operator = Add | Substract | Multiply | Divide | Remainder (Modulus)
+    """
+    
+    ADD='Add'              # e.g, a + b
+    SUBTRACT='Subtract'    # e.g, a - b
+    MULTIPLY='Multiply'    # e.g, a * b
+    DIVIDE = 'Divide'      # e.g, a / b
+    REMAINDER='Remainder'  # e.g, a % b
