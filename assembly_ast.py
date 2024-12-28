@@ -153,17 +153,66 @@ class Binary(Instruction):
         return f"Binary(operator='{self.operator}', left={self.left}, right={self.right})"
   
 class Idiv(Instruction):
-    def __init__(self,operand):
-        self.operand = operand
+    """
+    Represents an integer division instruction in the intermediate representation.
+    
+    The Idiv instruction performs signed integer division between two operands.
+    It typically divides the value in a specific register (e.g., EAX) by the provided operand,
+    storing the quotient and remainder in designated registers.
+    """
+    
+    def __init__(self, operand):
+        """
+        Initializes the Idiv instruction with the specified operand.
+        
+        Parameters:
+            operand (Operand): The operand by which the current value will be divided.
+        """
+        self.operand = operand  # Operand to divide by
+
     def __repr__(self):
-        return f'Idiv(operand={Operand})'
+        """
+        Returns a string representation of the Idiv instruction.
+        
+        This method is useful for debugging and logging purposes, providing a clear
+        textual representation of the instruction and its operand.
+        
+        Returns:
+            str: A string representing the Idiv instruction.
+        """
+        return f'Idiv(operand={self.operand})'  # Corrected to use self.operand
+
     
 class Cqd(Instruction):
+    """
+    Represents the CDQ (Convert Doubleword to Quadword) instruction in the intermediate representation.
+    
+    The CDQ instruction is specific to x86 architecture and is used to sign-extend the value
+    in the EAX register into the EDX:EAX register pair. This is typically used before performing
+    a division operation to prepare the registers for signed division.
+    """
+    
     def __init__(self):
-        pass 
-    def __repr__(self):
-        return f'Cqd()'
+        """
+        Initializes the Cqd instruction.
         
+        Since the CDQ instruction operates on predefined registers (EAX and EDX) and does not
+        require any operands, the initializer does not take any parameters.
+        """
+        pass  # No operands needed for CDQ as it operates on specific registers
+
+    def __repr__(self):
+        """
+        Returns a string representation of the Cqd instruction.
+        
+        This method is useful for debugging and logging purposes, providing a clear
+        textual representation of the instruction.
+        
+        Returns:
+            str: A string representing the Cqd instruction.
+        """
+        return f'Cqd()'  # Represents the CDQ instruction with no operands
+
     
     
 class AllocateStack(Instruction):
