@@ -152,6 +152,8 @@ class TackyUnaryOperator:
     COMPLEMENT = "Complement"  # e.g. ~
     NEGATE     = "Negation"      # e.g. -
 
+
+# TODO REPLACE OPERATOR NAME WITH SYMBOLS
 class TackyBinaryOperator:
     """
     Represents the binary operators in the grammar.
