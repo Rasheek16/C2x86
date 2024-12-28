@@ -8,12 +8,18 @@
 #
 # instruction = Return(val)
 #             | Unary(unary_operator, val src, val dst)
-#
+#             | Binary(binary_operator, val src1, val src2, val dst)
+
 # val = Constant(int)
 #     | Var(identifier)
 #
 # unary_operator = Complement
 #                | Negate
+# binary_operator = Add 
+#                 | Subtract 
+#                 | Multiply 
+#                 | Divide 
+#                 | Remainder
 # ------------------------------------------------------------------
 
 class TackyProgram:
@@ -96,13 +102,14 @@ class TackyBinary:
     """
     Represents a binary operation in the AST.
     """
-    def __init__(self, operator: str, left, right):
+    def __init__(self, operator: str, left, right,dst):
         self.operator = operator  # e.g., '+', '-', '*', '/', '%'
         self.left = left          # Left operand (expression)
         self.right = right        # Right operand (expression)
+        self.dst = dst            # temporary dest variable
 
     def __repr__(self):
-        return f"Binary(operator='{self.operator}', left={self.left}, right={self.right})"
+        return f"Binary(operator='{self.operator}', left={self.left}, right={self.right}, dst={self.dst})"
 
 # ------------------
 # Val = Constant(int) | Var(identifier)
