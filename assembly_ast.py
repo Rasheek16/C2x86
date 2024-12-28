@@ -140,6 +140,32 @@ class Unary(Instruction):
         return f"Unary(operator={self.operator}, operand={self.operand})"
         
         
+class Binary(Instruction):
+    """
+    Represents a binary operation in the AST.
+    """
+    def __init__(self, operator: str, left, right):
+        self.operator = operator  # e.g., '+', '-', '*', '/', '%'
+        self.left = left          # Left operand (expression)
+        self.right = right        # Right operand (expression)
+
+    def __repr__(self):
+        return f"Binary(operator='{self.operator}', left={self.left}, right={self.right})"
+  
+class Idiv(Instruction):
+    def __init__(self,operand):
+        self.operand = operand
+    def __repr__(self):
+        return f'Idiv(operand={Operand})'
+    
+class Cqd(Instruction):
+    def __init__(self):
+        pass 
+    def __repr__(self):
+        return f'Cqd()'
+        
+    
+    
 class AllocateStack(Instruction):
     """
     Allocates stack space for 'value' units.
