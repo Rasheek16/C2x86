@@ -1,5 +1,5 @@
 from tacky import *
-from assembly_ast import Mov, Ret, Imm, Registers, AssemblyFunction, AssemblyProgram, Reg, Unary, Pseudo , UnaryOperator ,Stack ,AllocateStack
+from assembly_ast import Mov, Ret, Imm, Registers, AssemblyFunction, AssemblyProgram, Reg, Unary, Pseudo , UnaryOperator ,Stack ,AllocateStack,Cqd,Idiv,Binary,BinaryOperator
 import sys
 from typing import Union, List ,Dict
 
@@ -57,6 +57,101 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
             Mov(src=convert_to_assembly_ast(tacky_ast.src), dest=convert_to_assembly_ast(tacky_ast.dst)),
             Unary(operator=convert_operator(tacky_ast.operator), operand=convert_to_assembly_ast(tacky_ast.dst))
         ]
+        
+    # Check if the current AST node is a TackyBinary operation
+    elif isinstance(tacky_ast, TackyBinary):
+        
+        # Handle integer division operations
+        if tacky_ast.operator == TackyBinaryOperator.DIVIDE:
+            """
+            Generate assembly instructions for integer division.
+            
+            Assembly Operations:
+                1. Move the dividend (src1) into the AX register.
+                2. Execute the CDQ instruction to sign-extend AX into DX:AX.
+                3. Perform the IDIV operation using the divisor (src2).
+                4. Move the quotient from AX to the destination (dst).
+            
+            This sequence follows the x86 assembly convention for signed integer division.
+            """
+            return [
+                # Move the dividend to the AX register
+                Mov(src=convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
+                
+                # Convert Doubleword to Quadword: Sign-extend AX into DX:AX
+                Cqd(),
+                
+                # Perform signed integer division: AX / src2
+                Idiv(operand=convert_to_assembly_ast(tacky_ast.src2)),
+                
+                # Move the quotient from AX to the destination variable
+                Mov(src=Reg(Registers.AX), dest=convert_to_assembly_ast(tacky_ast.dst))
+            ]
+        
+        # Handle remainder operations resulting from integer division
+        elif tacky_ast.operator == TackyBinaryOperator.REMAINDER:
+            """
+            Generate assembly instructions for computing the remainder after integer division.
+            
+            Assembly Operations:
+                1. Move the dividend (src1) into the AX register.
+                2. Execute the CDQ instruction to sign-extend AX into DX:AX.
+                3. Perform the IDIV operation using the divisor (src2).
+                4. Move the remainder from DX to the destination (dst).
+            
+            This sequence adheres to the x86 assembly convention where the remainder is stored in the DX register after division.
+            """
+            return [
+                # Move the dividend to the AX register
+                Mov(src=convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
+                
+                # Convert Doubleword to Quadword: Sign-extend AX into DX:AX
+                Cqd(),
+                
+                # Perform signed integer division: AX / src2
+                Idiv(operand=convert_to_assembly_ast(tacky_ast.src2)),
+                
+                # Move the remainder from DX to the destination variable
+                Mov(src=Reg(Registers.DX), dest=convert_to_assembly_ast(tacky_ast.dst))
+            ]
+        
+        # Handle addition, subtraction, and multiplication operations
+        elif tacky_ast.operator in (
+            TackyBinaryOperator.ADD,
+            TackyBinaryOperator.SUBTRACT,
+            TackyBinaryOperator.MULTIPLY
+        ):
+            """
+            Generate assembly instructions for addition, subtraction, and multiplication.
+            
+            Assembly Operations:
+                1. Move the first operand (src1) directly into the destination register.
+                2. Perform the binary operation (ADD, SUBTRACT, MULTIPLY) between the second operand (src2) and the destination register.
+            
+            This approach optimizes instruction generation by utilizing the destination register to store intermediate results, reducing the need for additional temporary storage.
+            """
+            return [
+                # Move the first operand directly into the destination register
+                Mov(src=convert_to_assembly_ast(tacky_ast.src1), dest=convert_to_assembly_ast(tacky_ast.dst)),
+                
+                # Perform the binary operation with the second operand and store the result in the destination register
+                Binary(
+                    operator=tacky_ast.operator,
+                    src1=convert_to_assembly_ast(tacky_ast.src2),
+                    src2=convert_to_assembly_ast(tacky_ast.dst)
+                )
+            ]
+    
+        # Handle unsupported binary operators by raising an error
+        else:
+            """
+            Error Handling:
+                If the binary operator is not among the supported ones (DIVIDE, REMAINDER, ADD, SUBTRACT, MULTIPLY),
+                the compiler raises a TypeError to indicate that the expression type is unsupported.
+            """
+            raise TypeError(f"Unsupported binary operator: {tacky_ast.operator}")
+
+
     
     # Handle Constant operand
     elif isinstance(tacky_ast, TackyConstant):
@@ -91,6 +186,12 @@ def convert_operator(op: str) -> str:
         return UnaryOperator.NOT  # e.g., bitwise NOT '~x'
     elif op in ('Negate','Negation'):
         return UnaryOperator.NEG  # e.g., arithmetic negation '-x'
+    elif op =='Add':
+        return BinaryOperator.ADD
+    elif op =='Subtract':
+        return BinaryOperator.SUBTRACT
+    elif op == 'Multiply':
+        return BinaryOperator.MULTIPLY
     else:
         # If the operator is not recognized, raise an error
         raise ValueError(f"Unknown unary operator: {op}")
