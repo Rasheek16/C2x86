@@ -71,7 +71,7 @@ class Stack(Operand):
 class Reg(Operand):
     """
     Represents a CPU register operand (Grammar: Reg(reg)).
-    Only AX or R10 are allowed, per grammar.
+    Only AX, R10, R11, DX are allowed, per grammar.
     """
     def __init__(self, value):
         # We check against the valid enumerations in 'Registers'
