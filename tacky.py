@@ -98,7 +98,7 @@ class TackyUnary(TackyInstruction):
             ")"
         )
 
-class TackyBinary:
+class TackyBinary(TackyInstruction):
     """
     Represents a binary operation in the AST.
     """
