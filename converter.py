@@ -169,32 +169,48 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
         print(f"Unsupported AST node: {type(tacky_ast).__name__}", file=sys.stderr)
         sys.exit(1)
 
+
 def convert_operator(op: str) -> str:
     """
-    Converts a Tacky unary operator to its Assembly equivalent.
+    Converts a Tacky unary or binary operator to its Assembly equivalent.
     
     Args:
-        op: The unary operator from the Tacky AST ('Complement' or 'Negate').
+        op (str): The operator from the Tacky AST. 
+                  - For unary operators: 'Complement' or 'Negate'/'Negation'
+                  - For binary operators: 'Add', 'Subtract', 'Multiply'
     
     Returns:
-        A string representing the corresponding Assembly unary operator.
+        str: A string representing the corresponding Assembly operator, as defined in the 
+             UnaryOperator or BinaryOperator enums.
     
     Raises:
-        ValueError: If the operator is unrecognized.
+        ValueError: If the operator is unrecognized or not supported.
     """
+    # Handle unary bitwise NOT operator
     if op == 'Complement':
-        return UnaryOperator.NOT  # e.g., bitwise NOT '~x'
-    elif op in ('Negate','Negation'):
-        return UnaryOperator.NEG  # e.g., arithmetic negation '-x'
-    elif op =='Add':
-        return BinaryOperator.ADD
-    elif op =='Subtract':
-        return BinaryOperator.SUBTRACT
+        return UnaryOperator.NOT  # Corresponds to the bitwise NOT operation, e.g., '~x'
+    
+    # Handle unary arithmetic negation operators
+    elif op in ('Negate', 'Negation'):
+        return UnaryOperator.NEG  # Corresponds to the arithmetic negation operation, e.g., '-x'
+    
+    # Handle binary addition operator
+    elif op == 'Add':
+        return BinaryOperator.ADD  # Corresponds to the addition operation, e.g., 'x + y'
+    
+    # Handle binary subtraction operator
+    elif op == 'Subtract':
+        return BinaryOperator.SUBTRACT  # Corresponds to the subtraction operation, e.g., 'x - y'
+    
+    # Handle binary multiplication operator
     elif op == 'Multiply':
-        return BinaryOperator.MULTIPLY
+        return BinaryOperator.MULTIPLY  # Corresponds to the multiplication operation, e.g., 'x * y'
+    
+    # If the operator does not match any known unary or binary operators, raise an error
     else:
-        # If the operator is not recognized, raise an error
-        raise ValueError(f"Unknown unary operator: {op}")
+        # Raises a ValueError with a descriptive message indicating the unsupported operator
+        raise ValueError(f"Unknown operator: {op}")
+
 
 
 
