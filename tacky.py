@@ -109,7 +109,7 @@ class TackyBinary(TackyInstruction):
         self.dst = dst            # temporary dest variable
 
     def __repr__(self):
-        return f"Binary(operator='{self.operator}', left={self.left}, right={self.right}, dst={self.dst})"
+        return f"Binary(operator='{self.operator}', left={self.src1}, right={self.src2}, dst={self.dst})"
 
 # ------------------
 # Val = Constant(int) | Var(identifier)

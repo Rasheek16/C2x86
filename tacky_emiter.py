@@ -111,15 +111,15 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
 
 
 def convert_binop(operator_token):
-    if operator_token=='ADD':
+    if operator_token=='Add':
         return TackyBinaryOperator.ADD
-    elif operator_token=='-':
+    elif operator_token=='Subtract':
         return TackyBinaryOperator.SUBTRACT
-    elif operator_token=='/':
+    elif operator_token=='Divide':
         return TackyBinaryOperator.DIVIDE
-    elif operator_token=='*':
+    elif operator_token=='Multiply':
         return TackyBinaryOperator.MULTIPLY
-    elif operator_token=='%':
+    elif operator_token=='Remainder':
         return TackyBinaryOperator.REMAINDER
     
 
