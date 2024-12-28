@@ -1,6 +1,6 @@
 
 
-from _Ast import Return, Constant, Unary  # Assuming these are your high-level AST classes
+from _Ast import Return, Constant, Unary ,Binary # Assuming these are your high-level AST classes
 from tacky import (
     TackyProgram,
     TackyFunction,
@@ -8,7 +8,7 @@ from tacky import (
     TackyUnary,
     TackyVar,
     TackyConstant,
-    TackyUnaryOperator
+    TackyUnaryOperator,TackyBinary,TackyBinaryOperator
 )
 from typing import List, Union
 
@@ -81,12 +81,69 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
         instructions.append(TackyUnary(tacky_op, src_val, dst_val))
 
         return dst_val
+    # Check if the current expression node is a Binary operation
+    elif isinstance(expr, Binary):
+        # Recursively emit instructions for the left operand of the binary expression
+        v1 = emit_tacky_expr(expr.left, instructions)
 
+         # Recursively emit instructions for the right operand of the binary expression
+        v2 = emit_tacky_expr(expr.right, instructions)
+    
+        # Generate a unique temporary variable name to store the result of the binary operation
+        dst_name = make_temporary()
+    
+        # Create a TackyVar instance representing the destination variable
+        dst = TackyVar(dst_name)
+    
+        # Convert the AST binary operator to its corresponding Tacky binary operator
+        tacky_op = convert_binop(expr.operator)
+    
+        # Create a TackyBinary instruction with the operator, operands, and destination
+        # This instruction represents the binary operation in the intermediate representation
+        instructions.append(TackyBinary(tacky_op, v1, v2, dst))
+    
+        # Return the destination variable that holds the result of the binary operation
+        return dst
+
+    # Handle unsupported expression types by raising a TypeError
     else:
         raise TypeError(f"Unsupported expression type: {type(expr)}")
 
+
+def convert_binop(operator_token):
+    if operator_token=='ADD':
+        return TackyBinaryOperator.ADD
+    elif operator_token=='-':
+        return TackyBinaryOperator.SUBTRACT
+    elif operator_token=='/':
+        return TackyBinaryOperator.DIVIDE
+    elif operator_token=='*':
+        return TackyBinaryOperator.MULTIPLY
+    elif operator_token=='%':
+        return TackyBinaryOperator.REMAINDER
+    
+
 def emit_tacky(program) -> TackyProgram:
     """
+    emit_tacky(e, instructions):
+        match e with
+        | Constant(c) ->
+            return  Constant(c)
+        | Unary(op, inner) ->
+            src = emit_tacky(inner, instructions)
+            dst_name = make_temporary()
+            dst = Var(dst_name)
+            tacky_op = convert_unop(op)
+            instructions.append(Unary(tacky_op, src, dst))
+            return dst
+        | Binary(op, e1, e2) ->
+            v1 = emit_tacky(e1, instructions)
+            v2 = emit_tacky(e2, instructions)
+            dst_name = make_temporary()
+            dst = Var(dst_name)
+            tacky_op = convert_binop(op)
+            instructions.append(Binary(tacky_op, v1, v2, dst))
+            return dst
     Given a Program node (with one or more Functions), generate and return
     a TackyProgram containing all functions with their corresponding Tacky IR instructions.
     
