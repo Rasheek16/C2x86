@@ -75,7 +75,7 @@ class Reg(Operand):
     """
     def __init__(self, value):
         # We check against the valid enumerations in 'Registers'
-        if value not in (Registers.AX, Registers.R10):
+        if value not in (Registers.AX, Registers.R10,Registers.DX,Registers.R11):
             raise TypeError(f"Invalid register value: {value}")
         self.value = value
 
@@ -144,13 +144,13 @@ class Binary(Instruction):
     """
     Represents a binary operation in the AST.
     """
-    def __init__(self, operator: str, left, right):
+    def __init__(self, operator: str, src1, src2):
         self.operator = operator  # e.g., '+', '-', '*', '/', '%'
-        self.left = left          # Left operand (expression)
-        self.right = right        # Right operand (expression)
+        self.src1 = src1          # Left operand (expression)
+        self.src2 = src2        # Right operand (expression)
 
     def __repr__(self):
-        return f"Binary(operator='{self.operator}', left={self.left}, right={self.right})"
+        return f"Binary(operator='{self.operator}', left={self.src1}, right={self.src2})"
   
 class Idiv(Instruction):
     """
@@ -231,7 +231,7 @@ class AllocateStack(Instruction):
 # Operator Constants
 # ------------------
 
-class UnaryOperator(Enum):
+class UnaryOperator():
     """
     Represents unary operators in the grammar.
 
@@ -252,7 +252,28 @@ class UnaryOperator(Enum):
     # DEC = "Dec"  # Represents decrement, e.g., --x
 
 
-class Registers(Enum):
+class BinaryOperator():
+    """
+    Represents binary operators in the grammar and their corresponding identifiers in the compiler's intermediate representation (IR).
+    
+    Grammar rule:
+        binary_operator = ADD | SUBTRACT | MULTIPLY
+    
+    This enumeration maps each binary operator to a unique string identifier used within the compiler's IR or abstract syntax tree (AST).
+    These identifiers are essential for generating the correct assembly or machine instructions during the code generation phase.
+    """
+    
+    ADD = 'Add'        # Represents the addition operation, e.g., x + y
+    SUBTRACT = 'Sub'   # Represents the subtraction operation, e.g., x - y
+    MULTIPLY = 'Mult'  # Represents the multiplication operation, e.g., x * y
+
+    # Additional binary operators can be defined here as needed.
+    # For example:
+    # DIVIDE = 'Divide'      # Represents the division operation, e.g., x / y
+    # REMAINDER = 'Remainder' # Represents the modulo operation, e.g., x % y
+
+
+class Registers:
     """
     Represents the set of CPU registers used in the compiler's intermediate representation.
 
