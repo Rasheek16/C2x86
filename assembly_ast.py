@@ -17,7 +17,7 @@
 #reg = AX | R10
 #
 # ---------------------------------------------------------------------------
-
+from enum import Enum
 
 
 
@@ -231,23 +231,56 @@ class AllocateStack(Instruction):
 # Operator Constants
 # ------------------
 
-class UnaryOperator:
+class UnaryOperator(Enum):
     """
-    Grammar rule: unary_operator = Neg | Not
+    Represents unary operators in the grammar.
+
+    Grammar rule:
+        unary_operator = Neg | Not
+
+    This class defines the supported unary operators, mapping each operator to its
+    corresponding string representation used within the compiler's intermediate
+    representation (IR) or abstract syntax tree (AST).
     """
-    NEG = "Neg"  # e.g., unary negation, -x
-    NOT = "Not"  # e.g., bitwise not, ~x  (or logical not in some ISAs)
+
+    NEG = "Neg"  # Represents unary negation, e.g., -x
+    NOT = "Not"  # Represents bitwise NOT, e.g., ~x (or logical NOT in some Instruction Set Architectures)
+
+    # Additional unary operators can be added here as needed
+    # For example:
+    # INC = "Inc"  # Represents increment, e.g., ++x
+    # DEC = "Dec"  # Represents decrement, e.g., --x
 
 
-class Registers:
+class Registers(Enum):
     """
-    Grammar rule: reg = AX | DX | R10 | R11
+    Represents the set of CPU registers used in the compiler's intermediate representation.
+
+    Grammar rule:
+        reg = AX | DX | R10 | R11
+
+    This class defines the supported registers that the compiler can utilize for
+    generating machine instructions or managing temporary storage during code generation.
+    Each register is mapped to its string representation corresponding to the target
+    machine's architecture (e.g., x86, x64).
     """
-    AX = "AX"
-    R10 = "R10"
-    DX = 'DX'
-    R11 = 'R11'
-    
+
+    AX = "AX"   # Accumulator Register: commonly used for arithmetic operations
+    DX = "DX"   # Data Register: often used for I/O operations and extended precision
+    R10 = "R10" # General-Purpose Register: available for various operations
+    R11 = "R11" # General-Purpose Register: available for various operations
+
+    # Additional registers can be defined here based on the target architecture
+    # For example:
+    # RBX = "RBX"  # Base Register: often used to hold base addresses
+    # RCX = "RCX"  # Counter Register: used in loop operations
+    # RDX = "RDX"  # Data Register: used in I/O operations and extended precision
+
+    # Note:
+    # The choice of registers (e.g., AX, DX, R10, R11) should align with the
+    # target machine's architecture and calling conventions to ensure correct
+    # code generation and execution.
+
     
 # ------------------
 # Assembly function and program
