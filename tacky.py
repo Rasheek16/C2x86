@@ -111,6 +111,61 @@ class TackyBinary(TackyInstruction):
     def __repr__(self):
         return f"Binary(operator='{self.operator}', left={self.src1}, right={self.src2}, dst={self.dst})"
 
+class TackyCopy(TackyInstruction):
+    """
+    Represents a binary operation in the AST.
+    """
+    def __init__(self, src,dst):
+        
+        self.src1 = src         # Left operand (expression)
+        self.dst = dst            # temporary dest variable
+
+    def __repr__(self):
+        return f"Copy(src={self.src}, dst={self.dst})"
+
+class TackyJump(TackyInstruction):
+    """
+    Represents a binary operation in the AST.
+    """
+    def __init__(self, target):
+      self.target = target          # temporary dest variable
+
+    def __repr__(self):
+        return f"Jump(identifier={self.target})"
+    
+class TackyJumpIfZero(TackyInstruction):
+    """
+    Represents a binary operation in the AST.
+    """
+    def __init__(self, condition,target):
+        self.condition = condition
+        self.target = target          # temporary dest variable
+
+    def __repr__(self):
+        return f"JumpIfZero(condition={self.condition},identifier={self.target})"
+
+class TackyJumpIfNotZero(TackyInstruction):
+    """
+    Represents a binary operation in the AST.
+    """
+    def __init__(self, condition,target):
+        self.condition = condition
+        self.target = target          # temporary dest variable
+
+    def __repr__(self):
+        return f"JumpIfNotZero(condition={self.condition},identifier={self.target})"
+
+
+class TackyLabel(TackyInstruction):
+    """
+    Represents a binary operation in the AST.
+    """
+    def __init__(self,identifer):
+        self.identifer = identifer   # temporary dest variable
+
+    def __repr__(self):
+        return f"Label(identifier={self.target})"
+
 # ------------------
 # Val = Constant(int) | Var(identifier)
 # ------------------
@@ -158,6 +213,7 @@ class TackyUnaryOperator:
     """
     COMPLEMENT = "Complement"  # e.g. ~
     NEGATE     = "Negation"      # e.g. -
+    NOT = 'Not'
 
 
 # TODO REPLACE OPERATOR NAME WITH SYMBOLS
@@ -172,3 +228,11 @@ class TackyBinaryOperator:
     MULTIPLY='Multiply'    # e.g, a * b
     DIVIDE = 'Divide'      # e.g, a / b
     REMAINDER='Remainder'  # e.g, a % b
+    AND ='And'
+    OR='Or'
+    EQUAL='Equal'
+    NOT_EQUAL='NotEqual'
+    LESS_THAN='LessThan'
+    LESS_OR_EQUAL='LessOrEqual'
+    GREATER_THAN='GreaterThan'
+    GREATER_OR_EQUAL='GreaterOrEqual'
