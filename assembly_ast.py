@@ -183,7 +183,7 @@ class Idiv(Instruction):
         return f'Idiv(operand={self.operand})'  # Corrected to use self.operand
 
     
-class Cqd(Instruction):
+class Cdq(Instruction):
     """
     Represents the CDQ (Convert Doubleword to Quadword) instruction in the intermediate representation.
     
@@ -215,7 +215,7 @@ class Cqd(Instruction):
 
     
     
-class AllocateStack(Instruction):
+class AllocateStack():
     """
     Allocates stack space for 'value' units.
     (Grammar: AllocateStack(int))

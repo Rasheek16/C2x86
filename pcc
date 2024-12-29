@@ -46,7 +46,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
             # Print tokens and exit
             for token in tokens:
                 print(token)
-                return  # Done, exit code 0
+            return  # Done, exit code 0
 
         # 3) Parse
         ast = parse_program([token for _, token in tokens])
