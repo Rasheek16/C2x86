@@ -16,4 +16,13 @@ patterns = [
      ("Addition",r'\+'),
      ("Division",r'/'),
      ("Remainder",r'%'),
+     ("Logical_NOT",r'!'),
+     ("Logical_AND",r'\&\&'),
+     ("Less_than_or_Equal_to",r'<='),
+     ("Greater_than_or_Equal_to",r'>='),   
+     ("Logical_OR",r'\|\|'),
+     ("Equal_to",r'\=\='),
+     ("NOT_equal_to",r'\!\='),
+     ("Less_than",r'\<'),
+     ("Greater_than",r'\>'),
 ]
