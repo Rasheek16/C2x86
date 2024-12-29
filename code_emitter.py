@@ -1,4 +1,5 @@
 from assembly_ast import *
+import sys
 
 class CodeEmitter:
     def __init__(self, file_name, platform="linux"):
@@ -10,14 +11,11 @@ class CodeEmitter:
         """Adds a line to the assembly output."""
         self.output.append(line)
 
-    def emit_program(self,program):
-        # print('Inside emit_program')
-        # self.emit_function(program.function_definition)
+    def emit_program(self, program):
         """Emit the program."""
         if not isinstance(program, AssemblyProgram):
             raise ValueError("The input program is not an instance of Program.")
         
-        # Ensure function_definition is a valid FunctionAst instance
         if isinstance(program.function_definition, AssemblyFunction):
             self.emit_function(program.function_definition)
         else:
@@ -28,96 +26,97 @@ class CodeEmitter:
 
     def emit_function(self, function):
         """Emit a function definition."""
-        if not isinstance(function, AssemblyFunction):
-            raise ValueError(f"Expected a FunctionAst, got {type(function)}")
-        
-        func_name = function.name.name
-
+        func_name = function.name
         if self.platform == "macos":
             func_name = f"_{func_name}"  # Add underscore prefix for macOS
         
         self.emit_line(f"   .globl {func_name}")
         self.emit_line(f"{func_name}:")
-        self.emit_line(f'   pushq    %rbp')
-        self.emit_line(f'   movq   %rsp,   %rbp')
-        
-        
-        if not isinstance(function.instructions, list):
-            raise ValueError(f"Expected instructions to be a list, got {type(function.instructions)}")
+        self.emit_line(f'   pushq   %rbp')
+        self.emit_line(f'   movq    %rsp, %rbp')
+        # self.emit_line(f'   subq    $8{}, %rsp')  # Allocate space for local variables
         
         for instruction in function.instructions:
             self.emit_instruction(instruction)
 
     def emit_instruction(self, instruction):
-        print('Inside instruction')
         """Emit an assembly instruction."""
         if isinstance(instruction, Mov):
             src = convertOperandToAssembly(instruction.src)
             dest = convertOperandToAssembly(instruction.dest)
             self.emit_line(f"   movl {src}, {dest}")
-        elif isinstance(instruction,Ret):
+        
+        elif isinstance(instruction, Ret):
             self.emit_line('    movq   %rbp, %rsp')
             self.emit_line("    popq   %rbp")
             self.emit_line('    ret')
-        elif isinstance(instruction,Unary):
+        
+        elif isinstance(instruction, Unary):
             operator = convertOperatorToAssembly(instruction.operator)
             operand = convertOperandToAssembly(instruction.operand)
             self.emit_line(f'   {operator} {operand}')
-        elif isinstance(instruction,AllocateStack):
-            self.emit_line(f'   subq    ${instruction.value},%rsp')
+        
+        elif isinstance(instruction, Binary):
+            operator = convertOperatorToAssembly(instruction.operator)
+            src = convertOperandToAssembly(instruction.src1)
+            dest = convertOperandToAssembly(instruction.src2)
+            self.emit_line(f'    {operator} {src}, {dest}')
+            
+        
+
+        elif isinstance(instruction, Idiv):
+            op = convertOperandToAssembly(instruction.operand)
+            # self.emit_line(f'   movl {op}, %eax')  # Move operand to %eax
+            # self.emit_line('   cdq')  # Sign-extend into %edx:%eax
+            self.emit_line(f'   idivl {op}')  # Perform division
+            # self.emit_line(f'   movl %eax, {convertOperandToAssembly(instruction.dst)}')  # Store quotient
+        elif isinstance(instruction,Cdq):
+            self.emit_line('   cdq')  # Sign-extend into %edx:%eax
+           
+        elif isinstance(instruction, AllocateStack):
+            self.emit_line(f'   subq    ${instruction.value}, %rsp')  # Allocate stack space
+        
         else:
             raise ValueError(f"Unsupported instruction type: {type(instruction)}")
 
-    def format_operand(self, operand):
-        print(operand)
-        """Format the operand for assembly."""
-        if isinstance(operand,Stack):
-            return f'operand.value'
-        return operand.value 
-    
     def save(self):
         """Writes the emitted code to the file."""
-        
-        # Ensure self.file_name is a valid string or path-like object
-        if not self.file_name:
-            raise ValueError("File name is not provided or is invalid.")
+        with open(self.file_name, 'w') as f:
+            f.write("\n".join(self.output) + "\n")
 
-        # Ensure self.output is a list and not None
-        if not isinstance(self.output, list):
-            raise TypeError("Output must be a list of strings.")
-        
-        # Debugging: print the output before writing to file
-        print(self.output)
-
-        try:
-            # Write the output to the file
-            with open(self.file_name, 'w') as f:
-                string = "\n".join(self.output)
-                f.write(string + "\n")  # Write the joined output with a newline at the end
-        except Exception as e:
-            # Catch any file-related errors
-            print(f"Error writing to file: {e}")
-            
-            
-
-def convertOperatorToAssembly(operator):
-    if operator =='Neg':
-        return 'negl'
-    elif operator =='Not':
-        return 'notl'
+def convertOperatorToAssembly(operator: str) -> str:
+    if operator == 'Neg':
+        return 'negl'     # 32-bit negation
+    elif operator == 'Not':
+        return 'notl'     # 32-bit bitwise NOT
+    elif operator == 'Add':
+        return 'addl'
+    elif operator == 'Sub':
+        return 'subl'
+    elif operator == 'Mult':
+        return 'imull'
     else:
-        raise ValueError('Invalid operator',operator)
-    
-    
-def convertOperandToAssembly(operand):
-    if isinstance(operand,Reg):
-        return '%eax'
-    elif operand==Registers.R10:
-        return '%r10d'
-    elif isinstance(operand,Stack):
-        return f'{operand.value}(%rbp)'
-    elif isinstance(operand,Imm):
+        raise ValueError(f'Invalid operator: {operator}')
+
+def convertOperandToAssembly(operand: Operand) -> str:
+    if isinstance(operand, Reg):
+        # Map to 32-bit registers based on the register type
+        operand = operand.value
+        if operand == Registers.AX:
+            return '%eax'
+        elif operand == Registers.DX:
+            return '%edx'
+        elif operand == Registers.R10:
+            return '%r10d'
+        elif operand == Registers.R11:
+            return '%r11d'
+        else:
+            raise ValueError(f"Unsupported register: {operand.reg}")
+    elif isinstance(operand, Stack):
+        # Stack operands with 4-byte alignment
+        return f"{operand.value}(%rbp)"
+    elif isinstance(operand, Imm):
+        # Immediate values
         return f'${operand.value}'
     else:
-        raise ValueError('Invalid operator',operand)
-    
+        raise ValueError(f"Invalid operand type: {type(operand).__name__}")
