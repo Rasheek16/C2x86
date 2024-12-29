@@ -50,7 +50,6 @@ def parse_function_definition(tokens):
         if not isIdentifier(identifier_token):
             raise SyntaxError(f"Invalid identifier: {identifier_token}")
         func_name = Identifier(identifier_token)
-        
         # Expect "(" "void" ")" 
         expect("(", tokens)
         expect("void", tokens)
@@ -61,6 +60,7 @@ def parse_function_definition(tokens):
         
         # Parse <statement>
         statement, tokens = parse_statement(tokens)
+        print(statement)
         
         # Expect "}"
         expect("}", tokens)
@@ -85,9 +85,10 @@ def parse_statement(tokens):
     # Expect ";"
     expect(";", tokens)
     
+
     return Return(exp_node) ,tokens
 
-def get_binary_operator(operator_token):
+def parse_binop(operator_token):
     if operator_token=='+':
         return BinaryOperator.ADD
     elif operator_token=='-':
@@ -96,9 +97,22 @@ def get_binary_operator(operator_token):
         return BinaryOperator.DIVIDE
     elif operator_token=='*':
         return BinaryOperator.MULTIPLY
-    elif operator_token=='%':
-        return BinaryOperator.REMAINDER
-    
+    elif operator_token=='&&':
+        return BinaryOperator.AND
+    elif operator_token=='||':
+        return BinaryOperator.OR
+    elif operator_token=='==':
+        return BinaryOperator.EQUAL
+    elif operator_token=='!=':
+        return BinaryOperator.NOT_EQUAL
+    elif operator_token=='<':
+        return BinaryOperator.LESS_THAN
+    elif operator_token=='<=':
+        return BinaryOperator.LESS_OR_EQUAL
+    elif operator_token=='>':
+        return BinaryOperator.GREATER_THAN
+    elif operator_token=='>=':
+        return BinaryOperator.GREATER_OR_EQUAL
     
 def parse_exp(tokens, min_prec=0):
     """
@@ -106,13 +120,16 @@ def parse_exp(tokens, min_prec=0):
     
     <exp> ::= <factor> ( <binop> <exp> )*
     """
+    print('inside parse_Exp')
     left, tokens = parse_factor(tokens)
+    print(left)
     while True:
         if not tokens:
             break
         next_token = tokens[0]
         # Check if the next token is a binary operator
-        binop_info = get_binary_operator_info(next_token)
+        print(next_token)
+        binop_info = parse_binop_info(next_token)
         if not binop_info:
             break  # Not a binary operator
         
@@ -124,7 +141,7 @@ def parse_exp(tokens, min_prec=0):
         # Consume the operator
         operator_token, tokens = take_token(tokens)
         
-        operator = get_binary_operator(operator_token)
+        operator = parse_binop(operator_token)
         
         # Determine the next minimum precedence
         if op_assoc == 'LEFT':
@@ -141,7 +158,7 @@ def parse_exp(tokens, min_prec=0):
     return left, tokens
 
 
-def get_binary_operator_info(token):
+def parse_binop_info(token):
     """
     Returns a dictionary with precedence and associativity for a given binary operator token.
     Returns None if the token is not a recognized binary operator.
@@ -151,11 +168,23 @@ def get_binary_operator_info(token):
     - +, -    : precedence 1, left-associative
     """
     precedence_table = {
-        '*': {'precedence': 2, 'associativity': 'LEFT'},
-        '/': {'precedence': 2, 'associativity': 'LEFT'},
-        '%': {'precedence': 2, 'associativity': 'LEFT'},
-        '+': {'precedence': 1, 'associativity': 'LEFT'},
-        '-': {'precedence': 1, 'associativity': 'LEFT'},
+        '*': {'precedence': 50, 'associativity': 'LEFT'},
+        '/': {'precedence': 50,'associativity': 'LEFT'},
+        '%': {'precedence': 50, 'associativity': 'LEFT'},
+        '+': {'precedence': 45, 'associativity': 'LEFT'},
+        '-': {'precedence': 45, 'associativity': 'LEFT'},
+        '<': {'precedence': 35, 'associativity': 'LEFT'},
+        '<=': {'precedence': 35, 'associativity': 'LEFT'},
+        '>': {'precedence': 35, 'associativity': 'LEFT'},
+        '>=': {'precedence': 35, 'associativity': 'LEFT'},
+        '==': {'precedence': 30, 'associativity': 'LEFT'},
+        '!=': {'precedence': 30, 'associativity': 'LEFT'},
+        '&&': {'precedence': 10, 'associativity': 'LEFT'},
+        '||': {'precedence': 5, 'associativity': 'LEFT'},
+        
+        
+        
+        
     }
     return precedence_table.get(token, None)
 
@@ -174,14 +203,15 @@ def parse_factor(tokens):
         return parse_int(tokens), tokens
     
     # 2. If it's one of the unary operators
-    elif next_token in ("-", "~"):
+    elif next_token in ("-","~","!"):
         operator_token, tokens = take_token(tokens)
-        
         if operator_token == "-":
-            operator = UnaryOperator.NEGATE
+            operator= UnaryOperator.NEGATE
+        elif operator_token =='!':
+            operator=  UnaryOperator.NOT
         else:
-            operator = UnaryOperator.COMPLEMENT
-        
+            operator=  UnaryOperator.COMPLEMENT
+            
         # Parse the sub-expression after the unary operator
         subexpr, tokens = parse_factor(tokens)
         return Unary(operator, subexpr), tokens
