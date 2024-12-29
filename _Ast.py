@@ -97,7 +97,7 @@ class UnaryOperator:
     """
     COMPLEMENT = "Complement"  # e.g., ~x
     NEGATE     = "Negation"      # e.g., -x
-
+    NOT = 'Not'
 class BinaryOperator:
     """
     Represents the binary operators in the grammar.
