@@ -174,7 +174,7 @@ def emit_tacky(program) -> TackyProgram:
             instructions.append(TackyReturn(ret_val))
         else:
             raise TypeError(f"Unsupported statement type: {type(stmt)}")
-
+    # print(type(func_def.name.name))
     # Create a TackyFunction with the collected instructions
     tacky_function = TackyFunction(
         name=func_def.name,  # Assuming func_def.name is an Identifier
