@@ -109,7 +109,18 @@ class BinaryOperator:
     MULTIPLY='Multiply'    # e.g, a * b
     DIVIDE = 'Divide'      # e.g, a / b
     REMAINDER='Remainder'  # e.g, a % b
-
+    AND ='And'
+    OR='Or'
+    EQUAL='Equal'
+    NOT_EQUAL='NotEqual'
+    LESS_THAN='LessThan'
+    LESS_OR_EQUAL='LessOrEqual'
+    GREATER_THAN='GreaterThan'
+    GREATER_OR_EQUAL='GreaterOrEqual'
+    
+    
+    
+    
 
 class Unary(Expression):
     """
