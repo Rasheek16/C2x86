@@ -73,6 +73,7 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram) -> Tuple[Assembly
         elif isinstance(instr, SetCC):
             # Replace the operand if it's a Pseudo
             instr.operand = replace_pseudo_with_stack(instr.operand)
+            new_instructions.append(instr)
             # instr.operand2 = replace_pseudo_with_stack(instr.operand2)
         elif isinstance(instr, (AllocateStack, Ret, Cdq,JmpCC,Jmp,Label)):
             # These instructions do not contain Pseudo operands; add them directly

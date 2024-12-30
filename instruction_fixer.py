@@ -35,7 +35,7 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
     # 1. Insert AllocateStack at the beginning of the instruction list
     allocate_instr = AllocateStack(value=stack_allocation[assembly_function.name])
     assembly_function.instructions.insert(0, allocate_instr)
-    print(assembly_function.instructions)
+    # print(assembly_function.instructions)
    
     # logger.debug(f"Inserted AllocateStack({allocate_instr.value}) at the beginning of function '{assembly_function.name}'.")
     
@@ -47,7 +47,7 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
         i=i+1
         # Handle 'Mov' instructions which move data between operands
         if isinstance(instr, Mov):
-            print('in mov',instr)
+            # print('in mov',instr)
             
             # print(instr.dest, instr.src)
             # Check if both src and dest are Stack operands
@@ -83,7 +83,7 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
         
         # Handle 'Idiv' instructions which perform integer division
         elif isinstance(instr, Idiv):
-            print('in  idviv',instr)
+            # print('in  idviv',instr)
             
             # Check if the operand is a constant (immediate value) or a Stack operand
             
@@ -145,11 +145,11 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
         
         # Handle 'Binary' instructions which perform add, subtract, and multiply operations
         elif isinstance(instr, Binary):
-            print('in bin',instr)
+            # print('in bin',instr)
             
             # Handle 'Add' and 'Subtract' instructions
             if instr.operator in (BinaryOperator.ADD, BinaryOperator.SUBTRACT):
-                print('in add',instr)
+                # print('in add',instr)
                 
                 # Check if src1 (destination) is a Stack operand
                 # print(instr)
@@ -318,10 +318,21 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
                 )
                     compl2 = Cmp(operand1=instr.operand1,operand2=Reg(Registers.R11))
                 
-                    new_instructions.append([mov,mov2,compl2])
+                    new_instructions.extend([mov,mov2,compl2])
         
                 else:
-                        new_instructions.append([mov,compl])
+                        new_instructions.extend([mov,compl])
+            elif not isinstance(instr.operand2,Stack):
+                  
+                    movl = Mov(
+                        src=instr.operand2, dest=Reg(Registers.R11),
+                    )
+           
+                    compl = Cmp(operand1=instr.operand1,operand2=Reg(Registers.R11))
+                
+                    new_instructions.extend([movl,compl])
+                   
+                
             else:
                 new_instructions.append(instr)
         
@@ -335,7 +346,7 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
             new_instructions.append(instr)
         
         # Handle 'Cdq' (Convert Quadword to Doubleword) instructions
-        elif isinstance(instr, (Cdq,JmpCC,Jmp,Label)):
+        elif isinstance(instr, (Cdq,JmpCC,Jmp,Label,SetCC)):
             """
             Cdq Instruction:
                 Sign-extends the AX register into the DX:AX register pair.
@@ -346,6 +357,7 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
         
         # Handle any unsupported instruction types
         else:
+          
             """
             Unsupported Instruction Type:
                 If the instruction type is not recognized or handled above, log an error and exit.

@@ -6,15 +6,42 @@ from tacky import *
 from typing import List, Union
 import uuid
 
-def get_unique_id() -> str:
+temp_false_label= 0
+temp_true_label= 0
+temp_end_label= 0
+
+def get_false_label() -> str:
+    global temp_false_label
+    temp_false_label+=1
     """
     Generates a unique identifier string.
     
     Returns:
         str: A unique identifier.
     """
-    return str(uuid.uuid4()).replace("-", "")  # Remove hyphens for a cleaner ID
+    return str(temp_false_label)  # Remove hyphens for a cleaner ID
 
+
+def get_true_label() -> str:
+    global temp_true_label
+    temp_true_label+=1
+    """
+    Generates a unique identifier string.
+    
+    Returns:
+        str: A unique identifier.
+    """
+    return str(temp_true_label) 
+def get_end_label() -> str:
+    global temp_end_label
+    temp_end_label+=1
+    """
+    Generates a unique identifier string.
+    
+    Returns:
+        str: A unique identifier.
+    """
+    return str(temp_end_label) 
 
 # A global counter for generating unique temporary names
 temp_counter = 0
@@ -70,7 +97,7 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
     Raises:
         TypeError: If the expression type is unsupported.
     """
-    print(expr)
+    # print(expr)
     if isinstance(expr, Constant):
         return TackyConstant(expr.value)
     
@@ -95,14 +122,14 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
         v1 = emit_tacky_expr(expr.left, instructions)
 
         # Create unique labels for short-circuiting and the end label
-        false_label = f"false_{get_unique_id()}"
-        true_label = f"true_{get_unique_id()}"
-        end_label = f"end_{get_unique_id()}"
+        false_label = f"false_{get_false_label()}"
+        true_label = f"true_{get_true_label()}"
+        end_label = f"end_{get_end_label()}"
         
         if expr.operator == 'And':
             # Implement && (AND) using JumpIfZero (short-circuit if v1 is 0)
             instructions.append(TackyJumpIfZero(condition=v1, target=false_label))
-            print(expr.operator)
+            # print(expr.operator)
             # Recursively emit instructions for the right operand of the binary expression
             v2 = emit_tacky_expr(expr.right, instructions)
 
@@ -142,8 +169,8 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
             result_name = make_temporary()
             result_var = TackyVar(result_name)
 
-            # Set result to 1 if v1 or v2 is non-zero
-            instructions.append(TackyCopy(source=TackyConstant(1), destination=result_var))
+            # **Corrected:** Set result to 0 if both v1 and v2 are zero
+            instructions.append(TackyCopy(source=TackyConstant(0), destination=result_var))
             
             # Jump to end to avoid overwriting result
             instructions.append(TackyJump(target=end_label))
@@ -151,11 +178,16 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
             # Label for true (if v1 or v2 is non-zero)
             instructions.append(TackyLabel(true_label))
             instructions.append(TackyCopy(source=TackyConstant(1), destination=result_var))
+            instructions.append(TackyJump(target=end_label))  # Ensure jump to end after true case
+
+            # **Removed:** The false_label and its associated instructions as they're now redundant
 
             # Label for end
             instructions.append(TackyLabel(end_label))
 
             return result_var
+
+
         else:
             # Recursively emit instructions for the left operand of the binary expression
             v1 = emit_tacky_expr(expr.left, instructions)
@@ -184,7 +216,7 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
 
 
 def convert_binop(operator_token):
-    print(operator_token)
+    # print(operator_token)
     if operator_token=='Add':
         return TackyBinaryOperator.ADD
     elif operator_token=='Subtract':

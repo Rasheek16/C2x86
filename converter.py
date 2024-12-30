@@ -44,7 +44,7 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
     
     # Handle Return instruction
     elif isinstance(tacky_ast, TackyReturn):
-        print(tacky_ast.val)
+        # print(tacky_ast.val)
         # mov_instr = 
         return [
             Mov(src=convert_to_assembly_ast(tacky_ast.val), dest=Reg(Registers.AX)),
@@ -55,6 +55,7 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
     elif isinstance(tacky_ast, TackyUnary):        
         # Convert a Unary operation by moving src to dst and applying the operator
         if tacky_ast.operator ==TackyUnaryOperator.NOT:
+            print('inside not')
             return [
                 Cmp(operand1=Imm(0),operand2=convert_to_assembly_ast(tacky_ast.src)),
                 Mov(src=Imm(0),dest=convert_to_assembly_ast(tacky_ast.dst)),
@@ -68,7 +69,7 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
         
     # Check if the current AST node is a TackyBinary operation
     elif isinstance(tacky_ast, TackyBinary):
-        print(tacky_ast.operator)
+        # print(tacky_ast.operator)
         # print('Binary operations')
         # Handle integer division operations
         if tacky_ast.operator == TackyBinaryOperator.DIVIDE:
@@ -169,10 +170,15 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
             ]
     
         # Handle unsupported binary operators by raising an error
-        elif tacky_ast.operator in (TackyBinaryOperator.GREATER_OR_EQUAL,TackyBinaryOperator.GREATER_THAN,TackyBinaryOperator.LESS_OR_EQUAL,TackyBinaryOperator.LESS_THAN,TackyBinaryOperator.NOT_EQUAL,TackyBinaryOperator.EQUAL,TackyBinaryOperator.OR,TackyBinaryOperator.AND):
+        elif tacky_ast.operator in (TackyBinaryOperator.GREATER_OR_EQUAL,TackyBinaryOperator.LESS_OR_EQUAL,TackyBinaryOperator.LESS_THAN,TackyBinaryOperator.NOT_EQUAL,TackyBinaryOperator.EQUAL,TackyBinaryOperator.OR,TackyBinaryOperator.AND):
             return [Cmp(operand1=convert_to_assembly_ast(tacky_ast.src2),operand2=convert_to_assembly_ast(tacky_ast.src1)),
                     Mov(src=Imm(0),dest=convert_to_assembly_ast(tacky_ast.dst)),
                     SetCC(Cond_code=convert_operator(tacky_ast.operator),operand=convert_to_assembly_ast(tacky_ast.dst))
+                    ]
+        elif tacky_ast.operator == TackyBinaryOperator.GREATER_THAN:
+            return [Cmp(operand1=convert_to_assembly_ast(tacky_ast.src2),operand2=convert_to_assembly_ast(tacky_ast.src1)),
+                    Mov(src=Imm(0),dest=convert_to_assembly_ast(tacky_ast.dst)),
+                    SetCC(Cond_code=Cond_code.G,operand=convert_to_assembly_ast(tacky_ast.dst))
                     ]
         else:
             """

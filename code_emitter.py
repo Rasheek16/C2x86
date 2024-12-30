@@ -12,6 +12,7 @@ class CodeEmitter:
         self.output.append(line)
 
     def emit_program(self, program):
+        print(program)
         """Emit the program."""
         if not isinstance(program, AssemblyProgram):
             raise ValueError("The input program is not an instance of Program.")
@@ -43,6 +44,7 @@ class CodeEmitter:
         """Emit an assembly instruction."""
         if isinstance(instruction, Mov):
             src = convertOperandToAssembly(instruction.src)
+            # print(src)
             dest = convertOperandToAssembly(instruction.dest)
             self.emit_line(f"   movl {src}, {dest}")
         
@@ -61,10 +63,34 @@ class CodeEmitter:
             src = convertOperandToAssembly(instruction.src1)
             dest = convertOperandToAssembly(instruction.src2)
             self.emit_line(f'    {operator} {src}, {dest}')
+
+        elif isinstance(instruction,Cmp):
+            op1 = convertOperandToAssembly(instruction.operand1)
+            op2 = convertOperandToAssembly(instruction.operand2)
+        
+            self.emit_line(f'   cmpl {op1}, {op2}')
+        
+        elif isinstance(instruction,Jmp):
+            label = convertOperandToAssembly(instruction.identifier)
+            self.emit_line(f'   jmp  .L{label}')
+        
+        elif isinstance(instruction,JmpCC):
+            label = convertOperandToAssembly(instruction.identifier)
+            self.emit_line(f'   j{instruction.cond_code}    .L{label}')
+        elif isinstance(instruction,SetCC):
             
+            label = convertOperandToAssemblySETCC(instruction.operand)
+            # print(label)
+            self.emit_line(f'   set{instruction.cond_code}    {label}')
+        
+        elif isinstance(instruction,Label):
+            label = convertOperandToAssembly(instruction.identifier)
+            self.emit_line(f'.L{label}:')
+        
         
 
         elif isinstance(instruction, Idiv):
+            print(instruction)
             op = convertOperandToAssembly(instruction.operand)
             # self.emit_line(f'   movl {op}, %eax')  # Move operand to %eax
             # self.emit_line('   cdq')  # Sign-extend into %edx:%eax
@@ -99,17 +125,53 @@ def convertOperatorToAssembly(operator: str) -> str:
         raise ValueError(f'Invalid operator: {operator}')
 
 def convertOperandToAssembly(operand: Operand) -> str:
-    if isinstance(operand, Reg):
+    # print(operand)
+    if isinstance(operand,str):
+        return operand
+    elif isinstance(operand, Reg):
         # Map to 32-bit registers based on the register type
         operand = operand.value
+        print(operand)
         if operand == Registers.AX:
             return '%eax'
+            
+
         elif operand == Registers.DX:
             return '%edx'
+            
         elif operand == Registers.R10:
             return '%r10d'
+            
         elif operand == Registers.R11:
             return '%r11d'
+            
+        else:
+            raise ValueError(f"Unsupported register: {operand.reg}")
+    elif isinstance(operand, Stack):
+        # Stack operands with 4-byte alignment
+        print(operand.value)
+        return f"{operand.value}(%rbp)"
+    elif isinstance(operand, Imm):
+        # Immediate values
+        return f'${operand.value}'
+    else:
+        raise ValueError(f"Invalid operand type: {type(operand).__name__}")
+    
+def convertOperandToAssemblySETCC(operand: Operand) -> str:
+    print(operand.value)
+    if isinstance(operand, Reg):
+        operand = operand.value
+        if operand == Registers.AX:
+            return '%al'
+        elif operand == Registers.DX:
+            return '%dl'
+            
+        elif operand == Registers.R10:
+            return '%r10b'
+            
+        elif operand == Registers.R11:
+            return '%r11b'
+            
         else:
             raise ValueError(f"Unsupported register: {operand.reg}")
     elif isinstance(operand, Stack):
@@ -120,3 +182,7 @@ def convertOperandToAssembly(operand: Operand) -> str:
         return f'${operand.value}'
     else:
         raise ValueError(f"Invalid operand type: {type(operand).__name__}")
+
+    
+def convert_code_to_assembly(code:str):
+    return code.lower()
