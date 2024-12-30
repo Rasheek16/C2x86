@@ -1,16 +1,20 @@
 
 
 from _Ast import Return, Constant, Unary ,Binary # Assuming these are your high-level AST classes
-from tacky import (
-    TackyProgram,
-    TackyFunction,
-    TackyReturn,
-    TackyUnary,
-    TackyVar,
-    TackyConstant,
-    TackyUnaryOperator,TackyBinary,TackyBinaryOperator
-)
+from tacky import *
+
 from typing import List, Union
+import uuid
+
+def get_unique_id() -> str:
+    """
+    Generates a unique identifier string.
+    
+    Returns:
+        str: A unique identifier.
+    """
+    return str(uuid.uuid4()).replace("-", "")  # Remove hyphens for a cleaner ID
+
 
 # A global counter for generating unique temporary names
 temp_counter = 0
@@ -44,25 +48,29 @@ def convert_unop(op: str) -> str:
         return TackyUnaryOperator.NEGATE
     elif op == "Complement":
         return TackyUnaryOperator.COMPLEMENT
+    elif op == "Not":
+        return TackyUnaryOperator.NOT
     else:
         raise ValueError(f"Unknown unary operator: {op}")
+
 
 def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
     """
     Generate Tacky IR instructions for a single expression node.
     Returns a 'val' (e.g., TackyConstant or TackyVar) that represents
     the result of the expression in the Tacky IR.
-    
+
     Args:
         expr: The expression node from the high-level AST.
         instructions (list): The list to append Tacky IR instructions to.
-    
+
     Returns:
         Union[TackyConstant, TackyVar]: The resulting value after processing the expression.
-    
+
     Raises:
         TypeError: If the expression type is unsupported.
     """
+    print(expr)
     if isinstance(expr, Constant):
         return TackyConstant(expr.value)
     
@@ -81,36 +89,102 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
         instructions.append(TackyUnary(tacky_op, src_val, dst_val))
 
         return dst_val
-    # Check if the current expression node is a Binary operation
+    
     elif isinstance(expr, Binary):
         # Recursively emit instructions for the left operand of the binary expression
         v1 = emit_tacky_expr(expr.left, instructions)
 
-         # Recursively emit instructions for the right operand of the binary expression
-        v2 = emit_tacky_expr(expr.right, instructions)
-    
-        # Generate a unique temporary variable name to store the result of the binary operation
-        dst_name = make_temporary()
-    
-        # Create a TackyVar instance representing the destination variable
-        dst = TackyVar(dst_name)
-    
-        # Convert the AST binary operator to its corresponding Tacky binary operator
-        tacky_op = convert_binop(expr.operator)
-    
-        # Create a TackyBinary instruction with the operator, operands, and destination
-        # This instruction represents the binary operation in the intermediate representation
-        instructions.append(TackyBinary(tacky_op, v1, v2, dst))
-    
-        # Return the destination variable that holds the result of the binary operation
-        return dst
+        # Create unique labels for short-circuiting and the end label
+        false_label = f"false_{get_unique_id()}"
+        true_label = f"true_{get_unique_id()}"
+        end_label = f"end_{get_unique_id()}"
+        
+        if expr.operator == 'And':
+            # Implement && (AND) using JumpIfZero (short-circuit if v1 is 0)
+            instructions.append(TackyJumpIfZero(condition=v1, target=false_label))
+            print(expr.operator)
+            # Recursively emit instructions for the right operand of the binary expression
+            v2 = emit_tacky_expr(expr.right, instructions)
 
-    # Handle unsupported expression types by raising a TypeError
-    else:
+            # If the operator is &&, check v2 as well
+            instructions.append(TackyJumpIfZero(condition=v2, target=false_label))
+
+            # Allocate a temporary variable to store the result
+            result_name = make_temporary()
+            result_var = TackyVar(result_name)
+
+            # Set result to 1 if both v1 and v2 are non-zero
+            instructions.append(TackyCopy(source=TackyConstant(1), destination=result_var))
+            
+            # Jump to end to avoid setting result to 0
+            instructions.append(TackyJump(target=end_label))
+
+            # Label for false (if v1 or v2 is zero)
+            instructions.append(TackyLabel(false_label))
+            instructions.append(TackyCopy(source=TackyConstant(0), destination=result_var))
+
+            # Label for end
+            instructions.append(TackyLabel(end_label))
+
+            return result_var
+
+        elif expr.operator == 'Or':
+            # Implement || (OR) using JumpIfNotZero (short-circuit if v1 is non-zero)
+            instructions.append(TackyJumpIfNotZero(condition=v1, target=true_label))
+
+            # Recursively emit instructions for the right operand of the binary expression
+            v2 = emit_tacky_expr(expr.right, instructions)
+
+            # If v1 was zero, check v2
+            instructions.append(TackyJumpIfNotZero(condition=v2, target=true_label))
+
+            # Allocate a temporary variable to store the result
+            result_name = make_temporary()
+            result_var = TackyVar(result_name)
+
+            # Set result to 1 if v1 or v2 is non-zero
+            instructions.append(TackyCopy(source=TackyConstant(1), destination=result_var))
+            
+            # Jump to end to avoid overwriting result
+            instructions.append(TackyJump(target=end_label))
+
+            # Label for true (if v1 or v2 is non-zero)
+            instructions.append(TackyLabel(true_label))
+            instructions.append(TackyCopy(source=TackyConstant(1), destination=result_var))
+
+            # Label for end
+            instructions.append(TackyLabel(end_label))
+
+            return result_var
+        else:
+            # Recursively emit instructions for the left operand of the binary expression
+            v1 = emit_tacky_expr(expr.left, instructions)
+            # Recursively emit instructions for the right operand of the binary expression
+            v2 = emit_tacky_expr(expr.right, instructions)
+         
+            # Generate  unique temporary variable name to store the result of the binary operation
+            dst_name = make_temporary()
+        
+            # Create a TackyVar instance representing the destination variable
+            dst = TackyVar(dst_name)
+        
+            # Convert the AST binary operator to its corresponding Tacky binary operator
+            tacky_op = convert_binop(expr.operator)
+            # Create a TackyBinary instruction with the operator, operands, and destination
+            # This instruction represents the binary operation in the intermediate representation
+            instructions.append(TackyBinary(tacky_op, v1, v2, dst))
+        
+            # Return the destination variable that holds the result of the binary operation
+            return dst
+
+        # Handle unsupported expression types by raising a TypeError
+   
+    else: 
         raise TypeError(f"Unsupported expression type: {type(expr)}")
 
 
 def convert_binop(operator_token):
+    print(operator_token)
     if operator_token=='Add':
         return TackyBinaryOperator.ADD
     elif operator_token=='Subtract':
@@ -121,7 +195,22 @@ def convert_binop(operator_token):
         return TackyBinaryOperator.MULTIPLY
     elif operator_token=='Remainder':
         return TackyBinaryOperator.REMAINDER
-    
+    elif operator_token=='Or':
+        return TackyBinaryOperator.OR
+    elif operator_token=='Equal':
+        return TackyBinaryOperator.EQUAL
+    elif operator_token=='NotEqual':
+        return TackyBinaryOperator.NOT_EQUAL
+    elif operator_token=='And':
+        return TackyBinaryOperator.AND
+    elif operator_token=='LessOrEqual':
+        return TackyBinaryOperator.LESS_OR_EQUAL
+    elif operator_token=='LessThan':
+        return TackyBinaryOperator.LESS_THAN
+    elif operator_token=='GreaterOrEqual':
+        return TackyBinaryOperator.GREATER_OR_EQUAL
+    elif operator_token=='GreaterThan':
+        return TackyBinaryOperator.GREATER_THAN
 
 def emit_tacky(program) -> TackyProgram:
     """

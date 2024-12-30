@@ -60,7 +60,7 @@ def parse_function_definition(tokens):
         
         # Parse <statement>
         statement, tokens = parse_statement(tokens)
-        print(statement)
+        # print(statement)
         
         # Expect "}"
         expect("}", tokens)
@@ -113,22 +113,23 @@ def parse_binop(operator_token):
         return BinaryOperator.GREATER_THAN
     elif operator_token=='>=':
         return BinaryOperator.GREATER_OR_EQUAL
-    
+    elif operator_token=='%':
+        return BinaryOperator.REMAINDER
 def parse_exp(tokens, min_prec=0):
     """
     Implements precedence climbing to parse binary expressions.
     
     <exp> ::= <factor> ( <binop> <exp> )*
     """
-    print('inside parse_Exp')
+    # print('inside parse_Exp')
     left, tokens = parse_factor(tokens)
-    print(left)
+    # print(left)
     while True:
         if not tokens:
             break
         next_token = tokens[0]
         # Check if the next token is a binary operator
-        print(next_token)
+        # print(next_token)
         binop_info = parse_binop_info(next_token)
         if not binop_info:
             break  # Not a binary operator

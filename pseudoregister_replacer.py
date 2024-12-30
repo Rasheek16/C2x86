@@ -1,24 +1,7 @@
 # pseudoregister_replacer.py
 
 from typing import Dict, Tuple, List
-from assembly_ast import (
-    AssemblyProgram,
-    AssemblyFunction,
-    Mov,
-    Unary,
-    Pseudo,
-    Stack,
-    Registers,
-    AllocateStack,
-    Ret,
-    Idiv,
-    Binary,
-    Reg,
-    Instruction,
-    Imm,
-    BinaryOperator,
-    Cdq  # Represents the 'cqo' instruction for sign extension
-)
+from assembly_ast import *
 import sys
 
 def replace_pseudoregisters(assembly_program: AssemblyProgram) -> Tuple[AssemblyProgram, Dict[str, int]]:
@@ -82,7 +65,16 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram) -> Tuple[Assembly
             instr.operand = replace_pseudo_with_stack(instr.operand)
             new_instructions.append(instr)
         
-        elif isinstance(instr, (AllocateStack, Ret, Cdq)):
+        elif isinstance(instr, Cmp):
+            # Replace the operand if it's a Pseudo
+            instr.operand1 = replace_pseudo_with_stack(instr.operand1)
+            instr.operand2 = replace_pseudo_with_stack(instr.operand2)
+            new_instructions.append(instr)
+        elif isinstance(instr, SetCC):
+            # Replace the operand if it's a Pseudo
+            instr.operand = replace_pseudo_with_stack(instr.operand)
+            # instr.operand2 = replace_pseudo_with_stack(instr.operand2)
+        elif isinstance(instr, (AllocateStack, Ret, Cdq,JmpCC,Jmp,Label)):
             # These instructions do not contain Pseudo operands; add them directly
             new_instructions.append(instr)
         

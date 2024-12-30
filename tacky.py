@@ -115,10 +115,10 @@ class TackyCopy(TackyInstruction):
     """
     Represents a binary operation in the AST.
     """
-    def __init__(self, src,dst):
+    def __init__(self, source,destination):
         
-        self.src1 = src         # Left operand (expression)
-        self.dst = dst            # temporary dest variable
+        self.src = source        # Left operand (expression)
+        self.dst = destination        # temporary dest variable
 
     def __repr__(self):
         return f"Copy(src={self.src}, dst={self.dst})"
@@ -164,7 +164,7 @@ class TackyLabel(TackyInstruction):
         self.identifer = identifer   # temporary dest variable
 
     def __repr__(self):
-        return f"Label(identifier={self.target})"
+        return f"Label(identifier={self.identifer})"
 
 # ------------------
 # Val = Constant(int) | Var(identifier)

@@ -1,29 +1,13 @@
 # instruction_fixer.py
 
 from typing import List, Dict
-from assembly_ast import (
-    AssemblyProgram,
-    AssemblyFunction,
-    Instruction,
-    Mov,
-    Ret,
-    Reg,
-    Registers,
-    AllocateStack,
-    Unary,
-    Stack,
-    Idiv,
-    Imm,
-    BinaryOperator,
-    Binary,
-    Cdq
-)
+from assembly_ast import *
 import sys 
 import logging
 
 # Configure logging
-# logging.basicConfig(level=logging.DEBUG)
-# logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int) -> None:
     """
@@ -316,6 +300,30 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
                 Since AllocateStack does not contain operands, no replacement is needed.
             """
             new_instructions.append(instr)
+            
+        elif isinstance(instr, Cmp):
+            """
+            AllocateStack Instruction:
+                Typically used to reserve space on the stack for local variables or temporaries.
+                Since AllocateStack does not contain operands, no replacement is needed.
+            """
+            if isinstance(instr.operand1,Stack) and isinstance(instr.operand2,Stack):
+                mov = Mov(
+                    src=instr.operand1, dest=Reg(Registers.R10),
+                )
+                compl = Cmp(operand1=Reg(Registers.R10),operand2=instr.operand2)
+                if not isinstance(compl.operand2,Stack):
+                    mov2 = Mov(
+                    src=instr.operand2, dest=Reg(Registers.R11),
+                )
+                    compl2 = Cmp(operand1=instr.operand1,operand2=Reg(Registers.R11))
+                
+                    new_instructions.append([mov,mov2,compl2])
+        
+                else:
+                        new_instructions.append([mov,compl])
+            else:
+                new_instructions.append(instr)
         
         # Handle 'Ret' (return) instructions which typically do not contain operands
         elif isinstance(instr, Ret):
@@ -327,7 +335,7 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
             new_instructions.append(instr)
         
         # Handle 'Cdq' (Convert Quadword to Doubleword) instructions
-        elif isinstance(instr, Cdq):
+        elif isinstance(instr, (Cdq,JmpCC,Jmp,Label)):
             """
             Cdq Instruction:
                 Sign-extends the AX register into the DX:AX register pair.
@@ -343,7 +351,7 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
                 If the instruction type is not recognized or handled above, log an error and exit.
                 This ensures that all instruction types are accounted for and handled appropriately.
             """
-            # logger.error(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_function.name}'.")
+            logger.error(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_function.name}'.")
             sys.exit(1)
     # print(new_instructions)
     # Update the function's instruction list with the new instructions

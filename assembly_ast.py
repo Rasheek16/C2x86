@@ -213,7 +213,39 @@ class Cdq(Instruction):
         """
         return f'Cqd()'  # Represents the CDQ instruction with no operands
 
+class Cmp(Instruction):
+    def __init__(self, operand1 , operand2):
+        self.operand1=operand1
+        self.operand2=operand2
     
+    def __repr__(self):
+        return f'Cmp(Operand1={self.operand1},Operand2 ={self.operand2})'
+    
+class Jmp(Instruction):
+    def __init__(self,indentifier):
+        self.identifier= indentifier
+    def __repr__(self):
+        return f'Jmp(Indentifier={self.identifier})'
+    
+class JmpCC(Instruction):
+    def __init__(self,Cond_code,indentifier):
+        self.identifier= indentifier
+        self.cond_code = Cond_code
+    def __repr__(self):
+        return f'JmpCC(Cond_code ={self.cond_code} Indentifier={self.identifier})'
+    
+class SetCC(Instruction):
+    def __init__(self,Cond_code,operand):
+        self.operand= operand
+        self.cond_code = Cond_code
+    def __repr__(self):
+        return f'SetCC(Cond_code ={self.cond_code} Indentifier={self.operand})'
+
+class Label(Instruction):
+    def __init__(self,indentifier):
+        self.identifier= indentifier
+    def __repr__(self):
+        return f'Label(Indentifier={self.identifier})'
     
 class AllocateStack():
     """
@@ -339,3 +371,13 @@ class AssemblyProgram:
             f"AssemblyProgram("
             f"function_definition={repr(self.function_definition)})"
         )
+
+
+
+class Cond_code:
+    E='E'
+    NE='NE'
+    G='G'
+    GE='GE'
+    L='L'
+    LE='LE'

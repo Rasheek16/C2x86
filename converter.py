@@ -1,5 +1,5 @@
 from tacky import *
-from assembly_ast import Mov, Ret, Imm, Registers, AssemblyFunction, AssemblyProgram, Reg, Unary, Pseudo , UnaryOperator ,Stack ,AllocateStack,Cdq,Idiv,Binary,BinaryOperator
+from assembly_ast import *
 import sys
 from typing import Union, List ,Dict
 
@@ -54,13 +54,21 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
     # Handle Unary instruction
     elif isinstance(tacky_ast, TackyUnary):        
         # Convert a Unary operation by moving src to dst and applying the operator
-        return [
-            Mov(src=convert_to_assembly_ast(tacky_ast.src), dest=convert_to_assembly_ast(tacky_ast.dst)),
-            Unary(operator=convert_operator(tacky_ast.operator), operand=convert_to_assembly_ast(tacky_ast.dst))
-        ]
+        if tacky_ast.operator ==TackyUnaryOperator.NOT:
+            return [
+                Cmp(operand1=Imm(0),operand2=convert_to_assembly_ast(tacky_ast.src)),
+                Mov(src=Imm(0),dest=convert_to_assembly_ast(tacky_ast.dst)),
+                SetCC(Cond_code=Cond_code.E,operand=convert_to_assembly_ast(tacky_ast.dst))
+            ]
+        else:
+            return [
+                Mov(src=convert_to_assembly_ast(tacky_ast.src), dest=convert_to_assembly_ast(tacky_ast.dst)),
+                Unary(operator=convert_operator(tacky_ast.operator), operand=convert_to_assembly_ast(tacky_ast.dst))
+            ]
         
     # Check if the current AST node is a TackyBinary operation
     elif isinstance(tacky_ast, TackyBinary):
+        print(tacky_ast.operator)
         # print('Binary operations')
         # Handle integer division operations
         if tacky_ast.operator == TackyBinaryOperator.DIVIDE:
@@ -161,6 +169,11 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
             ]
     
         # Handle unsupported binary operators by raising an error
+        elif tacky_ast.operator in (TackyBinaryOperator.GREATER_OR_EQUAL,TackyBinaryOperator.GREATER_THAN,TackyBinaryOperator.LESS_OR_EQUAL,TackyBinaryOperator.LESS_THAN,TackyBinaryOperator.NOT_EQUAL,TackyBinaryOperator.EQUAL,TackyBinaryOperator.OR,TackyBinaryOperator.AND):
+            return [Cmp(operand1=convert_to_assembly_ast(tacky_ast.src2),operand2=convert_to_assembly_ast(tacky_ast.src1)),
+                    Mov(src=Imm(0),dest=convert_to_assembly_ast(tacky_ast.dst)),
+                    SetCC(Cond_code=convert_operator(tacky_ast.operator),operand=convert_to_assembly_ast(tacky_ast.dst))
+                    ]
         else:
             """
             Error Handling:
@@ -168,7 +181,8 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
                 the compiler raises a TypeError to indicate that the expression type is unsupported.
             """
             raise TypeError(f"Unsupported binary operator: {tacky_ast.operator}")
-
+    elif isinstance(tacky_ast,str):
+        return tacky_ast
     # Handle Constant operand
     elif isinstance(tacky_ast, TackyConstant):
         # Convert a constant value into an Imm operand
@@ -179,7 +193,27 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
         # Convert a variable into a Pseudo operand
         # print(tacky_ast)
         return Pseudo(tacky_ast.identifier)
-    
+    elif isinstance(tacky_ast,TackyJump):
+        return [Jmp(indentifier=tacky_ast.target)]
+    elif isinstance(tacky_ast,TackyJumpIfZero):
+        return [
+            Cmp(operand1=Imm(0),operand2=convert_to_assembly_ast(tacky_ast.condition)),
+            JmpCC(Cond_code=Cond_code.E,indentifier=convert_to_assembly_ast(tacky_ast.target))
+        ]
+    elif isinstance(tacky_ast,TackyJumpIfNotZero):
+        return [
+            Cmp(operand1=Imm(0),operand2=convert_to_assembly_ast(tacky_ast.condition)),
+            JmpCC(Cond_code=Cond_code.NE,indentifier=convert_to_assembly_ast(tacky_ast.target))
+        ]
+        
+    elif isinstance(tacky_ast,TackyCopy):
+        return [
+            Mov(src=convert_to_assembly_ast(tacky_ast.src),dest=convert_to_assembly_ast(tacky_ast.dst))
+        ]
+    elif isinstance(tacky_ast,TackyLabel):
+        return [
+            Label(indentifier=convert_to_assembly_ast(tacky_ast.identifer))
+        ]
     else:
         # Print error message for unsupported AST nodes and exit
         print(f"Unsupported AST node: {type(tacky_ast).__name__}", file=sys.stderr)
@@ -222,6 +256,18 @@ def convert_operator(op: str) -> str:
     elif op == 'Multiply':
         return BinaryOperator.MULTIPLY  # Corresponds to the multiplication operation, e.g., 'x * y'
     
+    elif op=='GreaterThan':
+        return Cond_code.G
+    elif op=='LessThan':
+        return Cond_code.L
+    elif op=='GreaterOrEqual':
+        return Cond_code.GE
+    elif op=='LessOrEqual':
+        return Cond_code.LE
+    elif op=='NotEqual':
+        return Cond_code.NE
+    elif op=='Equal':
+        return Cond_code.E
     # If the operator does not match any known unary or binary operators, raise an error
     else:
         # Raises a ValueError with a descriptive message indicating the unsupported operator
