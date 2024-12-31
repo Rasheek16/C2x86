@@ -28,6 +28,22 @@ class Program:
         return f"Program(\n{repr(self.function_definition)}\n)"
 
 
+class BlockItems():
+    def __init__(self, statement=None,declaration=None):
+        self.statement = declaration
+        self.declaration = declaration
+        pass
+    
+
+class  S(BlockItems):
+    def __init__(self,statement):
+        super().__init__(statement=statement)
+        
+    def __repr__(self):
+        return f'S(st)'
+    
+    
+
 class Function:
     """
     Represents a function definition with a name (identifier) and a single statement body.
@@ -62,14 +78,42 @@ class Return(Statement):
     Grammar rule: statement = Return(exp)
     """
     def __init__(self, exp):
-        # exp should be an Expression node
+        # exp should be an Exp node
         self.exp = exp
 
     def __repr__(self):
         return f"Return(\n    {repr(self.exp)}\n\t\t)"
 
 
-class Expression:
+
+class Expression(Statement):
+    """
+    A 'return' statement containing an expression to return.
+    Grammar rule: statement = Return(exp)
+    """
+    def __init__(self, exp):
+        # exp should be an Exp node
+        self.exp = exp
+
+    def __repr__(self):
+        return f"Expression(\n    {repr(self.exp)}\n\t\t)"
+
+
+class Null(Statement):
+    def __init__(self):
+        pass
+    
+    def __repr__(self):
+        return 'Null()'
+        
+
+
+
+
+
+
+
+class Exp:
     """
     Base class for expressions.
     Grammar rule: exp = Constant(int) | Unary(unary_operator, exp)
@@ -77,7 +121,7 @@ class Expression:
     pass
 
 
-class Constant(Expression):
+class Constant(Exp):
     """
     An integer literal constant.
     Example: Constant(42)
@@ -122,14 +166,14 @@ class BinaryOperator:
     
     
 
-class Unary(Expression):
+class Unary(Exp):
     """
     A unary expression (unary_operator applied to a sub-expression).
     Grammar rule: exp = Unary(unary_operator, exp)
     """
     def __init__(self, operator, expr):
         # operator should be one of {UnaryOperator.COMPLEMENT, UnaryOperator.NEGATE}.
-        # expr is another Expression node.
+        # expr is another Exp node.
         self.operator = operator
         self.expr = expr
 
@@ -155,7 +199,7 @@ class Binary:
 
 
 
-class Identifier(Expression):
+class Identifier(Exp):
     """
     An identifier (used for function names, variable names, etc.).
     You can store it as a string internally.
@@ -165,3 +209,47 @@ class Identifier(Expression):
 
     def __repr__(self):
         return f"Identifier({self.name})"
+
+
+class Var(Exp):
+    """
+    An identifier (used for function names, variable names, etc.).
+    You can store it as a string internally.
+    """
+    def __init__(self, identifier):
+        self.identfier = identifier
+
+    def __repr__(self):
+        return f"Var(identifier={self.identfier})"
+
+
+
+class Assignment(Exp):
+    """
+    An identifier (used for function names, variable names, etc.).
+    You can store it as a string internally.
+    """
+    def __init__(self, exp1,exp2):
+        self.exp1 = exp1
+        self.exp2 = exp2
+        
+
+    def __repr__(self):
+        return f"Assignment(exp1={self.exp1} , exp2={self.exp2})"
+
+
+class Decl:
+    def __init__(self):
+        pass
+    
+    
+class Declaration(Decl):
+    def __init__(self, name, init):
+        self.name = name
+        self.init = init
+        
+    def __repr__(self):
+        return f'Declaration(name={self.name},init={self.init})'
+        
+    
+    

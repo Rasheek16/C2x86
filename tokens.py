@@ -25,4 +25,5 @@ patterns = [
      ("Not",r'!'),
      ("LessThan",r'\<'),
      ("GreaterThan",r'\>'),
+     ('Assignment',r'=')
 ]
