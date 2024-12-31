@@ -1,34 +1,99 @@
 import re
 import sys
+from typing import List
 
-from _Ast import ( 
-    Program, 
-    Function, 
-    Return, 
-    Constant, 
-    Unary, 
-    Identifier, 
-    UnaryOperator,Binary,BinaryOperator
-)
+from _ast5 import *
 
-def isIntegerConstant(token):
-    return re.match(r"[0-9]+\b",token)
+
+def isKeyword(token):
+    if token =='int':
+        return True 
+    return False
     
 
-def isIdentifier(token):
+def isIntegerConstant(token: str) -> bool:
+    """
+    Checks if a token is an integer constant.
+    
+    Args:
+        token (str): The token to check.
+    
+    Returns:
+        bool: True if the token is an integer constant, False otherwise.
+    """
+    return re.fullmatch(r"\d+", token) is not None
+
+
+def isIdentifier(token: str) -> bool:
+    """
+    Checks if a token is a valid identifier.
+    
+    Args:
+        token (str): The token to check.
+    
+    Returns:
+        bool: True if the token is a valid identifier, False otherwise.
+    """
     # Matches valid C-like identifier (starts with letter or underscore)
     # and followed by zero or more word characters (letters, digits, underscore)
-    return re.match(r"^[a-zA-Z_]\w*$", token)
+    return re.fullmatch(r"[a-zA-Z_]\w*", token) is not None
 
-def parse_program(tokens):
+
+def take_token(tokens: List[str]) :
     """
-    <program> ::= <function>
+    Utility function to consume and return the next token from the token list.
+    
+    Args:
+        tokens (List[str]): The list of tokens.
+    
+    Returns:
+        tuple: A tuple containing the consumed token and the remaining tokens.
+    
+    Raises:
+        SyntaxError: If the token list is empty.
+    """
+    if not tokens:
+        raise SyntaxError("Unexpected end of input")
+    token = tokens.pop(0)
+    return token, tokens
+
+
+def expect(expected: str, tokens: List[str]):
+    """
+    Utility function to consume the next token if it matches the expected value.
+    
+    Args:
+        expected (str): The expected token value.
+        tokens (List[str]): The list of tokens.
+    
+    Raises:
+        SyntaxError: If the next token does not match the expected value.
+    """
+    if not tokens:
+        raise SyntaxError(f"Expected '{expected}', but reached end of input")
+    token = tokens.pop(0)
+    if token != expected:
+        raise SyntaxError(f"Expected '{expected}', got '{token}'")
+
+
+def parse_program(tokens: List[str]) -> Program:
+    """
+    Parses the <program> ::= <function> rule.
+    
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+    
+    Returns:
+        Program: The parsed Program AST node.
+    
+    Raises:
+        SyntaxError: If parsing fails.
     """
     try:
-       
-        function_definition, tokens = parse_function_definition(tokens)
+        # Parse the function definition
+        function_definition = parse_function_definition(tokens)
         
-        # The grammar says only one function. If there's anything left, it's junk.
+        # The grammar specifies only one function. If there are remaining tokens, it's an error.
         if tokens:
             raise SyntaxError("Unexpected tokens after function definition")
         
@@ -37,140 +102,241 @@ def parse_program(tokens):
         print(f"Syntax Error: {e}")
         sys.exit(1)
 
-def parse_function_definition(tokens):
+
+def parse_function_definition(tokens: List[str]) -> Function:
     """
-    <function> ::= "int" <identifier> "(" "void" ")" "{" <statement> "}"
+    Parses the <function> ::= "int" <identifier> "(" "void" ")" "{" { <block-item> } "}" rule.
+    
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+    
+    Returns:
+        Function: The parsed Function AST node.
+    
+    Raises:
+        SyntaxError: If parsing fails.
     """
     try:
-        # Expect "int"
+        # Expect "int" keyword
         expect("int", tokens)
         
-        # Parse <identifier>
+        # Parse <identifier> for the function name
         identifier_token, tokens = take_token(tokens)
         if not isIdentifier(identifier_token):
-            raise SyntaxError(f"Invalid identifier: {identifier_token}")
+            raise SyntaxError(f"Invalid identifier for function name: '{identifier_token}'")
         func_name = Identifier(identifier_token)
-        # Expect "(" "void" ")" 
+        
+        # Expect "(" "void" ")"
         expect("(", tokens)
         expect("void", tokens)
         expect(")", tokens)
         
-        # Expect "{" 
+        # Expect "{" to start the function body
         expect("{", tokens)
         
-        # Parse <statement>
-        statement, tokens = parse_statement(tokens)
-        # print(statement)
-        
-        # Expect "}"
+        # Parse zero or more block-items until "}"
+        function_body = []
+        #* { <block-item> } Curly braces indicate code repetition
+        while tokens and tokens[0] != "}":
+            # if tokens[0] == "int":
+            #     # It's a declaration
+            #     declaration = parse_declaration(tokens)
+            #     block_item = D(declaration)
+            # else:
+            #     # It's a statement
+            #     statement = parse_statement(tokens)
+            #     block_item = S(statement)
+            # block_items.append(block_item)
+            next_token = parse_block_item(tokens)
+            function_body.append(next_token)
+        # Expect "}" to end the function body
         expect("}", tokens)
         
-        # Return a Function node
-        return Function(func_name, statement), tokens
+        # Return the Function AST node
+        return Function(name=func_name, body=function_body)
     except Exception as e:
         print(f"Syntax Error in function definition: {e}")
         sys.exit(1)
 
 
-def parse_statement(tokens):
-    """
-    <statement> ::= "return" <exp> ";"
-    """
-    # Expect "return"
-    expect("return", tokens)
-    
-    # Parse <exp> with precedence climbing
-    exp_node, tokens = parse_exp(tokens, min_prec=0)
-    
-    # Expect ";"
-    expect(";", tokens)
-    
+def parse_block_item(tokens):
+    # token,tokens = take_token(tokens)
+    print(tokens[0])
+    if tokens[0] == "int":
+        print('parse decl')
+        
+            # It's a declaration
+        declaration = parse_declaration(tokens)
+        block_item = D(declaration)
+        return block_item
+    else:
+        print('parse statement')
+        # It's a statement
+        statement = parse_statement(tokens)
+        block_item = S(statement)
+        return block_item
+        
+    # block_items.append(block_item)
 
-    return Return(exp_node) ,tokens
-
-def parse_binop(operator_token):
-    if operator_token=='+':
-        return BinaryOperator.ADD
-    elif operator_token=='-':
-        return BinaryOperator.SUBTRACT
-    elif operator_token=='/':
-        return BinaryOperator.DIVIDE
-    elif operator_token=='*':
-        return BinaryOperator.MULTIPLY
-    elif operator_token=='&&':
-        return BinaryOperator.AND
-    elif operator_token=='||':
-        return BinaryOperator.OR
-    elif operator_token=='==':
-        return BinaryOperator.EQUAL
-    elif operator_token=='!=':
-        return BinaryOperator.NOT_EQUAL
-    elif operator_token=='<':
-        return BinaryOperator.LESS_THAN
-    elif operator_token=='<=':
-        return BinaryOperator.LESS_OR_EQUAL
-    elif operator_token=='>':
-        return BinaryOperator.GREATER_THAN
-    elif operator_token=='>=':
-        return BinaryOperator.GREATER_OR_EQUAL
-    elif operator_token=='%':
-        return BinaryOperator.REMAINDER
-def parse_exp(tokens, min_prec=0):
+def parse_declaration(tokens: List[str]) -> Declaration:
     """
-    Implements precedence climbing to parse binary expressions.
+    Parses the <declaration> ::= "int" <identifier> [ "=" <exp> ] ";" rule.
     
-    <exp> ::= <factor> ( <binop> <exp> )*
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+    
+    Returns:
+        Declaration: The parsed Declaration AST node.
+    
+    Raises:
+        SyntaxError: If parsing fails.
     """
-    # print('inside parse_Exp')
-    left, tokens = parse_factor(tokens)
-    # print(left)
-    while True:
+    try:
+        # Expect "int" keyword
+        expect("int", tokens)
+
+        # Parse <identifier> for the variable name
+        identifier_token, tokens = take_token(tokens)
+        if not isIdentifier(identifier_token):
+            raise SyntaxError(f"Invalid identifier in declaration: '{identifier_token}'")
+        var_name = Identifier(identifier_token)
+        
+        # Initialize 'init' to None (optional initializer)
+        init = None
+        
+        # Check if the next token is "=" indicating an initializer
+        # * [ "=" <exp> ] Square bracket indicate optional code
+        if tokens and tokens[0] == "=":
+            # Consume "="
+            expect("=", tokens)
+            
+            # Parse <exp> for the initializer
+            init, tokens = parse_exp(tokens)
+            
+        # Expect ";" to end the declaration
+        expect(";", tokens)
+        
+        # Return the Declaration AST node
+        return Declaration(name=var_name, init=init)
+    except Exception as e:
+        print(f"Syntax Error in declaration: {e}")
+        sys.exit(1)
+
+
+def parse_statement(tokens: List[str]) -> Statement:
+    """
+    Parses the <statement> ::= "return" <exp> ";" | <exp> ";" | ";" rule.
+    
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+    
+    Returns:
+        Statement: The parsed Statement AST node.
+    
+    Raises:
+        SyntaxError: If parsing fails.
+    """
+    try:
         if not tokens:
-            break
+            raise SyntaxError("Unexpected end of input when parsing statement.")
+        
         next_token = tokens[0]
-        # Check if the next token is a binary operator
-        # print(next_token)
-        binop_info = parse_binop_info(next_token)
-        if not binop_info:
-            break  # Not a binary operator
         
-        op_prec, op_assoc = binop_info['precedence'], binop_info['associativity']
-        
-        if op_prec < min_prec:
-            break
-        
-        # Consume the operator
-        operator_token, tokens = take_token(tokens)
-        
-        operator = parse_binop(operator_token)
-        
-        # Determine the next minimum precedence
-        if op_assoc == 'LEFT':
-            next_min_prec = op_prec + 1
-        else:  # 'RIGHT'
-            next_min_prec = op_prec
-        
-        # Parse the right-hand side expression
-        right, tokens = parse_exp(tokens, next_min_prec)
-        
-        # Combine left and right into a Binary AST node
-        left = Binary(operator, left, right)
-    
-    return left, tokens
+        if next_token == "return":
+            # Parse "return" <exp> ";"
+            expect("return", tokens)
+            exp_node = parse_exp(tokens)[0]
+            expect(";", tokens)
+            return Return(exp=exp_node)
+        elif next_token == ";":
+            # Parse ";" as a null statement
+            expect(";", tokens)
+            return Null()
+        else:
+            # Parse <exp> ";" as an expression statement
+            exp_node = parse_exp(tokens)[0]
+            expect(";", tokens)
+            return Expression(exp=exp_node)
+    except Exception as e:
+        print(f"Syntax Error in statement: {e}")
+        sys.exit(1)
 
 
-def parse_binop_info(token):
+def parse_exp(tokens: List[str], min_prec: int = 0) :
     """
-    Returns a dictionary with precedence and associativity for a given binary operator token.
-    Returns None if the token is not a recognized binary operator.
+    Parses an expression using the precedence climbing (Pratt) parsing technique.
     
-    Precedence levels (higher number means higher precedence):
-    - *, /, % : precedence 2, left-associative
-    - +, -    : precedence 1, left-associative
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+        min_prec (int): The minimum precedence level for operators.
+    
+    Returns:
+        tuple: A tuple containing the parsed Exp AST node and the remaining tokens.
+    
+    Raises:
+        SyntaxError: If parsing fails.
+    """
+    try:
+        # Parse the left-hand side (lhs) as a factor
+        lhs, tokens = parse_factor(tokens)
+        
+        while True:
+            if not tokens:
+                break
+            op = tokens[0]
+            binop_info = parse_binop_info(op)
+            if not binop_info:
+                break  # Not a binary operator
+            
+            prec = binop_info['precedence']
+            assoc = binop_info['associativity']
+            
+            if prec < min_prec:
+                break  # Current operator precedence is too low
+            
+            # Consume the operator
+            operator_token, tokens = take_token(tokens)
+            operator = parse_binop(operator_token)
+            
+            # Determine the next minimum precedence based on associativity
+            if assoc == 'LEFT':
+                next_min_prec = prec + 1
+            else:  # 'RIGHT'
+                next_min_prec = prec
+            next_token = tokens[0]
+            if next_token =='=':
+                operator_token,tokens = take_token(tokens)
+                right = parse_exp(tokens,next_min_prec)
+                left = Assignment(lhs,right)
+                
+            else:
+            
+                # Parse the right-hand side (rhs) expression
+                rhs, tokens = parse_exp(tokens, next_min_prec)
+                
+                # Combine lhs and rhs into a Binary AST node
+                lhs = Binary(operator=operator, left=lhs, right=rhs)
+                
+        
+        return lhs, tokens
+    except Exception as e:
+        print(f"Syntax Error in expression: {e}")
+        sys.exit(1)
+
+
+def parse_binop_info(token: str) -> Optional[dict]:
+    """
+    Returns the precedence and associativity information for a given binary operator token.
+    
+    Args:
+        token (str): The binary operator token.
+    
+    Returns:
+        Optional[dict]: A dictionary with 'precedence' and 'associativity' keys, or None if not a binary operator.
     """
     precedence_table = {
         '*': {'precedence': 50, 'associativity': 'LEFT'},
-        '/': {'precedence': 50,'associativity': 'LEFT'},
+        '/': {'precedence': 50, 'associativity': 'LEFT'},
         '%': {'precedence': 50, 'associativity': 'LEFT'},
         '+': {'precedence': 45, 'associativity': 'LEFT'},
         '-': {'precedence': 45, 'associativity': 'LEFT'},
@@ -182,83 +348,135 @@ def parse_binop_info(token):
         '!=': {'precedence': 30, 'associativity': 'LEFT'},
         '&&': {'precedence': 10, 'associativity': 'LEFT'},
         '||': {'precedence': 5, 'associativity': 'LEFT'},
-        
-        
-        
-        
+        '=': {'precedence':1, 'associativity': 'RIGHT'},  # Assignment operator
     }
     return precedence_table.get(token, None)
 
 
-def parse_factor(tokens):
+def parse_binop(operator_token: str) -> BinaryOperator:
     """
-    <factor> ::= <int> | <unop> <factor> | "(" <exp> ")"
+    Maps operator tokens to BinaryOperator enums.
+    
+    Args:
+        operator_token (str): The operator token.
+    
+    Returns:
+        BinaryOperator: The corresponding BinaryOperator enum member.
+    
+    Raises:
+        SyntaxError: If the operator token is not recognized.
+    """
+    binop_mapping = {
+        '+': BinaryOperator.ADD,
+        '-': BinaryOperator.SUBTRACT,
+        '*': BinaryOperator.MULTIPLY,
+        '/': BinaryOperator.DIVIDE,
+        '%': BinaryOperator.REMAINDER,
+        '&&': BinaryOperator.AND,
+        '||': BinaryOperator.OR,
+        '==': BinaryOperator.EQUAL,
+        '!=': BinaryOperator.NOT_EQUAL,
+        '<': BinaryOperator.LESS_THAN,
+        '<=': BinaryOperator.LESS_OR_EQUAL,
+        '>': BinaryOperator.GREATER_THAN,
+        '>=': BinaryOperator.GREATER_OR_EQUAL,
+        '=': BinaryOperator.ASSIGNMENT,
+    }
+    if operator_token not in binop_mapping:
+        raise SyntaxError(f"Unknown binary operator: '{operator_token}'")
+    return binop_mapping[operator_token]
+
+
+def parse_unop(operator_token: str) -> UnaryOperator:
+    """
+    Maps operator tokens to UnaryOperator enums.
+    
+    Args:
+        operator_token (str): The operator token.
+    
+    Returns:
+        UnaryOperator: The corresponding UnaryOperator enum member.
+    
+    Raises:
+        SyntaxError: If the operator token is not recognized.
+    """
+    unop_mapping = {
+        '-': UnaryOperator.NEGATE,
+        '~': UnaryOperator.COMPLEMENT,
+        '!': UnaryOperator.NOT,
+    }
+    if operator_token not in unop_mapping:
+        raise SyntaxError(f"Unknown unary operator: '{operator_token}'")
+    return unop_mapping[operator_token]
+
+
+def parse_factor(tokens: List[str]):
+    """
+    Parses a <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")" rule.
+    
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+    
+    Returns:
+        tuple: A tuple containing the parsed Exp AST node and the remaining tokens.
+    
+    Raises:
+        SyntaxError: If parsing fails.
     """
     if not tokens:
-        raise SyntaxError("Unexpected end of input in factor.")
+        raise SyntaxError("Unexpected end of input when parsing factor.")
     
     next_token = tokens[0]
     
     # 1. If it's an integer literal, parse_int.
     if isIntegerConstant(next_token):
-        return parse_int(tokens), tokens
+        return parse_int(tokens)
     
     # 2. If it's one of the unary operators
-    elif next_token in ("-","~","!"):
+    elif next_token in ("-", "~", "!"):
         operator_token, tokens = take_token(tokens)
-        if operator_token == "-":
-            operator= UnaryOperator.NEGATE
-        elif operator_token =='!':
-            operator=  UnaryOperator.NOT
-        else:
-            operator=  UnaryOperator.COMPLEMENT
-            
+        operator = parse_unop(operator_token)
         # Parse the sub-expression after the unary operator
-        subexpr, tokens = parse_factor(tokens)
-        return Unary(operator, subexpr), tokens
+        expr, tokens = parse_factor(tokens)
+        return Unary(operator=operator, expr=expr), tokens
     
-    # 3. If it's "(" then parse a parenthesized expression: "(" <exp> ")"
+    # 3. If it's an identifier, parse_var.
+    elif isIdentifier(next_token) and  not isKeyword(next_token):
+        identifier_token, tokens = take_token(tokens)
+        identifier = Identifier(name=identifier_token)
+        return Var(identifier=identifier), tokens
+    
+    # 4. If it's "(", parse a parenthesized expression: "(" <exp> ")"
     elif next_token == "(":
-        _,tokens=take_token(tokens)  # Consume "("
-        subexpr, tokens = parse_exp(tokens, min_prec=0)
+        # Consume "("
+        _, tokens = take_token(tokens)
+        # Parse <exp>
+        expr, tokens = parse_exp(tokens)
+        # Expect ")"
         expect(")", tokens)
-        return subexpr, tokens
+        return expr, tokens
     
     else:
         # If none of the above matches, it's an error for this grammar
-        raise SyntaxError(f"Expected <int>, '(', or unary operator, got '{next_token}'")
-    
-def parse_int(tokens):
+        raise SyntaxError(f"Expected <int>, <identifier>, '(', or unary operator, got '{next_token}'")
+
+
+def parse_int(tokens: List[str]):
     """
-    <int> ::= ? A constant token ?
-    Consumes one token and attempts to parse it as an integer.
+    Parses an <int> ::= ? A constant token ? rule.
+    
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+    
+    Returns:
+        tuple: A tuple containing the parsed Constant AST node and the remaining tokens.
+    
+    Raises:
+        SyntaxError: If the token is not a valid integer.
     """
     token, tokens = take_token(tokens)
-   
     try:
         value = int(token)
-        return Constant(value)
+        return Constant(value=value), tokens
     except ValueError:
         raise SyntaxError(f"Expected an integer, got '{token}'")
-
-def take_token(tokens):
-    """
-    Utility: pop a token from the list (front).
-    Raises error if list is empty.
-    """
-    if not tokens:
-        raise SyntaxError("Unexpected end of input")
-    token = tokens.pop(0)
-    return token, tokens
-
-def expect(expected, tokens):
-    """
-    Utility: consume the next token if it matches 'expected'.
-    Otherwise, raise error.
-    """
-    if not tokens:
-        raise SyntaxError(f"Expected '{expected}', but reached end of input")
-    token = tokens.pop(0)
-    if token != expected:
-        raise SyntaxError(f"Expected '{expected}', got '{token}'")
-
