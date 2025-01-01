@@ -258,9 +258,24 @@ def parse_statement(tokens: List[str]) -> Statement:
             # Parse ";" as a null statement
             expect(";", tokens)
             return Null()
-        else:
-            # Parse <exp> ";" as an expression statement
-            exp_node = parse_exp(tokens)[0]
+        elif next_token =='if':
+            print('inside if')
+            token,tokens=take_token(tokens)
+            expect('(',tokens)
+            exp_node,tokens = parse_exp(tokens)
+            expect(')',tokens)
+            statement = parse_statement(tokens)
+            el_statement=None
+            if tokens and tokens[0]=='else':
+                token,tokens=take_token(tokens)
+                print('inside else')
+                el_statement ==parse_statement(tokens)
+                return If(exp=exp_node,then=statement,_else = el_statement)
+            print('outside if')
+            return If(exp=exp_node,then=statement,)
+        else: # Parse <exp> ";" as an expression statement
+            print(tokens)
+            exp_node = parse_exp(tokens)
             expect(";", tokens)
             return Expression(exp=exp_node)
     except Exception as e:
@@ -317,7 +332,10 @@ def parse_exp(tokens: List[str], min_prec: int = 0) :
                 _,tokens = take_token(tokens)
                 right,tokens = parse_exp(tokens,next_min_prec)
                 lhs = Assignment(lhs,right)
-                
+            elif next_token =='?':
+                middle,tokens = parse_conditional_middle(tokens)
+                right,token = parse_exp(tokens,next_min_prec)
+                lhs  = Conditional(condition=lhs,exp2=middle,exp3=right)
             else:
                 # print('not assignent')
                 token,tokens = take_token(tokens)
@@ -335,6 +353,16 @@ def parse_exp(tokens: List[str], min_prec: int = 0) :
         print(f"Syntax Error in expression: {e}")
         sys.exit(1)
 
+
+def parse_conditional_middle(tokens):
+    token,tokens = take_token(tokens)
+    exp,tokens=parse_exp(tokens,min_prec=0)
+    expect(':',tokens)
+    return exp,tokens
+    
+    
+    
+    
 
 def parse_binop_info(token: str) -> Optional[dict]:
     """
@@ -360,7 +388,9 @@ def parse_binop_info(token: str) -> Optional[dict]:
         '!=': {'precedence': 30, 'associativity': 'LEFT'},
         '&&': {'precedence': 10, 'associativity': 'LEFT'},
         '||': {'precedence': 5, 'associativity': 'LEFT'},
+        '?': {'precedence':3, 'associativity': 'RIGHT'},  # Assignment operator
         '=': {'precedence':1, 'associativity': 'RIGHT'},  # Assignment operator
+        
     }
     return precedence_table.get(token, None)
 

@@ -375,6 +375,42 @@ class Expression(Statement):
         """
         return f"Expression(exp={self.exp})"
 
+class If(Statement):
+
+    def __init__(self, exp: Exp,then, _else=None):
+   
+        self.exp = exp
+        self.then = then 
+        self._else = _else
+
+    def __repr__(self) :
+        """
+        Returns a string representation of the Expression statement.
+        
+        Returns:
+            str: The string representation.
+        """
+        return f"If(exp={self.exp},Then = {self.then}, else = {self._else})"
+
+
+class Conditional(Statement):
+
+    def __init__(self, condition: Exp, exp2,exp3):
+   
+        self.condition = condition
+        self.exp2 = exp2
+        self.exp3 = exp3
+
+    def __repr__(self) :
+        """
+        Returns a string representation of the Expression statement.
+        
+        Returns:
+            str: The string representation.
+        """
+        return f"Condition(condition={self.condition},exp2 = {self.exp2}, exp3 = {self.exp3})"
+
+
 
 class Null(Statement):
     """

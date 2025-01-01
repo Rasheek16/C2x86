@@ -25,5 +25,10 @@ patterns = [
      ("Not",r'!'),
      ("LessThan",r'\<'),
      ("GreaterThan",r'\>'),
+     ('if_keyword',r'if'),
+     ('else_keyword',r'else'),
+     ('question_mark',r'\?'),
+     ('colon',r':'),
      ('Assignment',r'=')
+     
 ]
