@@ -6,7 +6,7 @@ from _ast5 import *
 
 
 def isKeyword(token):
-    if token =='int':
+    if token in ('int','return','main','void'):
         return True 
     return False
     
@@ -77,6 +77,7 @@ def expect(expected: str, tokens: List[str]):
 
 
 def parse_program(tokens: List[str]) -> Program:
+    # print(tokens)
     """
     Parses the <program> ::= <function> rule.
     
@@ -150,6 +151,11 @@ def parse_function_definition(tokens: List[str]) -> Function:
             next_token = parse_block_item(tokens)
             function_body.append(next_token)
         # Expect "}" to end the function body
+        if Return in function_body:
+            pass
+        else:
+            function_body.append(S(Return(Constant(0))))
+        print(function_body)
         expect("}", tokens)
         
         # Return the Function AST node
@@ -161,16 +167,16 @@ def parse_function_definition(tokens: List[str]) -> Function:
 
 def parse_block_item(tokens):
     # token,tokens = take_token(tokens)
-    print(tokens[0])
+    # print(tokens[0])
     if tokens[0] == "int":
-        print('parse decl')
+        # print('parse decl')
         
             # It's a declaration
         declaration = parse_declaration(tokens)
         block_item = D(declaration)
         return block_item
     else:
-        print('parse statement')
+        # print('parse statement')
         # It's a statement
         statement = parse_statement(tokens)
         block_item = S(statement)
@@ -202,7 +208,7 @@ def parse_declaration(tokens: List[str]) -> Declaration:
         var_name = Identifier(identifier_token)
         
         # Initialize 'init' to None (optional initializer)
-        init = None
+        init = Null()
         
         # Check if the next token is "=" indicating an initializer
         # * [ "=" <exp> ] Square bracket indicate optional code
@@ -279,7 +285,7 @@ def parse_exp(tokens: List[str], min_prec: int = 0) :
     try:
         # Parse the left-hand side (lhs) as a factor
         lhs, tokens = parse_factor(tokens)
-        
+        # print(tokens)
         while True:
             if not tokens:
                 break
@@ -295,8 +301,9 @@ def parse_exp(tokens: List[str], min_prec: int = 0) :
                 break  # Current operator precedence is too low
             
             # Consume the operator
-            operator_token, tokens = take_token(tokens)
-            operator = parse_binop(operator_token)
+            # operator_token, tokens = take_token(tokens)
+            # print(operator_token)
+            # operator = parse_binop(operator_token)
             
             # Determine the next minimum precedence based on associativity
             if assoc == 'LEFT':
@@ -304,13 +311,18 @@ def parse_exp(tokens: List[str], min_prec: int = 0) :
             else:  # 'RIGHT'
                 next_min_prec = prec
             next_token = tokens[0]
+            # print(tokens)
             if next_token =='=':
-                operator_token,tokens = take_token(tokens)
-                right = parse_exp(tokens,next_min_prec)
-                left = Assignment(lhs,right)
+                # print('found assignment')
+                _,tokens = take_token(tokens)
+                right,tokens = parse_exp(tokens,next_min_prec)
+                lhs = Assignment(lhs,right)
                 
             else:
-            
+                # print('not assignent')
+                token,tokens = take_token(tokens)
+                operator = parse_binop(token)
+                # print('Parsed operator')
                 # Parse the right-hand side (rhs) expression
                 rhs, tokens = parse_exp(tokens, next_min_prec)
                 
@@ -427,7 +439,7 @@ def parse_factor(tokens: List[str]):
         raise SyntaxError("Unexpected end of input when parsing factor.")
     
     next_token = tokens[0]
-    
+    # print(next_token)
     # 1. If it's an integer literal, parse_int.
     if isIntegerConstant(next_token):
         return parse_int(tokens)

@@ -6,7 +6,7 @@ from enum import Enum
 # Enum Definitions for Operators
 # --------------------------
 
-class UnaryOperator(Enum):
+class UnaryOperator():
     """
     Enumeration of supported unary operators.
     
@@ -20,7 +20,7 @@ class UnaryOperator(Enum):
     NOT = "Not"                # e.g., !x
 
 
-class BinaryOperator(Enum):
+class BinaryOperator():
     """
     Enumeration of supported binary operators.
     
@@ -75,14 +75,14 @@ class Identifier:
         """
         self.name = name
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Identifier.
         
         Returns:
             str: The string representation.
         """
-        return f"Identifier(name='{self.name}')"
+        return f"Identifier(name={self.name})"
 
 
 # --------------------------
@@ -112,7 +112,7 @@ class Constant(Exp):
         """
         self.value = value  # integer value
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Constant.
         
@@ -139,18 +139,18 @@ class Var(Exp):
         Raises:
             ValueError: If the identifier is not an instance of Identifier.
         """
-        if not isinstance(identifier, Identifier):
-            raise ValueError("Var expects an Identifier instance.")
+        # if not isinstance(identifier, Identifier):
+        #     raise ValueError("Var expects an Identifier instance.")
         self.identifier = identifier  # Corrected attribute name
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Var.
         
         Returns:
             str: The string representation.
         """
-        return f"Var(identifier={repr(self.identifier)})"
+        return f"Var(identifier={self.identifier})"
 
 
 class Unary(Exp):
@@ -172,21 +172,18 @@ class Unary(Exp):
         Raises:
             ValueError: If the operator is not a valid UnaryOperator.
         """
-        if not isinstance(operator, UnaryOperator):
-            raise ValueError(f"Invalid unary operator: {operator}")
-        if not isinstance(expr, Exp):
-            raise ValueError("Unary operation requires an Exp instance as operand.")
+        
         self.operator = operator
         self.expr = expr
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Unary operation.
         
         Returns:
             str: The string representation.
         """
-        return f"Unary(operator={self.operator.value}, expr={repr(self.expr)})"
+        return f"Unary(operator={self.operator}, expr={self.expr})"
 
 
 class Binary(Exp):
@@ -210,23 +207,23 @@ class Binary(Exp):
         Raises:
             ValueError: If the operator is not a valid BinaryOperator.
         """
-        if not isinstance(operator, BinaryOperator):
-            raise ValueError(f"Invalid binary operator: {operator}")
-        if not isinstance(left, Exp) or not isinstance(right, Exp):
-            raise ValueError("Binary operation requires Exp instances as operands.")
+        # if not isinstance(operator, BinaryOperator):
+        #     raise ValueError(f"Invalid binary operator: {operator}")
+        # if not isinstance(left, Exp) or not isinstance(right, Exp):
+        #     raise ValueError("Binary operation requires Exp instances as operands.")
         self.operator = operator
         self.left = left
         self.right = right
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Binary operation.
         
         Returns:
             str: The string representation.
         """
-        return (f"Binary(operator={self.operator.value}, "
-                f"left={repr(self.left)}, right={repr(self.right)})")
+        return (f"Binary(operator={self.operator}, "
+                f"left={self.left}, right={self.right})")
 
 
 class Assignment(Exp):
@@ -248,19 +245,19 @@ class Assignment(Exp):
         Raises:
             ValueError: If either left or right is not an Exp instance.
         """
-        if not isinstance(left, Exp) or not isinstance(right, Exp):
-            raise ValueError("Both left and right must be Exp instances.")
+        # if not isinstance(left, Exp) or not isinstance(right, Exp):
+        #     raise ValueError("Both left and right must be Exp instances.")
         self.left = left
         self.right = right
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Assignment.
         
         Returns:
             str: The string representation.
         """
-        return f"Assignment(left={repr(self.left)}, right={repr(self.right)})"
+        return f"Assignment(left={self.left}, right={self.right})"
 
 
 # --------------------------
@@ -286,10 +283,10 @@ class Declaration:
         Raises:
             ValueError: If name is not an Identifier instance or init is not an Exp instance.
         """
-        if not isinstance(name, Identifier):
-            raise ValueError("Declaration name must be an Identifier instance.")
-        if init is not None and not isinstance(init, Exp):
-            raise ValueError("Initializer must be an Exp instance or None.")
+        # if not isinstance(name, Identifier):
+        #     raise ValueError("Declaration name must be an Identifier instance.")
+        # if init is not None and not isinstance(init, Exp):
+        #     raise ValueError("Initializer must be an Exp instance or None.")
         self.name = name
         self.init = init
 
@@ -301,9 +298,9 @@ class Declaration:
             str: The string representation.
         """
         if self.init:
-            return f"Declaration(name={repr(self.name)}, init={repr(self.init)})"
+            return f"Declaration(name={self.name}, init={self.init})"
         else:
-            return f"Declaration(name={repr(self.name)}, init=None)"
+            return f"Declaration(name={self.name}, init=None)"
 
 
 # --------------------------
@@ -333,19 +330,19 @@ class Return(Statement):
         
         Raises:
             ValueError: If exp is not an Exp instance.
-        """
-        if not isinstance(exp, Exp):
-            raise ValueError("Return statement requires an Exp instance.")
+        # """
+        # if not isinstance(exp, Exp):
+        #     raise ValueError("Return statement requires an Exp instance.")
         self.exp = exp
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Return statement.
         
         Returns:
             str: The string representation.
         """
-        return f"Return(exp={repr(self.exp)})"
+        return f"Return(exp={self.exp})"
 
 
 class Expression(Statement):
@@ -365,18 +362,18 @@ class Expression(Statement):
         Raises:
             ValueError: If exp is not an Exp instance.
         """
-        if not isinstance(exp, Exp):
-            raise ValueError("Expression statement requires an Exp instance.")
+        # if not isinstance(exp, Exp):
+        #     raise ValueError("Expression statement requires an Exp instance.")
         self.exp = exp
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Expression statement.
         
         Returns:
             str: The string representation.
         """
-        return f"Expression(exp={repr(self.exp)})"
+        return f"Expression(exp={self.exp})"
 
 
 class Null(Statement):
@@ -389,7 +386,7 @@ class Null(Statement):
         """
         pass
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Null statement.
         
@@ -427,18 +424,18 @@ class S(BlockItem):
         Raises:
             ValueError: If statement is not a Statement instance.
         """
-        if not isinstance(statement, Statement):
-            raise ValueError("S expects a Statement instance.")
+        # if not isinstance(statement, Statement):
+        #     raise ValueError("S expects a Statement instance.")
         self.statement = statement
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the S block item.
         
         Returns:
             str: The string representation.
         """
-        return f"S(statement={repr(self.statement)})"
+        return f"S(statement={self.statement})"
 
 
 class D(BlockItem):
@@ -458,18 +455,18 @@ class D(BlockItem):
         Raises:
             ValueError: If declaration is not a Declaration instance.
         """
-        if not isinstance(declaration, Declaration):
-            raise ValueError("D expects a Declaration instance.")
+        # if not isinstance(declaration, Declaration):
+        #     raise ValueError("D expects a Declaration instance.")
         self.declaration = declaration
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the D block item.
         
         Returns:
             str: The string representation.
         """
-        return f"D(declaration={repr(self.declaration)})"
+        return f"D(declaration={self.declaration})"
 
 
 # --------------------------
@@ -495,14 +492,14 @@ class Function:
         Raises:
             ValueError: If name is not an Identifier or if any item in body is not a BlockItem.
         """
-        if not isinstance(name, Identifier):
-            raise ValueError("Function name must be an Identifier instance.")
-        if not all(isinstance(item, BlockItem) for item in body):
-            raise ValueError("All items in body must be BlockItem instances.")
+        # if not isinstance(name, Identifier):
+        #     raise ValueError("Function name must be an Identifier instance.")
+        # if not all(isinstance(item, BlockItem) for item in body):
+        #     raise ValueError("All items in body must be BlockItem instances.")
         self.name = name
         self.body = body
 
-    def __repr__(self) -> str:
+    def __repr__(self) :
         """
         Returns a string representation of the Function.
         
@@ -511,7 +508,7 @@ class Function:
         """
         # Join the representations of all block items with indentation for readability
         body_repr = ',\n        '.join(repr(item) for item in self.body)
-        return (f"Function(name={repr(self.name)}, body=[\n        {body_repr}\n    ])")
+        return (f"Function(name={self.name}, body=[\n        {body_repr}\n    ])")
 
 
 class Program:
@@ -531,8 +528,8 @@ class Program:
         Raises:
             ValueError: If function_definition is not a Function instance.
         """
-        if not isinstance(function_definition, Function):
-            raise ValueError("Program expects a Function instance.")
+        # if not isinstance(function_definition, Function):
+        #     raise ValueError("Program expects a Function instance.")
         self.function_definition = function_definition
 
     def __repr__(self) -> str:
@@ -542,6 +539,6 @@ class Program:
         Returns:
             str: The string representation.
         """
-        return f"Program(\n    {repr(self.function_definition)}\n)"
+        return f"Program(\n    {self.function_definition}\n)"
 
 

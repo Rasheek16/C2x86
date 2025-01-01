@@ -30,7 +30,7 @@ class TackyProgram:
         self.function_definition = function_definition
 
     def __repr__(self):
-        return f"Program(\n  {repr(self.function_definition)}\n)"
+        return f"TackyProgram(\n  {repr(self.function_definition)}\n)"
 
 
 class TackyFunction:
@@ -47,7 +47,7 @@ class TackyFunction:
     
     def __repr__(self):
         return (
-            "Function(\n"
+            "TackyFunction(\n"
             f"    name={repr(self.name)},\n"
             f"    body=[\n        " + 
             ",\n        ".join(repr(instr) for instr in self.body) +
@@ -76,7 +76,7 @@ class TackyReturn(TackyInstruction):
         self.val = val  # A val, i.e., Constant(...) or Var(...)
     
     def __repr__(self):
-        return f"Return({repr(self.val)})"
+        return f"TackyReturn({repr(self.val)})"
 
 
 class TackyUnary(TackyInstruction):
@@ -91,7 +91,7 @@ class TackyUnary(TackyInstruction):
                                   
     def __repr__(self):
         return (
-            "Unary(\n"
+            "TackyUnary(\n"
             f"  operator={repr(self.operator)},\n"
             f"  src={repr(self.src)},\n"
             f"  dst={repr(self.dst)}\n"
@@ -109,7 +109,7 @@ class TackyBinary(TackyInstruction):
         self.dst = dst            # temporary dest variable
 
     def __repr__(self):
-        return f"Binary(operator='{self.operator}', left={self.src1}, right={self.src2}, dst={self.dst})"
+        return f"TackyBinary(operator='{self.operator}', left={self.src1}, right={self.src2}, dst={self.dst})"
 
 class TackyCopy(TackyInstruction):
     """
@@ -121,7 +121,7 @@ class TackyCopy(TackyInstruction):
         self.dst = destination        # temporary dest variable
 
     def __repr__(self):
-        return f"Copy(src={self.src}, dst={self.dst})"
+        return f"TackyCopy(src={self.src}, dst={self.dst})"
 
 class TackyJump(TackyInstruction):
     """
@@ -131,7 +131,7 @@ class TackyJump(TackyInstruction):
       self.target = target          # temporary dest variable
 
     def __repr__(self):
-        return f"Jump(identifier={self.target})"
+        return f"TackyJump(identifier={self.target})"
     
 class TackyJumpIfZero(TackyInstruction):
     """
@@ -142,7 +142,7 @@ class TackyJumpIfZero(TackyInstruction):
         self.target = target          # temporary dest variable
 
     def __repr__(self):
-        return f"JumpIfZero(condition={self.condition},identifier={self.target})"
+        return f"TackyJumpIfZero(condition={self.condition},identifier={self.target})"
 
 class TackyJumpIfNotZero(TackyInstruction):
     """
@@ -153,7 +153,7 @@ class TackyJumpIfNotZero(TackyInstruction):
         self.target = target          # temporary dest variable
 
     def __repr__(self):
-        return f"JumpIfNotZero(condition={self.condition},identifier={self.target})"
+        return f"TackyJumpIfNotZero(condition={self.condition},identifier={self.target})"
 
 
 class TackyLabel(TackyInstruction):
@@ -164,7 +164,7 @@ class TackyLabel(TackyInstruction):
         self.identifer = identifer   # temporary dest variable
 
     def __repr__(self):
-        return f"Label(identifier={self.identifer})"
+        return f"TackyLabel(identifier={self.identifer})"
 
 # ------------------
 # Val = Constant(int) | Var(identifier)
@@ -186,7 +186,7 @@ class TackyConstant(TackyVal):
         self.value = value
 
     def __repr__(self):
-        return f"Constant({self.value})"
+        return f"TackyConstant({self.value})"
 
 
 class TackyVar(TackyVal):
@@ -198,7 +198,7 @@ class TackyVar(TackyVal):
         self.identifier = identifier
 
     def __repr__(self):
-        return f"Var({self.identifier})"
+        return f"TackyVar({self.identifier})"
         
 
 
@@ -236,3 +236,4 @@ class TackyBinaryOperator:
     LESS_OR_EQUAL='LessOrEqual'
     GREATER_THAN='GreaterThan'
     GREATER_OR_EQUAL='GreaterOrEqual'
+    ASSIGNMENT='Assignment'

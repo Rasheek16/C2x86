@@ -1,6 +1,6 @@
 
 
-from _Ast import Return, Constant, Unary ,Binary # Assuming these are your high-level AST classes
+from _ast5 import * # Assuming these are your high-level AST classes
 from tacky import *
 
 from typing import List, Union
@@ -100,7 +100,19 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
     # print(expr)
     if isinstance(expr, Constant):
         return TackyConstant(expr.value)
-    
+    elif isinstance(expr, Var):
+        return TackyVar(expr.identifier.name)
+    elif isinstance(expr, Assignment):
+        # Process the right-hand side expression
+        rhs = emit_tacky_expr(expr=expr.right, instructions=instructions)
+        
+        # Ensure the left-hand side is a variable
+        if isinstance(expr.left, Var):
+            lhs = TackyVar(expr.left.identifier.name)
+            instructions.append(TackyCopy(source=rhs, destination=lhs))
+            return lhs  # Return the assigned variable
+        else:
+            raise TypeError(f"Unsupported assignment target: {type(expr.left)}")
     elif isinstance(expr, Unary):
         # Handle the Unary case recursively
         src_val = emit_tacky_expr(expr.expr, instructions)
@@ -152,7 +164,6 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
 
             # Label for end
             instructions.append(TackyLabel(end_label))
-
             return result_var
 
         elif expr.operator == 'Or':
@@ -184,6 +195,7 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
 
             # Label for end
             instructions.append(TackyLabel(end_label))
+            print('returning',result_var)
 
             return result_var
 
@@ -286,22 +298,28 @@ def emit_tacky(program) -> TackyProgram:
     # print(type(program.function_definition.body))
     # Iterate over each statement in the function's body
     for stmt in func_def.body:
-        if isinstance(stmt, Return):
-            # Process the return expression using emit_tacky_expr
-            ret_expr = stmt.exp
-            ret_val = emit_tacky_expr(ret_expr, instructions)
-
-            # Emit the TackyReturn instruction
-            instructions.append(TackyReturn(ret_val))
+        print(stmt)
+        if isinstance(stmt, D):
+            if not isinstance(stmt.declaration.init,Null):
+                assign_expr = Assignment(left=Var(stmt.declaration.name), right=stmt.declaration.init)
+                emit_tacky_expr(assign_expr, instructions)
+        elif isinstance(stmt, S):
+            if isinstance(stmt.statement, Expression):
+                 emit_tacky_expr(stmt.statement.exp, instructions)
+            elif isinstance(stmt.statement, Return):
+                print(stmt)
+                ret_val=emit_tacky_expr(stmt.statement.exp, instructions)
+                instructions.append(TackyReturn(ret_val))
+            elif isinstance(stmt.statement, Null):
+                # instructions.append(TackyReturn(TackyConstant(0)))  # Null statements are ignored
+                pass
+            else:
+                raise TypeError(f"Unsupported statement type: {type(stmt.statement)}")
         else:
-            raise TypeError(f"Unsupported statement type: {type(stmt)}")
-    # print(type(func_def.name.name))
-    # Create a TackyFunction with the collected instructions
-    tacky_function = TackyFunction(
-        name=func_def.name,  # Assuming func_def.name is an Identifier
-        body=instructions
-    )
+            raise TypeError(f"Unsupported block item type: {type(stmt)}")
 
-    # Create and return the complete TackyProgram
-    tacky_program = TackyProgram(function_definition=tacky_function)
-    return tacky_program
+    # Ensure a Return instruction exists
+    # if not any(isinstance(ins, TackyReturn) for ins in instructions):
+    #     instructions.append(TackyReturn(TackyConstant(0)))
+
+    return TackyProgram(function_definition=TackyFunction(name=func_def.name, body=instructions))

@@ -9,7 +9,7 @@ from pathlib import Path
 from tacky_emiter import emit_tacky
 from pseudoregister_replacer import replace_pseudoregisters
 from instruction_fixer import fix_up_instructions
-
+from variable_resolution import variable_resolution_pass
 def compile_file(input_file: str, output_file: str = None, stage: str = None):
     """
     Compiles a C source file through various compiler stages.
@@ -25,7 +25,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
             print(f"Error: Input file {input_path} does not exist.", file=sys.stderr)
             sys.exit(1)
 
-        if stage not in ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run', '--help']:
+        if stage not in ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run', '--help','--validate']:
             print(f"Error: Unknown stage '{stage}'", file=sys.stderr)
             sys.exit(1)
 
@@ -55,7 +55,13 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
             print(ast)
             return  # Done, exit code 0
 
+        #) variable resolution pass 
+        ast = variable_resolution_pass(ast)
+        if stage =='--validate':
+            print(ast)
+            return
         # 4) Emit Tacky IR
+      
         tacky_ir = emit_tacky(ast)
         if stage == '--tacky':
             print("Tacky IR:")
@@ -160,7 +166,7 @@ def main():
     if '--help' in sys.argv or len(sys.argv) < 2:
         usage()
 
-    possible_stages = ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run']
+    possible_stages = ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run','--validate']
     stage = None
     filenames = []
 
