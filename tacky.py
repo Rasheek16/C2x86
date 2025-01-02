@@ -142,7 +142,7 @@ class TackyJumpIfZero(TackyInstruction):
         self.target = target          # temporary dest variable
 
     def __repr__(self):
-        return f"TackyJumpIfZero(condition={self.condition},identifier={self.target})"
+        return f"TackyJumpIfZero(condition={self.condition},target={self.target})"
 
 class TackyJumpIfNotZero(TackyInstruction):
     """

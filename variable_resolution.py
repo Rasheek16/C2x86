@@ -13,11 +13,11 @@ def resolve_declaration(declaration: Declaration, variable_map: dict) -> Declara
     unique_name = make_temporary()
     variable_map[original_name] = unique_name
 
-    init = declaration.init
-    if init is not None and not isinstance(init, Null):
-        init = resolve_exp(init, variable_map)
-        if not isinstance(init, Exp):
-            raise TypeError(f"Initializer must be an Exp, got {type(init)}")
+    init = resolve_exp(declaration.init,variable_map)
+    # if init is not None and not isinstance(init, Null):
+    #     init = resolve_exp(init, variable_map)
+    #     if not isinstance(init, Exp):
+    #         raise TypeError(f"Initializer must be an Exp, got {type(init)}")
 
     return Declaration(name=Identifier(unique_name), init=init)
 
@@ -27,20 +27,31 @@ def resolve_exp(expression: Exp, variable_map: dict) -> Exp:
     # print(f"DEBUG: Type of expression: {type(expression)}")
 
     if isinstance(expression, Assignment):
+        # print(expression)
         if not isinstance(expression.left, Var):
             raise ValueError(f"Invalid lvalue in assignment: {expression.left}")
-        if not isinstance(expression.right, Exp):
-            raise ValueError(f"Invalid rvalue in assignment: {expression.right}")
+        # if not isinstance(expression.right, Exp):
+        #     raise ValueError(f"Invalid rvalue in assignment: {expression.right}")
         resolved_right = resolve_exp(expression.right, variable_map)
         resolved_left = resolve_exp(expression.left, variable_map)
         return Assignment(left=resolved_left, right=resolved_right)
-
+    elif isinstance(expression,Conditional):
+        # print('inside conditional')
+        resolved_condition = resolve_exp(expression.condition,variable_map)
+        # print(resolved_condition)
+        resolved_exp2= resolve_exp(expression.exp2,variable_map)
+        
+        resolved_exp3 = resolve_exp(expression.exp3,variable_map)
+        # print(resolved_exp3)
+        return Conditional(condition=resolved_condition,exp2=resolved_exp2,exp3=resolved_exp3)
     elif isinstance(expression, Var):
         if not isinstance(expression.identifier, Identifier):
             raise TypeError(f"Expected Identifier, got {type(expression.identifier)}")
         original_identifier = expression.identifier.name
+        print(original_identifier)
         if original_identifier in variable_map:
             unique_identifier = variable_map[original_identifier]
+            print(unique_identifier)
             return Var(identifier=Identifier(unique_identifier))
         else:
             raise ValueError(f"Undeclared variable usage: '{original_identifier}'")
@@ -56,7 +67,7 @@ def resolve_exp(expression: Exp, variable_map: dict) -> Exp:
         resolved_right = resolve_exp(expression.right, variable_map)
         return Binary(operator=expression.operator, left=resolved_left, right=resolved_right)
 
-    elif isinstance(expression, Constant):
+    elif isinstance(expression, (Constant,Null)):
         return expression
 
     else:
@@ -66,7 +77,9 @@ def resolve_exp(expression: Exp, variable_map: dict) -> Exp:
 def resolve_block_items(block_items: List[BlockItem], variable_map: dict) -> List[BlockItem]:
     resolved_body = []
     for block_item in block_items:
+        # print(block_item)
         if isinstance(block_item, D):
+            print(block_item)
             resolved_declaration = resolve_declaration(block_item.declaration, variable_map)
             resolved_body.append(D(declaration=resolved_declaration))
         elif isinstance(block_item, S):
@@ -77,9 +90,9 @@ def resolve_block_items(block_items: List[BlockItem], variable_map: dict) -> Lis
     return resolved_body
 
 
-def resolve_statement(statement: Statement, variable_map) -> Statement:
+def resolve_statement(statement, variable_map) :
     # print('Statement spotted')
-    print(type(statement))
+    # print(statement)
     if isinstance(statement, Return):
         # print('Found return')
         resolved_exp = resolve_exp(statement.exp, variable_map)
@@ -87,6 +100,16 @@ def resolve_statement(statement: Statement, variable_map) -> Statement:
     elif isinstance(statement, Expression):
         resolved_exp = resolve_exp(statement.exp, variable_map)
         return Expression(exp=resolved_exp)
+    elif isinstance(statement,If):
+        resolved_exp = resolve_exp(statement.exp,variable_map)
+        
+        resolved_then = resolve_statement(statement.then,variable_map)
+        if statement._else is not None:
+            resolved_else = resolve_statement(statement._else,variable_map)
+            return If(exp=resolved_exp,then=resolved_then,_else=resolved_else)
+        else:
+            return If(exp=resolved_exp,then=resolved_then)
+
     elif isinstance(statement, Null):
         return Null()
     else:

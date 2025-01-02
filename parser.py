@@ -151,11 +151,12 @@ def parse_function_definition(tokens: List[str]) -> Function:
             next_token = parse_block_item(tokens)
             function_body.append(next_token)
         # Expect "}" to end the function body
-        if Return in function_body:
-            pass
-        else:
+        has_return = any(
+        isinstance(stmt, S) and isinstance(stmt.statement, Return) for stmt in function_body
+    )
+        if not has_return:
             function_body.append(S(Return(Constant(0))))
-        print(function_body)
+        # print(function_body)
         expect("}", tokens)
         
         # Return the Function AST node
@@ -259,7 +260,7 @@ def parse_statement(tokens: List[str]) -> Statement:
             expect(";", tokens)
             return Null()
         elif next_token =='if':
-            print('inside if')
+            # print('inside if')
             token,tokens=take_token(tokens)
             expect('(',tokens)
             exp_node,tokens = parse_exp(tokens)
@@ -268,14 +269,14 @@ def parse_statement(tokens: List[str]) -> Statement:
             el_statement=None
             if tokens and tokens[0]=='else':
                 token,tokens=take_token(tokens)
-                print('inside else')
-                el_statement ==parse_statement(tokens)
+                # print('inside else')
+                el_statement =parse_statement(tokens)
                 return If(exp=exp_node,then=statement,_else = el_statement)
-            print('outside if')
+            # print('outside if')
             return If(exp=exp_node,then=statement,)
         else: # Parse <exp> ";" as an expression statement
-            print(tokens)
-            exp_node = parse_exp(tokens)
+            # print(tokens)
+            exp_node,tokens = parse_exp(tokens)
             expect(";", tokens)
             return Expression(exp=exp_node)
     except Exception as e:

@@ -9,6 +9,26 @@ import uuid
 temp_false_label= 0
 temp_true_label= 0
 temp_end_label= 0
+temp_e2_label =0 
+def get_false_label() -> str:
+    global temp_false_label
+    temp_false_label += 1
+    return str(temp_false_label)
+
+def get_true_label() -> str:
+    global temp_true_label
+    temp_true_label += 1
+    return str(temp_true_label)
+
+def get_end_label() -> str:
+    global temp_end_label
+    temp_end_label += 1
+    return str(temp_end_label)
+
+def get_e2_label() -> str:
+    global temp_e2_label
+    temp_e2_label += 1
+    return str(temp_e2_label)
 
 def get_false_label() -> str:
     global temp_false_label
@@ -128,7 +148,53 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
         instructions.append(TackyUnary(tacky_op, src_val, dst_val))
 
         return dst_val
-    
+    elif isinstance(expr, If):
+        condition_var = emit_tacky_expr(expr.exp, instructions)
+        else_label = f"false_{get_false_label()}"
+        end_label = f"end_{get_end_label()}"
+
+        instructions.append(TackyJumpIfZero(condition=condition_var, target=else_label))
+
+        # 'then' branch
+        emit_statement(expr.then, instructions)
+        # instructions.append(TackyJump(target=end_label))
+
+        # 'else' branch
+        if expr._else:
+            instructions.append(TackyJump(target=end_label))
+            instructions.append(TackyLabel(else_label))
+            emit_statement(expr._else, instructions)
+        else:
+            # If no else part, still create the else_label
+            instructions.append(TackyLabel(else_label))
+
+        instructions.append(TackyLabel(end_label))
+        # Typically doesn't return a value in Tacky
+        return TackyConstant(0)
+
+    # 6) Conditional (ternary) ?:
+    elif isinstance(expr, Conditional):
+        condition_var = emit_tacky_expr(expr.condition, instructions)
+        e2_label = f"e2_{get_e2_label()}"
+        end_label = f"end_{get_end_label()}"
+
+        instructions.append(TackyJumpIfZero(condition=condition_var, target=e2_label))
+
+        # True branch
+        e1_var = emit_tacky_expr(expr.exp2, instructions)
+        tmp_result = make_temporary()
+        instructions.append(TackyCopy(source=e1_var, destination=TackyVar(tmp_result)))
+
+        instructions.append(TackyJump(target=end_label))
+        instructions.append(TackyLabel(e2_label))
+
+        # False branch
+        e2_var = emit_tacky_expr(expr.exp3, instructions)
+        instructions.append(TackyCopy(source=e2_var, destination=TackyVar(tmp_result)))
+
+        instructions.append(TackyLabel(end_label))
+        return TackyVar(tmp_result)
+
     elif isinstance(expr, Binary):
         # Recursively emit instructions for the left operand of the binary expression
         v1 = emit_tacky_expr(expr.left, instructions)
@@ -256,70 +322,124 @@ def convert_binop(operator_token):
     elif operator_token=='GreaterThan':
         return TackyBinaryOperator.GREATER_THAN
 
-def emit_tacky(program) -> TackyProgram:
-    """
-    emit_tacky(e, instructions):
-        match e with
-        | Constant(c) ->
-            return  Constant(c)
-        | Unary(op, inner) ->
-            src = emit_tacky(inner, instructions)
-            dst_name = make_temporary()
-            dst = Var(dst_name)
-            tacky_op = convert_unop(op)
-            instructions.append(Unary(tacky_op, src, dst))
-            return dst
-        | Binary(op, e1, e2) ->
-            v1 = emit_tacky(e1, instructions)
-            v2 = emit_tacky(e2, instructions)
-            dst_name = make_temporary()
-            dst = Var(dst_name)
-            tacky_op = convert_binop(op)
-            instructions.append(Binary(tacky_op, v1, v2, dst))
-            return dst
-    Given a Program node (with one or more Functions), generate and return
-    a TackyProgram containing all functions with their corresponding Tacky IR instructions.
+# def emit_tacky(program) -> TackyProgram:
+#     """
+#     emit_tacky(e, instructions):
+#         match e with
+#         | Constant(c) ->
+#             return  Constant(c)
+#         | Unary(op, inner) ->
+#             src = emit_tacky(inner, instructions)
+#             dst_name = make_temporary()
+#             dst = Var(dst_name)
+#             tacky_op = convert_unop(op)
+#             instructions.append(Unary(tacky_op, src, dst))
+#             return dst
+#         | Binary(op, e1, e2) ->
+#             v1 = emit_tacky(e1, instructions)
+#             v2 = emit_tacky(e2, instructions)
+#             dst_name = make_temporary()
+#             dst = Var(dst_name)
+#             tacky_op = convert_binop(op)
+#             instructions.append(Binary(tacky_op, v1, v2, dst))
+#             return dst
+#     Given a Program node (with one or more Functions), generate and return
+#     a TackyProgram containing all functions with their corresponding Tacky IR instructions.
     
-    Args:
-        program: The high-level AST Program node.
+#     Args:
+#         program: The high-level AST Program node.
     
-    Returns:
-        TackyProgram: The complete Tacky IR representation of the program.
+#     Returns:
+#         TackyProgram: The complete Tacky IR representation of the program.
     
-    Raises:
-        TypeError: If the program contains unsupported statement types.
-    """
-    # Initialize the list of TackyFunction instances
-    tacky_function: List[TackyFunction] = []
+#     Raises:
+#         TypeError: If the program contains unsupported statement types.
+#     """
+#     # Initialize the list of TackyFunction instances
+#     tacky_function: List[TackyFunction] = []
     
-    # Extract the function definition
-    func_def = program.function_definition
-    instructions: List = []
-    # print(type(program.function_definition.body))
-    # Iterate over each statement in the function's body
-    for stmt in func_def.body:
-        print(stmt)
-        if isinstance(stmt, D):
-            if not isinstance(stmt.declaration.init,Null):
-                assign_expr = Assignment(left=Var(stmt.declaration.name), right=stmt.declaration.init)
-                emit_tacky_expr(assign_expr, instructions)
-        elif isinstance(stmt, S):
-            if isinstance(stmt.statement, Expression):
-                 emit_tacky_expr(stmt.statement.exp, instructions)
-            elif isinstance(stmt.statement, Return):
-                print(stmt)
-                ret_val=emit_tacky_expr(stmt.statement.exp, instructions)
-                instructions.append(TackyReturn(ret_val))
-            elif isinstance(stmt.statement, Null):
-                # instructions.append(TackyReturn(TackyConstant(0)))  # Null statements are ignored
-                pass
-            else:
-                raise TypeError(f"Unsupported statement type: {type(stmt.statement)}")
+#     # Extract the function definition
+#     func_def = program.function_definition
+#     instructions: List = []
+#     # print(type(program.function_definition.body))
+#     # Iterate over each statement in the function's body
+#     for stmt in func_def.body:
+#         print(stmt)
+#         if isinstance(stmt, D):
+#             if not isinstance(stmt.declaration.init,Null):
+#                 assign_expr = Assignment(left=Var(stmt.declaration.name), right=stmt.declaration.init)
+#                 emit_tacky_expr(assign_expr, instructions)
+#         elif isinstance(stmt, S):
+#             if isinstance(stmt.statement, Expression):
+#                  emit_tacky_expr(stmt.statement.exp, instructions)
+#             elif isinstance(stmt.statement, Return):
+#                 print(stmt)
+#                 ret_val=emit_tacky_expr(stmt.statement.exp, instructions)
+#                 instructions.append(TackyReturn(ret_val))
+#             elif isinstance(stmt.statement, Null):
+#                 # instructions.append(TackyReturn(TackyConstant(0)))  # Null statements are ignored
+#                 pass
+#             else:
+#                 raise TypeError(f"Unsupported statement type: {type(stmt.statement)}")
+#         else:
+#             raise TypeError(f"Unsupported block item type: {type(stmt)}")
+
+#     # Ensure a Return instruction exists
+#     # if not any(isinstance(ins, TackyReturn) for ins in instructions):
+#     #     instructions.append(TackyReturn(TackyConstant(0)))
+
+#     return TackyProgram(function_definition=TackyFunction(name=func_def.name, body=instructions))
+
+def emit_statement(stmt, instructions: List):
+    if isinstance(stmt, If):
+        emit_tacky_expr(stmt, instructions)
+
+    elif isinstance(stmt, Return):
+        ret_val = emit_tacky_expr(stmt.exp, instructions)
+        instructions.append(TackyReturn(ret_val))
+
+    elif isinstance(stmt, D):
+        # Declarations
+        if not isinstance(stmt.declaration.init, Null):
+            assign_expr = Assignment(
+                left=Var(stmt.declaration.name),
+                right=stmt.declaration.init
+            )
+            emit_tacky_expr(assign_expr, instructions)
         else:
-            raise TypeError(f"Unsupported block item type: {type(stmt)}")
+            pass
+    elif isinstance(stmt, Expression):
+        emit_tacky_expr(stmt.exp, instructions)
 
-    # Ensure a Return instruction exists
-    # if not any(isinstance(ins, TackyReturn) for ins in instructions):
-    #     instructions.append(TackyReturn(TackyConstant(0)))
+    elif isinstance(stmt, Null):
+        pass
 
-    return TackyProgram(function_definition=TackyFunction(name=func_def.name, body=instructions))
+    elif isinstance(stmt, S):
+        # FIX #2: Ensure we do not double-emit
+        node = stmt.statement
+        if isinstance(node, Expression):
+            emit_tacky_expr(node.exp, instructions)
+        elif isinstance(node, If):
+            emit_tacky_expr(node, instructions)
+        elif isinstance(node, Return):
+            ret_val = emit_tacky_expr(node.exp, instructions)
+            instructions.append(TackyReturn(ret_val))
+        elif isinstance(node, Null):
+            pass
+        else:
+            raise TypeError(f"Unsupported statement type: {type(node)}")
+
+    else:
+        raise TypeError(f"Unsupported statement type: {type(stmt)}")
+
+def emit_function_body(body: List, instructions: List):
+    for stmt in body:
+        emit_statement(stmt, instructions)
+
+def emit_tacky(program) -> TackyProgram:
+    instructions: List = []
+    func_def = program.function_definition
+    emit_function_body(func_def.body, instructions)
+    return TackyProgram(
+        function_definition=TackyFunction(name=func_def.name, body=instructions)
+    )
