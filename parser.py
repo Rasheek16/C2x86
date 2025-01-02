@@ -133,12 +133,20 @@ def parse_function_definition(tokens: List[str]) -> Function:
         expect(")", tokens)
         
         # Expect "{" to start the function body
-        expect("{", tokens)
+        function_body = parse_block(tokens)
         
+        # Return the Function AST node
+        return Function(name=func_name, body=function_body)
+    except Exception as e:
+        print(f"Syntax Error in function definition: {e}")
+        sys.exit(1)
+
+def parse_block(tokens):
+    expect("{", tokens)
         # Parse zero or more block-items until "}"
-        function_body = []
+    function_body = []
         #* { <block-item> } Curly braces indicate code repetition
-        while tokens and tokens[0] != "}":
+    while tokens and tokens[0] != "}":
             # if tokens[0] == "int":
             #     # It's a declaration
             #     declaration = parse_declaration(tokens)
@@ -148,23 +156,18 @@ def parse_function_definition(tokens: List[str]) -> Function:
             #     statement = parse_statement(tokens)
             #     block_item = S(statement)
             # block_items.append(block_item)
-            next_token = parse_block_item(tokens)
-            function_body.append(next_token)
+        block,tokens = parse_block_item(tokens)
+        function_body.append(block)
         # Expect "}" to end the function body
-        has_return = any(
-        isinstance(stmt, S) and isinstance(stmt.statement, Return) for stmt in function_body
+    has_return = any(
+    isinstance(stmt, S) and isinstance(stmt.statement, Return) for stmt in function_body
     )
-        if not has_return:
-            function_body.append(S(Return(Constant(0))))
+    if not has_return:
+        function_body.append(S(Return(Constant(0))))
         # print(function_body)
-        expect("}", tokens)
-        
-        # Return the Function AST node
-        return Function(name=func_name, body=function_body)
-    except Exception as e:
-        print(f"Syntax Error in function definition: {e}")
-        sys.exit(1)
-
+    expect("}", tokens)
+    return function_body,tokens
+    
 
 def parse_block_item(tokens):
     # token,tokens = take_token(tokens)
@@ -175,13 +178,13 @@ def parse_block_item(tokens):
             # It's a declaration
         declaration = parse_declaration(tokens)
         block_item = D(declaration)
-        return block_item
+        return block_item ,tokens
     else:
         # print('parse statement')
         # It's a statement
         statement = parse_statement(tokens)
         block_item = S(statement)
-        return block_item
+        return block_item , tokens 
         
     # block_items.append(block_item)
 
@@ -273,7 +276,10 @@ def parse_statement(tokens: List[str]) -> Statement:
                 el_statement =parse_statement(tokens)
                 return If(exp=exp_node,then=statement,_else = el_statement)
             # print('outside if')
-            return If(exp=exp_node,then=statement,)
+            return If(exp=exp_node,then=statement)
+        elif next_token=='{':
+            block,tokens=parse_block(tokens)
+            return Block(items=block)
         else: # Parse <exp> ";" as an expression statement
             # print(tokens)
             exp_node,tokens = parse_exp(tokens)

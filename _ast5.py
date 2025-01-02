@@ -432,6 +432,9 @@ class Null(Statement):
         return "Null()"
 
 
+    
+    
+
 # --------------------------
 # Block Item Classes
 # --------------------------
@@ -505,6 +508,21 @@ class D(BlockItem):
         return f"D(declaration={self.declaration})"
 
 
+class Block(BlockItem):
+    def __init__(self, items:List[BlockItem]):
+        self.items = items
+        
+    def __reps__ (self):
+        return f'Block(items={self.items})'
+    
+    
+class Compund(Statement):
+    def __init__(self, block:Block):
+        self.block = block 
+        
+    def __repr__(self):
+        return f'Compound(block={self.block})'
+
 # --------------------------
 # Function and Program Classes
 # --------------------------
@@ -517,7 +535,7 @@ class Function:
         name (Identifier): The name of the function.
         body (List[BlockItem]): The list of block items comprising the function's body.
     """
-    def __init__(self, name: Identifier, body: List[BlockItem]):
+    def __init__(self, name: Identifier, body:  Block):
         """
         Initializes a Function instance.
         
