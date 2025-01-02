@@ -4,6 +4,7 @@ from typing import List
 
 from _ast5 import *
 
+return_flag = False
 
 def isKeyword(token):
     if token in ('int','return','main','void'):
@@ -134,7 +135,9 @@ def parse_function_definition(tokens: List[str]) -> Function:
         
         # Expect "{" to start the function body
         function_body = parse_block(tokens)
-        
+      
+        if not return_flag:
+            function_body.append(S(Return(Constant(0))))
         # Return the Function AST node
         return Function(name=func_name, body=function_body)
     except Exception as e:
@@ -156,17 +159,13 @@ def parse_block(tokens):
             #     statement = parse_statement(tokens)
             #     block_item = S(statement)
             # block_items.append(block_item)
-        block,tokens = parse_block_item(tokens)
+        block = parse_block_item(tokens)
         function_body.append(block)
         # Expect "}" to end the function body
-    has_return = any(
-    isinstance(stmt, S) and isinstance(stmt.statement, Return) for stmt in function_body
-    )
-    if not has_return:
-        function_body.append(S(Return(Constant(0))))
+   
         # print(function_body)
     expect("}", tokens)
-    return function_body,tokens
+    return function_body
     
 
 def parse_block_item(tokens):
@@ -178,13 +177,13 @@ def parse_block_item(tokens):
             # It's a declaration
         declaration = parse_declaration(tokens)
         block_item = D(declaration)
-        return block_item ,tokens
+        return block_item
     else:
         # print('parse statement')
         # It's a statement
         statement = parse_statement(tokens)
         block_item = S(statement)
-        return block_item , tokens 
+        return block_item
         
     # block_items.append(block_item)
 
@@ -257,6 +256,8 @@ def parse_statement(tokens: List[str]) -> Statement:
             expect("return", tokens)
             exp_node = parse_exp(tokens)[0]
             expect(";", tokens)
+            global return_flag
+            return_flag =True
             return Return(exp=exp_node)
         elif next_token == ";":
             # Parse ";" as a null statement
@@ -274,12 +275,19 @@ def parse_statement(tokens: List[str]) -> Statement:
                 token,tokens=take_token(tokens)
                 # print('inside else')
                 el_statement =parse_statement(tokens)
+                if el_statement==None:
+                    el_statement=parse_statement(['return','0',';'])
+               
+                return If(exp=exp_node,then=statement,_else = el_statement)
+            else:
+                # if el_statement==None:
+                el_statement=parse_statement(['return','0',';'])
                 return If(exp=exp_node,then=statement,_else = el_statement)
             # print('outside if')
             return If(exp=exp_node,then=statement)
         elif next_token=='{':
-            block,tokens=parse_block(tokens)
-            return Block(items=block)
+            block=parse_block(tokens)
+            return Compound(block=block)
         else: # Parse <exp> ";" as an expression statement
             # print(tokens)
             exp_node,tokens = parse_exp(tokens)

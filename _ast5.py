@@ -508,15 +508,19 @@ class D(BlockItem):
         return f"D(declaration={self.declaration})"
 
 
-class Block(BlockItem):
-    def __init__(self, items:List[BlockItem]):
-        self.items = items
-        
-    def __reps__ (self):
-        return f'Block(items={self.items})'
+class Block:
+    def __init__(self, block_items: List):
+        self.block_items = block_items
+
+    def __iter__(self):
+        return iter(self.block_items)
+
+    def __repr__(self):
+        items_repr = ",\n        ".join(repr(item) for item in self.block_items)
+        return f"Block([\n        {items_repr}\n    ])"
     
     
-class Compund(Statement):
+class Compound(Statement):
     def __init__(self, block:Block):
         self.block = block 
         

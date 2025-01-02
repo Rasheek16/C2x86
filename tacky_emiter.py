@@ -394,6 +394,13 @@ def emit_statement(stmt, instructions: List):
     if isinstance(stmt, If):
         emit_tacky_expr(stmt, instructions)
 
+    # elif isinstance(stmt,Compound):
+    #     for block_item in stmt.block.block_items:
+    #         if isinstance(block_item,Compound):
+    #             ret = emit_statement(block_item.block)
+    #         else:
+    #             ret_val = emit_tacky_expr(block_item,instructions)
+            
     elif isinstance(stmt, Return):
         ret_val = emit_tacky_expr(stmt.exp, instructions)
         instructions.append(TackyReturn(ret_val))
@@ -414,9 +421,14 @@ def emit_statement(stmt, instructions: List):
     elif isinstance(stmt, Null):
         pass
 
+    elif isinstance(stmt,Compound):
+            for expr in stmt.block:
+                emit_statement(expr,instructions)
+                
     elif isinstance(stmt, S):
         # FIX #2: Ensure we do not double-emit
         node = stmt.statement
+        # print('node',node)
         if isinstance(node, Expression):
             emit_tacky_expr(node.exp, instructions)
         elif isinstance(node, If):
@@ -424,6 +436,10 @@ def emit_statement(stmt, instructions: List):
         elif isinstance(node, Return):
             ret_val = emit_tacky_expr(node.exp, instructions)
             instructions.append(TackyReturn(ret_val))
+        elif isinstance(node,Compound):
+            # print(node.block)
+            for expr in node.block:
+                emit_statement(expr,instructions)
         elif isinstance(node, Null):
             pass
         else:
@@ -434,6 +450,7 @@ def emit_statement(stmt, instructions: List):
 
 def emit_function_body(body: List, instructions: List):
     for stmt in body:
+        # print(stmt)
         emit_statement(stmt, instructions)
 
 def emit_tacky(program) -> TackyProgram:
