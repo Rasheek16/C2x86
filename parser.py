@@ -11,6 +11,11 @@ def isKeyword(token):
         return True 
     return False
     
+temp_label_counter=1
+def get_temp_label():
+    global temp_label_counter
+    temp_label_counter+=1
+    return f'tmp_label.{temp_label_counter}'
 
 def isIntegerConstant(token: str) -> bool:
     """
@@ -175,7 +180,7 @@ def parse_block_item(tokens):
         # print('parse decl')
         
             # It's a declaration
-        declaration = parse_declaration(tokens)
+        declaration,tokens = parse_declaration(tokens)
         block_item = D(declaration)
         return block_item
     else:
@@ -187,7 +192,7 @@ def parse_block_item(tokens):
         
     # block_items.append(block_item)
 
-def parse_declaration(tokens: List[str]) -> Declaration:
+def parse_declaration(tokens: List[str]) :
     """
     Parses the <declaration> ::= "int" <identifier> [ "=" <exp> ] ";" rule.
     
@@ -203,30 +208,30 @@ def parse_declaration(tokens: List[str]) -> Declaration:
     try:
         # Expect "int" keyword
         expect("int", tokens)
-
         # Parse <identifier> for the variable name
         identifier_token, tokens = take_token(tokens)
         if not isIdentifier(identifier_token):
             raise SyntaxError(f"Invalid identifier in declaration: '{identifier_token}'")
         var_name = Identifier(identifier_token)
+        # print(tokens)
         
         # Initialize 'init' to None (optional initializer)
         init = Null()
-        
+        # new_token = 
         # Check if the next token is "=" indicating an initializer
         # * [ "=" <exp> ] Square bracket indicate optional code
         if tokens and tokens[0] == "=":
             # Consume "="
             expect("=", tokens)
-            
+            # print(tokens)
             # Parse <exp> for the initializer
             init, tokens = parse_exp(tokens)
-            
+            # print(tokens)
         # Expect ";" to end the declaration
         expect(";", tokens)
-        
+        # print(tokens)
         # Return the Declaration AST node
-        return Declaration(name=var_name, init=init)
+        return Declaration(name=var_name, init=init),tokens
     except Exception as e:
         print(f"Syntax Error in declaration: {e}")
         sys.exit(1)
@@ -270,10 +275,12 @@ def parse_statement(tokens: List[str]) -> Statement:
             exp_node,tokens = parse_exp(tokens)
             expect(')',tokens)
             statement = parse_statement(tokens)
-            el_statement=None
+            # print(statement)
+            # print(tokens[0])
+            # el_statement=None
             if tokens and tokens[0]=='else':
                 token,tokens=take_token(tokens)
-                # print('inside else')
+                
                 el_statement =parse_statement(tokens)
                 if el_statement==None:
                     el_statement=parse_statement(['return','0',';'])
@@ -284,11 +291,63 @@ def parse_statement(tokens: List[str]) -> Statement:
                 el_statement=parse_statement(['return','0',';'])
                 return If(exp=exp_node,then=statement,_else = el_statement)
             # print('outside if')
-            return If(exp=exp_node,then=statement)
         elif next_token=='{':
             block=parse_block(tokens)
             return Compound(block=block)
+        elif next_token=='break':
+            _,tokens=take_token(tokens)
+            expect(';',tokens)
+            temp_label= get_temp_label()
+            return Break()
+        elif next_token=='continue':
+            _,tokens=take_token(tokens)
+            temp_label= get_temp_label()
+            expect(';',tokens)
+            return Continue()
+        elif next_token=='while':
+            _,tokens=take_token(tokens)
+            expect('(',tokens)
+            exp,tokens=parse_exp(tokens)
+            expect(')',tokens)
+            # exp2,tokens=parse_exp(tokens)
+            statement=parse_statement(tokens)
+            temp_label=get_temp_label()
+            return While(exp,statement)
+        elif next_token=='do':
+            # print('here')
+            _,tokens=take_token(tokens)
+           
+            statement=parse_statement(tokens)
+            # print(statement)
+            expect('while',tokens)
+            expect('(',tokens)
+            exp,tokens=parse_exp(tokens)
+            # print(exp)
+            expect(')',tokens)
+            expect(';',tokens)
+            # exp2,tokens=parse_exp(tokens)
+            temp_label=get_temp_label()
+            return DoWhile(statement,exp)
+        elif next_token=='for':
+            _,tokens=take_token(tokens)
+            expect('(',tokens) 
+      
+            init,tokens=parse_for_init(tokens)
+            if tokens[0]==')':
+                raise SyntaxError()
+            exp1,tokens=parse_optional_parameter(tokens)
+    
+            exp2,tokens=parse_optional_parameter(tokens)
+      
+            expect(')',tokens)
+            if tokens[0] ==';':
+                raise SyntaxError()
+            statement=parse_statement(tokens)
+            temp_label=get_temp_label()
+            
+            return For(init=init,condition=exp1,post=exp2,body=statement)
         else: # Parse <exp> ";" as an expression statement
+            
             # print(tokens)
             exp_node,tokens = parse_exp(tokens)
             expect(";", tokens)
@@ -296,6 +355,50 @@ def parse_statement(tokens: List[str]) -> Statement:
     except Exception as e:
         print(f"Syntax Error in statement: {e}")
         sys.exit(1)
+
+
+def parse_for_init(tokens):
+    # print(type(tokens[0]))
+    if tokens[0]=='int' and tokens[1]!=';':
+        # token,tokens=take_token(tokens)
+        item,tokens =parse_declaration(tokens)
+        # print(tokens)
+        return InitDecl(item),tokens
+    elif isIdentifier(tokens[0]) and not isKeyword(tokens[0]):
+        # print(tokens)
+        while tokens and tokens[0] !=';':
+            exp,tokens=parse_exp(tokens)
+        
+        expect(';',tokens)
+        return InitExp(exp=exp),tokens
+    else:
+        # _,tokens=take_token(tokens)
+        return Null(),tokens
+        # raise SyntaxError('invalid syntax')
+        
+    
+
+def parse_optional_parameter(tokens):
+    # print(tokens)
+    if tokens[0]==';' or tokens[0]==None:
+        _,tokens=take_token(tokens)
+        return Null(),tokens
+    elif tokens[0]==')':
+        return Null(),tokens
+    else:
+        while tokens and tokens[0]!=';' and tokens[0]!=')':
+            # print(tokens[0])
+            exp,tokens = parse_exp(tokens)
+            # print(exp)
+        if tokens[0]==')':
+            # expect(')',tokens)
+            pass
+        else:
+            expect(';',tokens)
+        return exp,tokens
+        
+        
+            
 
 
 def parse_exp(tokens: List[str], min_prec: int = 0) :
@@ -346,6 +449,7 @@ def parse_exp(tokens: List[str], min_prec: int = 0) :
                 # print('found assignment')
                 _,tokens = take_token(tokens)
                 right,tokens = parse_exp(tokens,next_min_prec)
+                # print(tokens)
                 lhs = Assignment(lhs,right)
             elif next_token =='?':
                 middle,tokens = parse_conditional_middle(tokens)

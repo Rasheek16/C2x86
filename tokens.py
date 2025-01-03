@@ -29,6 +29,12 @@ patterns = [
      ('else_keyword',r'else'),
      ('question_mark',r'\?'),
      ('colon',r':'),
-     ('Assignment',r'=')
+     ('Assignment',r'='),
+     ('do',r'do'),
+     ('while',r'while'),
+     ('for',r'for'),
+     ('break',r'break'),
+     ('continue',r'continue'),
+     
      
 ]

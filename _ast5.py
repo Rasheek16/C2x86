@@ -527,6 +527,75 @@ class Compound(Statement):
     def __repr__(self):
         return f'Compound(block={self.block})'
 
+class Break(Statement):
+    def __init__(self,label:Identifier =None):
+        self.label = label 
+    
+    def __repr__(self):
+        return f'Break(identifier={self.label})'
+    
+
+class Continue(Statement):
+    def __init__(self,label:Identifier=None):
+        self.label = label 
+    
+    def __repr__(self):
+        return f'Continue(identifier={self.label})'
+    
+
+class While(Statement):
+    def __init__(self,_condition:Exp,body:Statement,label:Identifier=None):
+        self._condition =_condition 
+        self.body = body 
+        self.label = label 
+
+    def __repr__(self):
+        return f'While(condition={self._condition},body={self.body},identifier={self.label})'
+        
+        
+class DoWhile(Statement):
+    def __init__(self,body:Statement,_condition:Exp,label:Identifier=None):
+        self._condition =_condition 
+        self.body = body 
+        self.label = label 
+
+    def __repr__(self):
+        return f'DoWhile(body={self.body},condition={self._condition},identifier={self.label})'
+
+
+class ForInit():
+    def __init__(self):
+        pass 
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+
+class InitDecl(ForInit):
+    def __init__(self,declaration):
+        self.declaration = declaration
+ 
+       # super(CLASS_NAME, self).__init__(*args, **kwarg)
+    def __repr__(self):
+        return f'InitDecl(declaration={self.declaration})'
+
+class InitExp(ForInit):
+    def __init__(self,exp=None):
+        self.exp = exp
+ 
+       # super(CLASS_NAME, self).__init__(*args, **kwarg)
+    def __repr__(self):
+        return f'InitExp(exp={self.exp})'
+class For(Statement):
+    def __init__(self,init: ForInit,condition:Exp=None , post:Exp = None, body:Statement=None,label:Identifier=None ):
+        self.init =init
+        self.condition = condition
+        self.body= body
+        self.post=post
+        self.label = label 
+
+    def __repr__(self):
+        return f'For(init={self.init},condition={self.condition},body={self.body},identifier={self.label})'
+
+
+
 # --------------------------
 # Function and Program Classes
 # --------------------------
