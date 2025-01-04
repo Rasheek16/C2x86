@@ -1,6 +1,6 @@
 import re
 import sys
-from typing import List
+from typing import List,Tuple
 
 from _ast5 import *
 
@@ -141,8 +141,8 @@ def parse_function_definition(tokens: List[str]) -> Function:
         # Expect "{" to start the function body
         function_body = parse_block(tokens)
       
-        if not return_flag:
-            function_body.append(S(Return(Constant(0))))
+        
+        function_body.append(S(Return(Constant(0))))
         # Return the Function AST node
         return Function(name=func_name, body=function_body)
     except Exception as e:
@@ -155,15 +155,6 @@ def parse_block(tokens):
     function_body = []
         #* { <block-item> } Curly braces indicate code repetition
     while tokens and tokens[0] != "}":
-            # if tokens[0] == "int":
-            #     # It's a declaration
-            #     declaration = parse_declaration(tokens)
-            #     block_item = D(declaration)
-            # else:
-            #     # It's a statement
-            #     statement = parse_statement(tokens)
-            #     block_item = S(statement)
-            # block_items.append(block_item)
         block = parse_block_item(tokens)
         function_body.append(block)
         # Expect "}" to end the function body
@@ -269,27 +260,22 @@ def parse_statement(tokens: List[str]) -> Statement:
             expect(";", tokens)
             return Null()
         elif next_token =='if':
-            # print('inside if')
+            print('inside if')
             token,tokens=take_token(tokens)
             expect('(',tokens)
             exp_node,tokens = parse_exp(tokens)
             expect(')',tokens)
             statement = parse_statement(tokens)
+            print(statement)
             # print(statement)
-            # print(tokens[0])
+            print(tokens[0])
             # el_statement=None
             if tokens and tokens[0]=='else':
                 token,tokens=take_token(tokens)
-                
                 el_statement =parse_statement(tokens)
-                if el_statement==None:
-                    el_statement=parse_statement(['return','0',';'])
-               
                 return If(exp=exp_node,then=statement,_else = el_statement)
-            else:
-                # if el_statement==None:
-                el_statement=parse_statement(['return','0',';'])
-                return If(exp=exp_node,then=statement,_else = el_statement)
+                # el_statement=parse_statement(['return','0',';'])
+            return If(exp=exp_node,then=statement,_else=Null())
             # print('outside if')
         elif next_token=='{':
             block=parse_block(tokens)
@@ -328,77 +314,91 @@ def parse_statement(tokens: List[str]) -> Statement:
             # exp2,tokens=parse_exp(tokens)
             temp_label=get_temp_label()
             return DoWhile(statement,exp)
-        elif next_token=='for':
-            _,tokens=take_token(tokens)
-            expect('(',tokens) 
-      
-            init,tokens=parse_for_init(tokens)
-            if tokens[0]==')':
-                raise SyntaxError()
-            exp1,tokens=parse_optional_parameter(tokens)
-    
-            exp2,tokens=parse_optional_parameter(tokens)
-      
-            expect(')',tokens)
-            if tokens[0] ==';':
-                raise SyntaxError()
-            statement=parse_statement(tokens)
-            temp_label=get_temp_label()
+        # --------------------------
+        # Fixed FOR Loop Branch
+        # --------------------------
+        elif next_token == "for":
+            _, tokens = take_token(tokens)  # consume 'for'
+            expect("(", tokens)
             
-            return For(init=init,condition=exp1,post=exp2,body=statement)
-        else: # Parse <exp> ";" as an expression statement
+            # Parse initialization
+            init, tokens = parse_for_init(tokens)
             
-            # print(tokens)
-            exp_node,tokens = parse_exp(tokens)
+            # Expect and consume first semicolon if it's not a declaration
+            if not isinstance(init, InitDecl):
+                expect(";", tokens)
+            
+            # Parse condition
+            condition, tokens = parse_optional_parameter(tokens)
+            
+            # Expect and consume second semicolon
             expect(";", tokens)
-            return Expression(exp=exp_node)
+            
+            # Parse post-expression
+            post, tokens = parse_optional_parameter(tokens)
+            
+            # Expect closing parenthesis
+            expect(")", tokens)
+            # print(tokens)
+            # Parse loop body
+            body = parse_statement(tokens)
+            # optional get_temp_label() or other side-effect
+            
+            # Just return the For node (NOT a tuple!)
+            return For(init=init, condition=condition, post=post, body=body)
+        
+        else:
+            # Parse expression statement
+            exp_node, tokens = parse_exp(tokens)
+            expect(";", tokens)
+            return Expression(exp_node)
+    
     except Exception as e:
         print(f"Syntax Error in statement: {e}")
         sys.exit(1)
 
+def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
+    """
+    Parses the initialization part of a for loop.
 
-def parse_for_init(tokens):
-    # print(type(tokens[0]))
-    if tokens[0]=='int' and tokens[1]!=';':
-        # token,tokens=take_token(tokens)
-        item,tokens =parse_declaration(tokens)
-        # print(tokens)
-        return InitDecl(item),tokens
-    elif isIdentifier(tokens[0]) and not isKeyword(tokens[0]):
-        # print(tokens)
-        while tokens and tokens[0] !=';':
-            exp,tokens=parse_exp(tokens)
-        
-        expect(';',tokens)
-        return InitExp(exp=exp),tokens
-    else:
-        # _,tokens=take_token(tokens)
-        return Null(),tokens
-        # raise SyntaxError('invalid syntax')
-        
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+
+    Returns:
+        Tuple[Statement, List[str]]: The initialization statement and the remaining tokens.
+    """
+    if tokens[0] == 'int':
+        # Parse declaration (e.g., int i = 0)
+        decl, tokens = parse_declaration(tokens)
+        init_decl = InitDecl(declaration=D(decl))
+        print(init_decl)
+        return init_decl, tokens
     
-
-def parse_optional_parameter(tokens):
-    # print(tokens)
-    if tokens[0]==';' or tokens[0]==None:
-        _,tokens=take_token(tokens)
-        return Null(),tokens
-    elif tokens[0]==')':
-        return Null(),tokens
+    elif isIdentifier(tokens[0]) and not isKeyword(tokens[0]):
+        # Parse expression (e.g., i = 0)
+        exp, tokens = parse_exp(tokens)
+        init_exp = InitExp(Expression(exp))
+        return init_exp, tokens
+    
     else:
-        while tokens and tokens[0]!=';' and tokens[0]!=')':
-            # print(tokens[0])
-            exp,tokens = parse_exp(tokens)
-            # print(exp)
-        if tokens[0]==')':
-            # expect(')',tokens)
-            pass
-        else:
-            expect(';',tokens)
-        return exp,tokens
-        
-        
-            
+        # No initialization; do not consume any tokens
+        return Null(), tokens
+
+def parse_optional_parameter(tokens: List[str]) -> Tuple[Statement, List[str]]:
+    """
+    Parses an optional parameter (condition or post-expression) in a for loop.
+
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+
+    Returns:
+        Tuple[Statement, List[str]]: The parsed statement or Null, and the remaining tokens.
+    """
+    if not tokens or tokens[0] in (';', ')'):
+        return Null(), tokens
+    else:
+        exp, tokens = parse_exp(tokens)
+        return exp, tokens
 
 
 def parse_exp(tokens: List[str], min_prec: int = 0) :
@@ -449,7 +449,7 @@ def parse_exp(tokens: List[str], min_prec: int = 0) :
                 # print('found assignment')
                 _,tokens = take_token(tokens)
                 right,tokens = parse_exp(tokens,next_min_prec)
-                # print(tokens)
+                # print(right)
                 lhs = Assignment(lhs,right)
             elif next_token =='?':
                 middle,tokens = parse_conditional_middle(tokens)
@@ -466,7 +466,6 @@ def parse_exp(tokens: List[str], min_prec: int = 0) :
                 # Combine lhs and rhs into a Binary AST node
                 lhs = Binary(operator=operator, left=lhs, right=rhs)
                 
-        
         return lhs, tokens
     except Exception as e:
         print(f"Syntax Error in expression: {e}")

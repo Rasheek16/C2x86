@@ -160,7 +160,7 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
         # instructions.append(TackyJump(target=end_label))
 
         # 'else' branch
-        if expr._else:
+        if not isinstance(expr._else,Null):
             instructions.append(TackyJump(target=end_label))
             instructions.append(TackyLabel(else_label))
             emit_statement(expr._else, instructions)
@@ -170,8 +170,7 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
 
         instructions.append(TackyLabel(end_label))
         # Typically doesn't return a value in Tacky
-        return TackyConstant(0)
-
+        # return TackyConstant(0)
     # 6) Conditional (ternary) ?:
     elif isinstance(expr, Conditional):
         condition_var = emit_tacky_expr(expr.condition, instructions)
@@ -197,7 +196,6 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
 
     elif isinstance(expr, Binary):
         # Recursively emit instructions for the left operand of the binary expression
-        v1 = emit_tacky_expr(expr.left, instructions)
 
         # Create unique labels for short-circuiting and the end label
         false_label = f"false_{get_false_label()}"
@@ -205,6 +203,7 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
         end_label = f"end_{get_end_label()}"
         
         if expr.operator == 'And':
+            v1 = emit_tacky_expr(expr.left, instructions)
             # Implement && (AND) using JumpIfZero (short-circuit if v1 is 0)
             instructions.append(TackyJumpIfZero(condition=v1, target=false_label))
             # print(expr.operator)
@@ -233,6 +232,8 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
             return result_var
 
         elif expr.operator == 'Or':
+            v1 = emit_tacky_expr(expr.left, instructions)
+            
             # Implement || (OR) using JumpIfNotZero (short-circuit if v1 is non-zero)
             instructions.append(TackyJumpIfNotZero(condition=v1, target=true_label))
 
@@ -265,7 +266,7 @@ def emit_tacky_expr(expr, instructions: list) -> Union[TackyConstant, TackyVar]:
 
             return result_var
 
-
+         
         else:
             # Recursively emit instructions for the left operand of the binary expression
             v1 = emit_tacky_expr(expr.left, instructions)
@@ -321,132 +322,162 @@ def convert_binop(operator_token):
         return TackyBinaryOperator.GREATER_OR_EQUAL
     elif operator_token=='GreaterThan':
         return TackyBinaryOperator.GREATER_THAN
-
-# def emit_tacky(program) -> TackyProgram:
-#     """
-#     emit_tacky(e, instructions):
-#         match e with
-#         | Constant(c) ->
-#             return  Constant(c)
-#         | Unary(op, inner) ->
-#             src = emit_tacky(inner, instructions)
-#             dst_name = make_temporary()
-#             dst = Var(dst_name)
-#             tacky_op = convert_unop(op)
-#             instructions.append(Unary(tacky_op, src, dst))
-#             return dst
-#         | Binary(op, e1, e2) ->
-#             v1 = emit_tacky(e1, instructions)
-#             v2 = emit_tacky(e2, instructions)
-#             dst_name = make_temporary()
-#             dst = Var(dst_name)
-#             tacky_op = convert_binop(op)
-#             instructions.append(Binary(tacky_op, v1, v2, dst))
-#             return dst
-#     Given a Program node (with one or more Functions), generate and return
-#     a TackyProgram containing all functions with their corresponding Tacky IR instructions.
     
-#     Args:
-#         program: The high-level AST Program node.
-    
-#     Returns:
-#         TackyProgram: The complete Tacky IR representation of the program.
-    
-#     Raises:
-#         TypeError: If the program contains unsupported statement types.
-#     """
-#     # Initialize the list of TackyFunction instances
-#     tacky_function: List[TackyFunction] = []
-    
-#     # Extract the function definition
-#     func_def = program.function_definition
-#     instructions: List = []
-#     # print(type(program.function_definition.body))
-#     # Iterate over each statement in the function's body
-#     for stmt in func_def.body:
-#         print(stmt)
-#         if isinstance(stmt, D):
-#             if not isinstance(stmt.declaration.init,Null):
-#                 assign_expr = Assignment(left=Var(stmt.declaration.name), right=stmt.declaration.init)
-#                 emit_tacky_expr(assign_expr, instructions)
-#         elif isinstance(stmt, S):
-#             if isinstance(stmt.statement, Expression):
-#                  emit_tacky_expr(stmt.statement.exp, instructions)
-#             elif isinstance(stmt.statement, Return):
-#                 print(stmt)
-#                 ret_val=emit_tacky_expr(stmt.statement.exp, instructions)
-#                 instructions.append(TackyReturn(ret_val))
-#             elif isinstance(stmt.statement, Null):
-#                 # instructions.append(TackyReturn(TackyConstant(0)))  # Null statements are ignored
-#                 pass
-#             else:
-#                 raise TypeError(f"Unsupported statement type: {type(stmt.statement)}")
-#         else:
-#             raise TypeError(f"Unsupported block item type: {type(stmt)}")
-
-#     # Ensure a Return instruction exists
-#     # if not any(isinstance(ins, TackyReturn) for ins in instructions):
-#     #     instructions.append(TackyReturn(TackyConstant(0)))
-
-#     return TackyProgram(function_definition=TackyFunction(name=func_def.name, body=instructions))
-
 def emit_statement(stmt, instructions: List):
+    # print(stmt)
+    """
+    Emits TACKY instructions for a given statement.
+    """
     if isinstance(stmt, If):
-        emit_tacky_expr(stmt, instructions)
+        emit_if_statement(stmt, instructions)
 
-    # elif isinstance(stmt,Compound):
-    #     for block_item in stmt.block.block_items:
-    #         if isinstance(block_item,Compound):
-    #             ret = emit_statement(block_item.block)
-    #         else:
-    #             ret_val = emit_tacky_expr(block_item,instructions)
-            
     elif isinstance(stmt, Return):
         ret_val = emit_tacky_expr(stmt.exp, instructions)
         instructions.append(TackyReturn(ret_val))
 
-    elif isinstance(stmt, D):
-        # Declarations
-        if not isinstance(stmt.declaration.init, Null):
+    elif isinstance(stmt, (DoWhile, While, For)):
+        emit_loop_statement(stmt, instructions)
+
+    elif isinstance(stmt, D):  # Declaration
+        if not isinstance(stmt.declaration.init,Null):
             assign_expr = Assignment(
                 left=Var(stmt.declaration.name),
                 right=stmt.declaration.init
             )
             emit_tacky_expr(assign_expr, instructions)
-        else:
-            pass
+
     elif isinstance(stmt, Expression):
         emit_tacky_expr(stmt.exp, instructions)
 
-    elif isinstance(stmt, Null):
-        pass
+    elif isinstance(stmt, Compound):
+        for expr in stmt.block:
+            emit_statement(expr, instructions)
 
-    elif isinstance(stmt,Compound):
-            for expr in stmt.block:
-                emit_statement(expr,instructions)
-                
+    elif isinstance(stmt, Break):
+        loop_id = stmt.label
+        instructions.append(TackyJump(f"break_{loop_id}"))
+
+    elif isinstance(stmt, Continue):
+        print('found continue')
+        loop_id = stmt.label
+        print(loop_id)
+        instructions.append(TackyJump(f"continue_{loop_id}"))
+
     elif isinstance(stmt, S):
-        # FIX #2: Ensure we do not double-emit
-        node = stmt.statement
-        # print('node',node)
-        if isinstance(node, Expression):
-            emit_tacky_expr(node.exp, instructions)
-        elif isinstance(node, If):
-            emit_tacky_expr(node, instructions)
-        elif isinstance(node, Return):
-            ret_val = emit_tacky_expr(node.exp, instructions)
-            instructions.append(TackyReturn(ret_val))
-        elif isinstance(node,Compound):
-            # print(node.block)
-            for expr in node.block:
-                emit_statement(expr,instructions)
-        elif isinstance(node, Null):
-            pass
-        else:
-            raise TypeError(f"Unsupported statement type: {type(node)}")
+        emit_s_statement(stmt, instructions)
+
+    elif isinstance(stmt, Null):
+        pass  # No operation for Null statements
 
     else:
+        print(stmt)
         raise TypeError(f"Unsupported statement type: {type(stmt)}")
+
+
+def emit_if_statement(stmt, instructions: List):
+    # print('here')
+    emit_tacky_expr(stmt, instructions)
+
+
+def emit_loop_statement(stmt, instructions: List):
+    print(stmt)
+    
+    print('found loop')
+    # print(stmt)
+    """
+    Handles DoWhile, While, and For loops.
+    """
+    
+    loop_id = stmt.label
+    start_label = f"start_{loop_id}"
+    continue_label = f"continue_{loop_id}"
+    break_label = f"break_{loop_id}"
+    
+    if isinstance(stmt, DoWhile):
+        # DoWhile Loop
+        instructions.append(TackyLabel(start_label))
+        emit_statement(stmt.body, instructions)
+        instructions.append(TackyLabel(continue_label))
+        condition_var = emit_tacky_expr(stmt._condition, instructions)
+        instructions.append(TackyJumpIfNotZero(condition_var, start_label))
+        instructions.append(TackyLabel(break_label))
+
+    elif isinstance(stmt, While):
+        print('found whilw loop')
+        # While Loop
+        instructions.append(TackyLabel(continue_label))
+        condition_var = emit_tacky_expr(stmt._condition, instructions)
+        instructions.append(TackyJumpIfZero(condition_var, break_label))
+        emit_statement(stmt.body, instructions)
+        instructions.append(TackyJump(continue_label))
+        instructions.append(TackyLabel(break_label))
+
+    elif isinstance(stmt, For):
+        # For Loop
+        print('for loop')
+        if not isinstance(stmt.init,Null):
+            print(stmt.init,InitDecl)
+            if isinstance(stmt.init,InitDecl):
+                emit_statement(stmt.init.declaration,instructions)
+            elif isinstance(stmt.init,InitExp):
+                emit_statement(stmt.init.exp.exp,instructions)
+            else:
+                pass
+            # emit_statement(stmt.init, instructions)
+        instructions.append(TackyLabel(start_label))
+
+        if not isinstance(stmt.condition,Null):
+            condition_var = emit_tacky_expr(stmt.condition, instructions)
+            instructions.append(TackyJumpIfZero(condition_var, break_label))
+
+        emit_statement(stmt.body, instructions)
+        instructions.append(TackyLabel(continue_label))
+
+        if not isinstance(stmt.post,Null):
+            emit_tacky_expr(stmt.post, instructions)
+        instructions.append(TackyJump(start_label))
+        instructions.append(TackyLabel(break_label))
+
+
+def emit_s_statement(stmt, instructions: List):
+    """
+    Handles the S statement, which acts as a wrapper for other statements.
+    """
+    node = stmt.statement
+
+    if isinstance(node, Expression):
+        emit_tacky_expr(node.exp, instructions)
+
+    elif isinstance(node, If):
+        emit_if_statement(node, instructions)
+
+    elif isinstance(node, Return):
+        ret_val = emit_tacky_expr(node.exp, instructions)
+        instructions.append(TackyReturn(ret_val))
+
+    elif isinstance(node, Compound):
+        for expr in node.block:
+            emit_statement(expr, instructions)
+
+    elif isinstance(node, Break):
+        print('Found break')
+        loop_id = node.label
+        instructions.append(TackyJump(f"break_{loop_id}"))
+
+    elif isinstance(node, Continue):
+        print('Found continue')
+        
+        loop_id = node.label
+        instructions.append(TackyJump(f"continue_{loop_id}"))
+
+    elif isinstance(node, (DoWhile, While, For)):
+        emit_loop_statement(node, instructions)
+
+    elif isinstance(node, Null):
+        pass  # No operation for Null statements
+
+    else:
+        raise TypeError(f"Unsupported statement type in S: {type(node)}")
 
 def emit_function_body(body: List, instructions: List):
     for stmt in body:

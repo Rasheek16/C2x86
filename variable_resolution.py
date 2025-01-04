@@ -31,7 +31,6 @@ def resolve_declaration(declaration: Declaration, variable_map: dict) -> Declara
         raise TypeError(f"Declaration name must be an Identifier, got {type(declaration.name)}")
 
     original_name = declaration.name.name
-
     # Check for duplicate declarations in the same block
     if original_name in variable_map and variable_map[original_name]['from_current_block']:
         raise ValueError(f"Duplicate variable declaration: '{original_name}'")
@@ -49,9 +48,7 @@ def resolve_declaration(declaration: Declaration, variable_map: dict) -> Declara
 
     # Return the new declaration with the unique name and resolved initialization
     return Declaration(name=Identifier(unique_name), init=init)
-
-
-def resolve_exp(expression: Exp, variable_map: dict) -> Exp:
+# def resolve_exp(expression: Exp, variable_map: dict) -> Exp:
     """
     Resolves expressions by mapping variable identifiers to their unique names.
 
@@ -161,6 +158,8 @@ def copy_variable_map(variable_map: Dict[str, Dict[str, Any]]) -> Dict[str, Dict
 
 
 def resolve_statement(statement, variable_map: dict) -> Any:
+    print('stmt')
+    print(statement)
     """
     Resolves a single statement by mapping variable identifiers to their unique names.
 
@@ -225,205 +224,103 @@ def resolve_statement(statement, variable_map: dict) -> Any:
 
 def annotate(statement: Statement, label: int) -> Statement:
     """
-    Annotates the given statement with the provided label.
-    
-    Args:
-        statement (Statement): The AST node to annotate.
-        label (int): The unique label to assign.
-    
-    Returns:
-        Statement: The annotated AST node.
+    Annotates a given statement with the provided label.
     """
     statement.label = label
     return statement
 
+
 def label_statement(statement: Statement, current_label: Optional[Identifier] = None) -> Statement:
     """
     Traverses and annotates the AST with loop labels.
-    
+
     Args:
         statement (Statement): The AST node to process.
         current_label (Optional[Identifier]): The current loop label, if within a loop.
-    
+
     Returns:
         Statement: The annotated AST node.
-    
-    Raises:
-        ValueError: If 'break' or 'continue' is used outside of a loop.
     """
-    statements = statement
-    # print(type(statement))
-    if isinstance(statements,list):
-        for statement in statements:
-            if isinstance(statement, Break):
-                if current_label is None:
-                    raise ValueError("Error: 'break' statement outside of loop")
-                # Annotate the Break statement with the current loop label
-                statement.label = current_label
-                return statement
-            
-            elif isinstance(statement, Continue):
-                if current_label is None:
-                    raise ValueError("Error: 'continue' statement outside of loop")
-                # Annotate the Continue statement with the current loop label
-                statement.label = current_label
-                return statement
-            
-            elif isinstance(statement, While):
-                # Generate a new label for this While loop
-                new_label = get_label()
-                # Annotate the While statement with the new label
-                annotate(statement, new_label)
-                # Traverse the loop body with the new label as the current_label
-                label_statement(statement.body, new_label)
-                return statement
-            
-            elif isinstance(statement, For):
-                # Generate a new label for this For loop
-                new_label = get_label()
-                # Annotate the For statement with the new label
-                annotate(statement, new_label)
-                # Traverse the loop body with the new label as the current_label
-                if statement.body:
-                    label_statement(statement.body, new_label)
-                return statement
-            
-            elif isinstance(statement, DoWhile):
-                # Generate a new label for this DoWhile loop
-                new_label = get_label()
-                # Annotate the DoWhile statement with the new label
-                annotate(statement, new_label)
-                # Traverse the loop body with the new label as the current_label
-                label_statement(statement.body, new_label)
-                return statement
-            
-            elif isinstance(statement, Compound):
-                # Traverse each block item within the compound statement
-                for block_item in statement.block:
-                    if isinstance(block_item, S):
-                        label_statement(block_item.statement, current_label)
-                    elif isinstance(block_item, D):
-                        # Declarations do not require labeling
-                        pass
-                return statement
-            elif isinstance(statement,S):
-                
-                label_statement(statement.statement,current_label)
-            elif isinstance(statement,D):
-                label_statement(statement.declaration.init,current_label)
-            elif isinstance(statement, If):
-                # Traverse the 'then' branch
-                label_statement(statement.then, current_label)
-                # Traverse the 'else' branch if it exists
-                if statement._else is not None:
-                    label_statement(statement._else, current_label)
-                return statement
-            
-            elif isinstance(statement, Conditional):
-                # Assuming exp2 and exp3 are Statements; adjust if different
-                label_statement(statement.exp2, current_label)
-                label_statement(statement.exp3, current_label)
-                return statement
-            
-            elif isinstance(statement, Return):
-                # Return statements contain expressions; no labeling needed
-                return statement
-            
-            elif isinstance(statement, Expression):
-                # Expression statements contain expressions; no labeling needed
-                return statement
-            
-            else:
-                # Handle other statement types or leave them unchanged
-                return statement
+    # Handle lists of statements
+    if isinstance(statement, list):
+        for stmt in statement:
+            label_statement(stmt, current_label)
+        return statement
+
+    # Handle specific statement types
+    if isinstance(statement, Break):
+        if current_label is None:
+            raise ValueError("Error: 'break' statement outside of loop")
+        statement.label = current_label
+
+    elif isinstance(statement, Continue):
+        if current_label is None:
+            raise ValueError("Error: 'continue' statement outside of loop")
+        statement.label = current_label
+
+    elif isinstance(statement, While):
+        # Generate a new label for this While loop
+        new_label = get_label()
+        annotate(statement, new_label)
+        label_statement(statement.body, new_label)
+
+    elif isinstance(statement, For):
+        # Generate a new label for this For loop
+        new_label = get_label()
+        annotate(statement, new_label)
+        if statement.body:
+            label_statement(statement.body, new_label)
+
+    elif isinstance(statement, DoWhile):
+        # Generate a new label for this DoWhile loop
+        new_label = get_label()
+        annotate(statement, new_label)
+        label_statement(statement.body, new_label)
+
+    elif isinstance(statement, Compound):
+        # Traverse each block item within the compound statement
+        for block_item in statement.block:
+            label_statement(block_item, current_label)
+
+    elif isinstance(statement, S):
+        # Traverse the wrapped statement
+        label_statement(statement.statement, current_label)
+
+    elif isinstance(statement, D):
+        # Handle declarations and their initializations
+        if statement.declaration.init:
+            label_statement(statement.declaration.init, current_label)
+
+    elif isinstance(statement, Conditional):
+        # Traverse the conditional branches (exp2 and exp3)
+        label_statement(statement.exp2, current_label)
+        label_statement(statement.exp3, current_label)
+    elif isinstance(statement,If):
+        label_statement(statement._else,current_label)
+        label_statement(statement.then,current_label)
+    elif isinstance(statement, (Return,Var,Constant)):
+        # No labeling needed for return statements
+        pass
+
+    elif isinstance(statement, (Expression,Assignment,Binary,Unary)):
+        # No labeling needed for expressions
+        pass
+    
+    elif isinstance(statement, Null):
+        # No labeling needed for null statements
+        pass
+
     else:
-            if isinstance(statement, Break):
-                if current_label is None:
-                    raise ValueError("Error: 'break' statement outside of loop")
-                # Annotate the Break statement with the current loop label
-                statement.label = current_label
-                return statement
-            
-            elif isinstance(statement, Continue):
-                if current_label is None:
-                    raise ValueError("Error: 'continue' statement outside of loop")
-                # Annotate the Continue statement with the current loop label
-                statement.label = current_label
-                return statement
-            
-            elif isinstance(statement, While):
-                # Generate a new label for this While loop
-                new_label = get_label()
-                # Annotate the While statement with the new label
-                annotate(statement, new_label)
-                # Traverse the loop body with the new label as the current_label
-                label_statement(statement.body, new_label)
-                return statement
-            
-            elif isinstance(statement, For):
-                # Generate a new label for this For loop
-                new_label = get_label()
-                # Annotate the For statement with the new label
-                annotate(statement, new_label)
-                # Traverse the loop body with the new label as the current_label
-                if statement.body:
-                    label_statement(statement.body, new_label)
-                return statement
-            
-            elif isinstance(statement, DoWhile):
-                # Generate a new label for this DoWhile loop
-                new_label = get_label()
-                # Annotate the DoWhile statement with the new label
-                annotate(statement, new_label)
-                # Traverse the loop body with the new label as the current_label
-                label_statement(statement.body, new_label)
-                return statement
-            
-            elif isinstance(statement, Compound):
-                # Traverse each block item within the compound statement
-                for block_item in statement.block:
-                    if isinstance(block_item, S):
-                        label_statement(block_item.statement, current_label)
-                    elif isinstance(block_item, D):
-                        # Declarations do not require labeling
-                        pass
-                return statement
-            elif isinstance(statement,S):
-                
-                label_statement(statement.statement,current_label)
-            elif isinstance(statement,D):
-                label_statement(statement.declaration.init,current_label)
-            elif isinstance(statement, If):
-                # Traverse the 'then' branch
-                label_statement(statement.then, current_label)
-                # Traverse the 'else' branch if it exists
-                if statement._else is not None:
-                    label_statement(statement._else, current_label)
-                return statement
-            
-            elif isinstance(statement, Conditional):
-                # Assuming exp2 and exp3 are Statements; adjust if different
-                label_statement(statement.exp2, current_label)
-                label_statement(statement.exp3, current_label)
-                return statement
-            
-            elif isinstance(statement, Return):
-                # Return statements contain expressions; no labeling needed
-                return statement
-            
-            elif isinstance(statement, Expression):
-                # Expression statements contain expressions; no labeling needed
-                return statement
-            
-            else:
-                # Handle other statement types or leave them unchanged
-                return statement    
+        # Handle other statement types or raise an error
+        raise TypeError(f"Unsupported statement type: {type(statement)}")
+
+    return statement
 
 def resolve_for_init(stmt,variable_map):
     if isinstance(stmt,InitDecl):
-        return InitDecl(resolve_declaration(stmt.declaration,variable_map))
+        return InitDecl(D(resolve_declaration(stmt.declaration.declaration,variable_map)))
     elif isinstance(stmt,InitExp):
-        return InitExp(resolve_optional_exp(stmt.exp,variable_map))
+        return InitExp(Expression(resolve_statement(stmt.exp,variable_map)))
     elif isinstance(stmt,Null):
         return stmt
     else:
@@ -446,6 +343,7 @@ def label_program(program: Program):
     Returns:
         Program: The labeled AST.
     """
+    # print('here')
     label_statement(program.function_definition.body, None)
     return program    
 
@@ -476,5 +374,6 @@ def variable_resolution_pass(program: Program) -> Program:
     """
     variable_map = {}
     resolved_function = resolve_function(program.function_definition, variable_map)
-    prog=label_program(Program(function_definition=resolved_function))
+    # print('here')
+    prog=label_program((Program(function_definition=resolved_function)))
     return prog

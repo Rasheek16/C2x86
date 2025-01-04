@@ -390,7 +390,7 @@ class If(Statement):
         Returns:
             str: The string representation.
         """
-        return f"If(exp={self.exp},Then = {self.then}, else = {self._else})"
+        return f"If(\nexp={self.exp},Then = {self.then}, else = {self._else}\n)"
 
 
 class Conditional(Statement):
@@ -532,7 +532,7 @@ class Break(Statement):
         self.label = label 
     
     def __repr__(self):
-        return f'Break(identifier={self.label})'
+        return f'\nBreak(identifier={self.label}\n)'
     
 
 class Continue(Statement):
@@ -569,7 +569,7 @@ class ForInit():
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
 
 class InitDecl(ForInit):
-    def __init__(self,declaration):
+    def __init__(self,declaration:D):
         self.declaration = declaration
  
        # super(CLASS_NAME, self).__init__(*args, **kwarg)
@@ -577,7 +577,7 @@ class InitDecl(ForInit):
         return f'InitDecl(declaration={self.declaration})'
 
 class InitExp(ForInit):
-    def __init__(self,exp=None):
+    def __init__(self,exp:Expression=None):
         self.exp = exp
  
        # super(CLASS_NAME, self).__init__(*args, **kwarg)
@@ -592,7 +592,7 @@ class For(Statement):
         self.label = label 
 
     def __repr__(self):
-        return f'For(init={self.init},condition={self.condition},body={self.body},identifier={self.label})'
+        return f'\nFor(init={self.init},condition={self.condition},body={self.body},identifier={self.label}\n)'
 
 
 
@@ -635,7 +635,7 @@ class Function:
         """
         # Join the representations of all block items with indentation for readability
         body_repr = ',\n        '.join(repr(item) for item in self.body)
-        return (f"Function(name={self.name}, body=[\n        {body_repr}\n    ])")
+        return (f"\nFunction(name={self.name}, body=[\n        {body_repr}\n    ]\n)")
 
 
 class Program:
