@@ -85,13 +85,16 @@ class Identifier:
         return f"Identifier(name={self.name})"
 
 
+    
+    
+
 # --------------------------
 # Expression Classes
 # --------------------------
 
 class Exp:
     """
-    Base class for all expressions in the AST.
+    Base class for all exp in the AST.
     """
     pass
 
@@ -259,49 +262,107 @@ class Assignment(Exp):
         """
         return f"Assignment(left={self.left}, right={self.right})"
 
-
+class FunctionCall(Exp):
+    def __init__(self,identifier:Identifier,args:List[Exp]):
+        self.identifier = identifier
+        self.args = args
+        
+    def __repr__(self):
+        return f'\nFunctionCall(identifier = {self.identifier},args = {self.args})'
 # --------------------------
 # Declaration Class
 # --------------------------
 
 class Declaration:
-    """
-    Represents a variable declaration in the AST.
     
-    Attributes:
-        name (Identifier): The name of the variable being declared.
-        init (Optional[Exp]): The optional initializer expression.
-    """
-    def __init__(self, name: Identifier, init: Optional[Exp] = None):
-        """
-        Initializes a Declaration instance.
+    def __init__(self, *args, **kwargs):
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+        pass 
+    
+    # """
+    # Represents a variable declaration in the AST.
+    
+    # Attributes:
+    #     name (Identifier): The name of the variable being declared.
+    #     init (Optional[Exp]): The optional initializer expression.
+    # """
+    # def __init__(self, name: Identifier, init: Optional[Exp] = None):
+    #     """
+    #     Initializes a Declaration instance.
         
-        Args:
-            name (Identifier): The variable's identifier.
-            init (Optional[Exp]): The initializer expression, if any.
+    #     Args:
+    #         name (Identifier): The variable's identifier.
+    #         init (Optional[Exp]): The initializer expression, if any.
         
-        Raises:
-            ValueError: If name is not an Identifier instance or init is not an Exp instance.
-        """
-        # if not isinstance(name, Identifier):
-        #     raise ValueError("Declaration name must be an Identifier instance.")
-        # if init is not None and not isinstance(init, Exp):
-        #     raise ValueError("Initializer must be an Exp instance or None.")
-        self.name = name
-        self.init = init
+    #     Raises:
+    #         ValueError: If name is not an Identifier instance or init is not an Exp instance.
+    #     """
+    #     # if not isinstance(name, Identifier):
+    #     #     raise ValueError("Declaration name must be an Identifier instance.")
+    #     # if init is not None and not isinstance(init, Exp):
+    #     #     raise ValueError("Initializer must be an Exp instance or None.")
+    #     self.name = name
+    #     self.init = init
 
-    def __repr__(self) -> str:
-        """
-        Returns a string representation of the Declaration.
+    # def __repr__(self) -> str:
+        # """
+        # Returns a string representation of the Declaration.
         
-        Returns:
-            str: The string representation.
-        """
-        if self.init:
-            return f"Declaration(name={self.name}, init={self.init})"
-        else:
-            return f"Declaration(name={self.name}, init=None)"
+        # Returns:
+        #     str: The string representation.
+        # """
+        # if self.init:
+        #     return f"Declaration(name={self.name}, init={self.init})"
+        # else:
+            # return f"Declaration(name={self.name}, init=None)"
 
+class Block:
+    def __init__(self, block_items: List):
+        self.block_items = block_items
+
+    def __iter__(self):
+        return iter(self.block_items)
+
+    def __repr__(self):
+        items_repr = ",\n        ".join(repr(item) for item in self.block_items)
+        return f"Block([\n        {items_repr}\n    ])"
+    
+
+class Parameter():
+    def __init__(self, _type,name:Optional[Identifier]):
+        self._type=_type
+        self.name = name 
+    def __repr__(self):
+        return f'Parameter(type={self._type},name = {self.name})'
+
+class FunctionDeclaration():
+    def __init__(self,_name:Identifier,params:List[Parameter],body=Optional[Block]):    
+        self._name=_name
+        self.params=params
+        self.body=body
+    
+class VariableDeclaration():
+    name:Identifier
+    init:Optional[Exp]
+    
+class FunDecl(Declaration):
+    def __init__(self,name:Identifier,params:List[Parameter],body:Optional[Block]=None):    
+            self.name=name
+            self.params=params
+            self.body=body
+        
+    def __repr__(self):
+        return f'FunDecl(name={self.name},params={self.params},body={self.body})'
+
+
+class VarDecl(Declaration):
+    
+    def __init__(self,name:Identifier,init:Optional[Exp]):
+        self.name=name
+        self.init=init
+        
+    def __repr__(self):
+        return f'VarDecl(name={self.name},init={self.init})'
 
 # --------------------------
 # Statement Classes
@@ -411,7 +472,6 @@ class Conditional(Statement):
         return f"Condition(condition={self.condition},exp2 = {self.exp2}, exp3 = {self.exp3})"
 
 
-
 class Null(Statement):
     """
     Represents a null statement (no operation) in the AST.
@@ -433,7 +493,15 @@ class Null(Statement):
 
 
     
+
     
+class Argument():
+    def __init__(self, name:Exp):
+      
+        self.name = name 
+    def __repr__(self):
+        return f'Argument(name = {self.name})'
+     
 
 # --------------------------
 # Block Item Classes
@@ -506,7 +574,6 @@ class D(BlockItem):
             str: The string representation.
         """
         return f"D(declaration={self.declaration})"
-
 
 class Block:
     def __init__(self, block_items: List):
@@ -645,7 +712,7 @@ class Program:
     Attributes:
         function_definition (Function): The main function definition of the program.
     """
-    def __init__(self, function_definition: Function):
+    def __init__(self, function_definition:List[FunDecl]):
         """
         Initializes a Program instance.
         
@@ -666,6 +733,22 @@ class Program:
         Returns:
             str: The string representation.
         """
-        return f"Program(\n    {self.function_definition}\n)"
+        return f"Program(\n  functions={self.function_definition}\n)"
 
 
+
+class Parameter():
+    def __init__(self, _type,name:Optional[Identifier]=None):
+        self._type=_type
+        self.name = name 
+    def __repr__(self):
+        return f'Parameter(type={self._type},name = {self.name})'
+    
+class Argument():
+    def __init__(self, name:Exp):
+      
+        self.name = name 
+    def __repr__(self):
+        return f'Argument(name = {self.name})'
+     
+    

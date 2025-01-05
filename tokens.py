@@ -35,6 +35,5 @@ patterns = [
      ('for',r'for'),
      ('break',r'break'),
      ('continue',r'continue'),
-     
-     
+     ('comma',r','),
 ]

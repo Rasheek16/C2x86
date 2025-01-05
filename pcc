@@ -25,7 +25,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
             print(f"Error: Input file {input_path} does not exist.", file=sys.stderr)
             sys.exit(1)
 
-        if stage not in ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run', '--help','--validate']:
+        if stage not in ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run', '--help','--validate','-c']:
             print(f"Error: Unknown stage '{stage}'", file=sys.stderr)
             sys.exit(1)
 
@@ -104,8 +104,20 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
             return  # Exit code 0
 
         # 9) Assemble & Link -> produce final executable
+        object_file = input_path.with_suffix('.o') 
+        if stage =='-c':
+            subprocess.run(
+                ['gcc', str(output_s_path), '-c', str(exe_file)],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            print(f"Object file created at {output_s_path}")
+            return 
+            
+            
+    
         exe_file = input_path.with_suffix('')  # Remove extension
-
         # Attempt to link the .s file into an executable
         subprocess.run(
             ['gcc', str(output_s_path), '-o', str(exe_file)],
@@ -117,7 +129,8 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
         # 10) Delete the .s file after successful linking
         if output_s_path.exists():
             output_s_path.unlink()
-
+        if object_file.exists():
+            object_file.unlink()
         # Indicate successful compilation
         print(f"Compilation successful. Executable created at {exe_file}")
         sys.exit(0)
@@ -166,7 +179,7 @@ def main():
     if '--help' in sys.argv or len(sys.argv) < 2:
         usage()
 
-    possible_stages = ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run','--validate']
+    possible_stages = ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run','--validate','-c']
     stage = None
     filenames = []
 
