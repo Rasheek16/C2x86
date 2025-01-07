@@ -7,14 +7,18 @@ from _ast5 import (
     InitDecl, InitExp, Expression, 
     D, S, Statement, Block
 )
-from tacky_emiter import make_temporary, convert_binop, convert_unop
+from tacky_emiter import make_temporary_var, convert_binop, convert_unop
 from typing import List, Dict, Any, Optional
 import copy
+from typechecker import typecheck_program
 
 # -------------------------------------------------------------------------
 # 1) Global Labeling Variables
 # -------------------------------------------------------------------------
 temp_loop_label = 0
+
+
+
 
 def get_label():
     """
@@ -47,7 +51,7 @@ def resolve_declaration(declaration, identifier_map: dict):
             raise ValueError(f"Duplicate variable declaration: '{original_name}'")
 
         # Generate a unique name for the variable
-        unique_name = make_temporary()
+        unique_name = make_temporary_var()
         identifier_map[original_name] = {
             'unique_name': unique_name,
             'from_current_scope': True,
@@ -347,7 +351,7 @@ def resolve_for_init(stmt, identifier_map):
         new_decl = resolve_declaration(stmt.declaration, identifier_map)
         return InitDecl(D(new_decl))
     elif isinstance(stmt, InitExp):
-        resolved_expr = resolve_statement(stmt.exp, identifier_map)
+        resolved_expr = resolve_exp(stmt.exp, identifier_map)
         return InitExp(Expression(resolved_expr))
     elif isinstance(stmt, Null):
         return stmt
@@ -445,7 +449,7 @@ def resolve_param(param: Parameter, identifier_map: dict) -> Parameter:
         raise ValueError(f"Duplicate parameter name: '{original_name}'")
 
     # Generate a unique name for the parameter
-    unique_name = make_temporary()
+    unique_name = make_temporary_var()
     identifier_map[original_name] = {
         'unique_name': unique_name,
         'from_current_scope': True,
@@ -474,5 +478,8 @@ def variable_resolution_pass(program: Program) -> Program:
         resolved_funcs.append(new_func)
 
     new_program = Program(function_definition=resolved_funcs)
-    labeled_program = label_program(new_program)
+    labeled_program = typecheck_program(label_program(new_program))
     return labeled_program
+
+
+    

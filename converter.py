@@ -3,6 +3,10 @@ from assembly_ast import *
 import sys
 from typing import Union, List ,Dict
 
+PARAMETER_REGISTERS = ['DI', 'SI', 'DX', 'CX', 'R8', 'R9']
+
+current_param_offset={}
+
 def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
     """
     Converts a Tacky AST into an AssemblyProgram AST.
@@ -17,18 +21,53 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
     
     if isinstance(tacky_ast, TackyProgram):
         # Recursively convert the function_definition part of the TackyProgram
-        assembly_function = convert_to_assembly_ast(tacky_ast.function_definition)
+        assembly_functions = []
+        for func in tacky_ast.function_definition:
+            # print(func.name)
+            assembly_function = convert_to_assembly_ast(func)
+            assembly_functions.append(assembly_function)
+        
         return AssemblyProgram(
-            function_definition=assembly_function
+            function_definition=assembly_functions
         )
+        # ,current_param_offset
     
     # Handle Function node
     elif isinstance(tacky_ast, TackyFunction):
-        instructions = []
+        params = []
+        instructions=[]
+        stack_offset=0
+        # func_stack_offset
+        body=[]
         # Iterate over each instruction in the TackyFunction
         # print(instructions)
-        for instr in tacky_ast.body[0]:
             # Convert each instruction and collect them
+        num_params = len(tacky_ast.params)  # Assuming 'parameters' is a list of function parameters
+        for i, param in enumerate(tacky_ast.params):
+            
+            # global func_stack_offset
+            if i < len(PARAMETER_REGISTERS): 
+                src_reg = PARAMETER_REGISTERS[i]
+                params.append(
+                    Mov(src=Reg(src_reg), dest=Pseudo(param))
+                )
+                # func_stack_offset=
+                stack_offset=8
+            else:
+                # Parameters passed on the stack
+                stack_offset =( 16 + (8 * (i - len(PARAMETER_REGISTERS))) ) # 16(%rbp) is the first stack parameter
+                params.append(
+                    Mov(
+                        src=Stack(stack_offset),
+                        dest=Pseudo(param)
+                    )
+                )
+        
+        func_stack_offset = stack_offset
+        # current_param_offset[tacky_ast.name]=-func_stack_offset
+        # print(params)
+        instructions.extend(params)
+        for instr in tacky_ast.body:
             converted_instrs = convert_to_assembly_ast(instr)
             if isinstance(converted_instrs, list):
                 # If conversion returns a list of instructions, extend the list
@@ -37,11 +76,57 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
                 # Otherwise, append the single instruction
                 instructions.append(converted_instrs)
         # Create an AssemblyFunction with the converted instructions
+        
         return AssemblyFunction(
-            name=tacky_ast.name.name,  # Assuming tacky_ast.name is an Identifier
+            name=tacky_ast.name,  # Assuming tacky_ast.name is an Identifier
             instructions=instructions
         )
     
+    elif isinstance(tacky_ast,TackyFunCall):
+        instructions=[]
+        arg_regsiters = ['DI','SI','DX','CX','R8','R9']
+        register_args = tacky_ast.args[:6]
+        stack_args=tacky_ast.args[6:]
+        # print('registerargs ',register_args)
+        # print('stackargs',stack_args)
+        # total_pushed_bytes = 8 * len(stack_args)
+        # stack_padding = 0
+        # if (total_pushed_bytes % 16) != 0:
+        #     stack_padding = 8
+        #     instructions.append(AllocateStack(stack_padding))
+        # print(len(stack_args))
+        stack_padding = 8 if len(stack_args) % 2 == 1 else 0
+        # print('Stack padding',stack_padding)
+        if stack_padding != 0:
+            # print('Adding stack allocation')
+            instructions.append(AllocateStack(stack_padding))
+
+            
+        reg_index=0
+        for tacky_arg in register_args:
+            r= arg_regsiters[reg_index]
+            assembly_arg = convert_to_assembly_ast(tacky_arg)
+            instructions.append(Mov(assembly_arg,Reg(r)))
+            reg_index +=1
+            
+        for tacky_arg in stack_args[::-1]:
+            assembly_arg=convert_to_assembly_ast(tacky_arg)
+            if isinstance(assembly_arg,Reg) or isinstance(assembly_arg,Imm):
+                instructions.append(Push(assembly_arg))
+            else:
+                instructions.append(Mov(assembly_arg,Reg(Registers.AX)))
+                instructions.append(Push(Reg(Registers.AX)))
+                
+        instructions.append(Call(indentifier=tacky_ast.fun_name))
+        
+        bytes_to_remove = 8 * len(stack_args)+ stack_padding
+        if bytes_to_remove !=0:
+            print('Bytes to remove',bytes_to_remove)
+            instructions.append(DeallocateStack(value=bytes_to_remove))
+            
+        assembly_dst = convert_to_assembly_ast(tacky_ast.dst)
+        instructions.append(Mov(Reg(Registers.AX),assembly_dst))
+        return instructions
     # Handle Return instruction
     elif isinstance(tacky_ast, TackyReturn):
         # print(tacky_ast.val)
@@ -171,6 +256,7 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
     
         # Handle unsupported binary operators by raising an error
         elif tacky_ast.operator in (TackyBinaryOperator.GREATER_OR_EQUAL,TackyBinaryOperator.LESS_OR_EQUAL,TackyBinaryOperator.LESS_THAN,TackyBinaryOperator.NOT_EQUAL,TackyBinaryOperator.EQUAL,TackyBinaryOperator.OR,TackyBinaryOperator.AND):
+            print(tacky_ast)
             return [Cmp(operand1=convert_to_assembly_ast(tacky_ast.src2),operand2=convert_to_assembly_ast(tacky_ast.src1)),
                     Mov(src=Imm(0),dest=convert_to_assembly_ast(tacky_ast.dst)),
                     SetCC(Cond_code=convert_operator(tacky_ast.operator),operand=convert_to_assembly_ast(tacky_ast.dst))
@@ -217,6 +303,7 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
             Mov(src=convert_to_assembly_ast(tacky_ast.src),dest=convert_to_assembly_ast(tacky_ast.dst))
         ]
     elif isinstance(tacky_ast,TackyLabel):
+        # print(tacky_ast.identifer)
         return [
             Label(indentifier=convert_to_assembly_ast(tacky_ast.identifer))
         ]

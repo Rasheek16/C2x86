@@ -18,7 +18,7 @@
 #
 # ---------------------------------------------------------------------------
 from enum import Enum
-
+from typing import List
 
 
 # ------------------
@@ -75,7 +75,7 @@ class Reg(Operand):
     """
     def __init__(self, value):
         # We check against the valid enumerations in 'Registers'
-        if value not in (Registers.AX, Registers.R10,Registers.DX,Registers.R11):
+        if value not in (Registers.AX, Registers.R10,Registers.DX,Registers.R11,Registers.R8,Registers.R9,Registers.CX,Registers.DI,Registers.SI):
             raise TypeError(f"Invalid register value: {value}")
         self.value = value
 
@@ -247,7 +247,7 @@ class Label(Instruction):
     def __repr__(self):
         return f'Label(Indentifier={self.identifier})'
     
-class AllocateStack():
+class AllocateStack(Instruction):
     """
     Allocates stack space for 'value' units.
     (Grammar: AllocateStack(int))
@@ -257,7 +257,31 @@ class AllocateStack():
     
     def __repr__(self):
         return f"AllocateStack(value={self.value})"
+
+class DeallocateStack(Instruction):
+    """
+    Allocates stack space for 'value' units.
+    (Grammar: AllocateStack(int))
+    """
+    def __init__(self, value):
+        self.value = value 
     
+    def __repr__(self):
+        return f"DeallocateStack(value={self.value})"
+
+class Push(Instruction):
+    def __init__(self,operand:Operand):
+        self.operand= operand
+    def __repr__(self):
+        return f'Push(operand={self.operand})'
+
+
+class Call(Instruction):
+    def __init__(self,indentifier):
+        self.identifier= indentifier
+    def __repr__(self):
+        return f'Call(Indentifier={self.identifier})'
+
 
 # ------------------
 # Operator Constants
@@ -319,7 +343,12 @@ class Registers:
     """
 
     AX = "AX"   # Accumulator Register: commonly used for arithmetic operations
+    CX='CX'
     DX = "DX"   # Data Register: often used for I/O operations and extended precision
+    DI='DI'     
+    SI='SI'
+    R8='R8'
+    R9='R9'
     R10 = "R10" # General-Purpose Register: available for various operations
     R11 = "R11" # General-Purpose Register: available for various operations
 
@@ -352,8 +381,10 @@ class AssemblyFunction:
     def __repr__(self):
         return (
             "AssemblyFunction("
-            f"name={repr(self.name)}, "
-            f"instructions={repr(self.instructions)}"
+            f"name={repr(self.name)},"
+            f"instructions=[\n        " + 
+            ",\n        ".join(repr(instr) for instr in self.instructions) +
+            "\n    ]\n"
             ")"
         )
 
@@ -363,7 +394,7 @@ class AssemblyProgram:
     A top-level assembly program, typically containing a single assembly function.
     (Grammar: program = Program(function_definition))
     """
-    def __init__(self, function_definition):
+    def __init__(self, function_definition:List[AssemblyFunction]):
         self.function_definition = function_definition
 
     def __repr__(self):

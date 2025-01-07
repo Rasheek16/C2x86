@@ -659,7 +659,7 @@ class For(Statement):
         self.label = label 
 
     def __repr__(self):
-        return f'\nFor(init={self.init},condition={self.condition},body={self.body},identifier={self.label}\n)'
+        return f'\nFor(init={self.init},condition={self.condition},body={self.body},identifier={self.label}.post={self.post}\n)'
 
 
 
@@ -751,4 +751,23 @@ class Argument():
     def __repr__(self):
         return f'Argument(name = {self.name})'
      
+    
+    
+class Int():
+    
+    def __init__(self, *args, **kwargs):
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+        pass
+    
+    def __repr__(self):
+        return f'Int()'
+
+
+class FunType():
+    
+    def __init__(self, param_count:int):
+        self.param_count = param_count
+        
+    def __repr__(self):
+        return f'FunType(param_count={self.param_count})'
     

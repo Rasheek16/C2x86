@@ -136,7 +136,7 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
             next_token=tokens[0]
             if isIdentifier(next_token) and not isKeyword(next_token):
                 token,tokens =take_token(tokens)
-                list_params.append(Parameter(int,Identifier(next_token)))
+                list_params.append(Parameter('int',Identifier(next_token)))
                 if tokens[0] == ")":
                     return list_params,tokens
                 else: 
@@ -190,7 +190,6 @@ def parse_func_decl(tokens,func_name:Identifier)->Tuple[FunDecl,str]:
         return exp1
     elif next_token=='{':
         list_block_items,tokens=parse_block(tokens)
-        
         # func=FunctionDeclaration(name=func_name,init=exp,body=list_block_items)
         return FunDecl(name=func_name,params=exp,body=Block(list_block_items)),tokens
  except Exception as e:
@@ -219,7 +218,6 @@ def parse_function_definition(tokens: List[str]) -> List[FunctionDeclaration]:
             # print(tokens)
             function,tokens = parse_func_declaration(tokens)
             function_body.append(function)
-        # function_body.append(S(Return(Constant(0))))
         # Return the Function AST node
         return function_body
     except Exception as e:
@@ -244,6 +242,8 @@ def parse_block(tokens)->Tuple[List[BlockItem],str]:
         # print('func',function_body)
         
     expect("}", tokens)
+    # print(function_body)
+    
     # print(function_body)
     return function_body,tokens
     
@@ -469,7 +469,7 @@ def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
             raise SyntaxError('Function not permitted in loop headers')
         # Parse expression (e.g., i = 0)
         exp, tokens = parse_exp(tokens)
-        init_exp = InitExp(Expression(exp))
+        init_exp = InitExp(exp)
         return init_exp, tokens
     
     else:

@@ -12,15 +12,15 @@ class CodeEmitter:
         self.output.append(line)
 
     def emit_program(self, program):
-        print(program)
+        # print(program)
         """Emit the program."""
         if not isinstance(program, AssemblyProgram):
             raise ValueError("The input program is not an instance of Program.")
-        
-        if isinstance(program.function_definition, AssemblyFunction):
-            self.emit_function(program.function_definition)
-        else:
-            raise ValueError(f"function_definition is not a valid FunctionAst: {type(program.function_definition)}")
+        for func in program.function_definition:
+            if isinstance(func, AssemblyFunction):
+                self.emit_function(func)
+            else:
+                raise ValueError(f"function_definition is not a valid FunctionAst: {type(program.function_definition)}")
         
         if self.platform == "linux":
             self.emit_line(".section .note.GNU-stack,\"\",@progbits")
@@ -76,21 +76,28 @@ class CodeEmitter:
         
         elif isinstance(instruction,JmpCC):
             label = convertOperandToAssembly(instruction.identifier)
-            self.emit_line(f'   j{instruction.cond_code}    .L{label}')
+            code =convert_code_to_assembly(instruction.cond_code)
+            self.emit_line(f'   j{code}    .L{label}')
         elif isinstance(instruction,SetCC):
-            
+            code =convert_code_to_assembly(instruction.cond_code)
             label = convertOperandToAssemblySETCC(instruction.operand)
+            # print('label',label)
             # print(label)
-            self.emit_line(f'   set{instruction.cond_code}    {label}')
+            self.emit_line(f'   set{code}    {label}')
         
         elif isinstance(instruction,Label):
             label = convertOperandToAssembly(instruction.identifier)
             self.emit_line(f'.L{label}:')
-        
-        
-
+        elif isinstance(instruction,DeallocateStack) :
+            self.emit_line(f'   addq    ${instruction.value}, %rsp')
+        elif isinstance(instruction,Push):
+            operand= Convert8BYTEoperand(instruction.operand)
+            self.emit_line(f'   pushq {operand}')
+        elif isinstance(instruction,Call):
+            self.emit_line(f'   call {instruction.identifier}@PLT')
+         
         elif isinstance(instruction, Idiv):
-            print(instruction)
+            # print(instruction)
             op = convertOperandToAssembly(instruction.operand)
             # self.emit_line(f'   movl {op}, %eax')  # Move operand to %eax
             # self.emit_line('   cdq')  # Sign-extend into %edx:%eax
@@ -100,6 +107,7 @@ class CodeEmitter:
             self.emit_line('   cdq')  # Sign-extend into %edx:%eax
            
         elif isinstance(instruction, AllocateStack):
+            # print()
             self.emit_line(f'   subq    ${instruction.value}, %rsp')  # Allocate stack space
         
         else:
@@ -125,20 +133,28 @@ def convertOperatorToAssembly(operator: str) -> str:
         raise ValueError(f'Invalid operator: {operator}')
 
 def convertOperandToAssembly(operand: Operand) -> str:
+    # DEFAULT 4 BYTE 
     # print(operand)
     if isinstance(operand,str):
         return operand
     elif isinstance(operand, Reg):
         # Map to 32-bit registers based on the register type
         operand = operand.value
-        print(operand)
+        # print(operand)
         if operand == Registers.AX:
             return '%eax'
-            
-
         elif operand == Registers.DX:
             return '%edx'
-            
+        elif operand == Registers.CX:
+            return '%ecx'
+        elif operand == Registers.DI:
+            return '%edi'
+        elif operand == Registers.SI:
+            return '%esi'
+        elif operand == Registers.R8:
+            return '%r8d'
+        elif operand == Registers.R9:
+            return '%r9d'
         elif operand == Registers.R10:
             return '%r10d'
             
@@ -146,10 +162,10 @@ def convertOperandToAssembly(operand: Operand) -> str:
             return '%r11d'
             
         else:
-            raise ValueError(f"Unsupported register: {operand.reg}")
+            raise ValueError(f"Unsupported register : {operand}")
     elif isinstance(operand, Stack):
         # Stack operands with 4-byte alignment
-        print(operand.value)
+        # print(operand.value)
         return f"{operand.value}(%rbp)"
     elif isinstance(operand, Imm):
         # Immediate values
@@ -158,14 +174,23 @@ def convertOperandToAssembly(operand: Operand) -> str:
         raise ValueError(f"Invalid operand type: {type(operand).__name__}")
     
 def convertOperandToAssemblySETCC(operand: Operand) -> str:
-    print(operand.value)
+    # print(operand.value)
     if isinstance(operand, Reg):
         operand = operand.value
         if operand == Registers.AX:
             return '%al'
         elif operand == Registers.DX:
             return '%dl'
-            
+        elif operand == Registers.CX:
+            return '%cl'
+        elif operand == Registers.DI:
+            return '%dil'
+        elif operand == Registers.SI:
+            return '%sil'
+        elif operand == Registers.R8:
+            return '%r8b'
+        elif operand == Registers.R9:
+            return '%r9b'
         elif operand == Registers.R10:
             return '%r10b'
             
@@ -184,5 +209,33 @@ def convertOperandToAssemblySETCC(operand: Operand) -> str:
         raise ValueError(f"Invalid operand type: {type(operand).__name__}")
 
     
+    
+def Convert8BYTEoperand(operand) -> str:
+    # print(operand.value)
+    if isinstance(operand, Reg):
+        operand = operand.value
+        if operand == Registers.AX:
+            return '%rax'
+        elif operand == Registers.DX:
+            return '%rdx'
+        elif operand == Registers.CX:
+            return '%rcx'
+        elif operand == Registers.DI:
+            return '%rdi'
+        elif operand == Registers.SI:
+            return '%rsi'
+        elif operand == Registers.R8:
+            return '%r8'
+        elif operand == Registers.R9:
+            return '%r9'
+        elif operand == Registers.R10:
+            return '%r10'
+            
+        elif operand == Registers.R11:
+            return '%r11'
+        else:
+            raise ValueError(f"Unsupported register: {operand}")
+    else:
+        return f'${operand.value}'
 def convert_code_to_assembly(code:str):
     return code.lower()

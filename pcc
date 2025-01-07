@@ -70,7 +70,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
 
         # 5) Convert To Assembly Ast
         a_ast =convert_to_assembly_ast(tacky_ir) 
-        
+        # print(current_param_offset)
         # 6) Replace Pseudoregisters
         # This pass replaces all Pseudo operands with Stack operands and returns stack allocation
         [a_ast,stack_allocation] = replace_pseudoregisters(a_ast)
@@ -104,15 +104,16 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
             return  # Exit code 0
 
         # 9) Assemble & Link -> produce final executable
-        object_file = input_path.with_suffix('.o') 
+        object_file = output_s_path.with_suffix('.o') 
+        # print(object_file)
+        subprocess.run(
+            ['gcc','-c' ,str(output_s_path), '-o', str(object_file)],
+            check=True,
+            capture_output=True,
+            text=True
+        )
         if stage =='-c':
-            subprocess.run(
-                ['gcc', str(output_s_path), '-c', str(exe_file)],
-                check=True,
-                capture_output=True,
-                text=True
-            )
-            print(f"Object file created at {output_s_path}")
+            print(f"Object file created at {object_file}")
             return 
             
             
@@ -120,19 +121,25 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
         exe_file = input_path.with_suffix('')  # Remove extension
         # Attempt to link the .s file into an executable
         subprocess.run(
-            ['gcc', str(output_s_path), '-o', str(exe_file)],
+            ['gcc',str(object_file), '-o', str(exe_file)],
             check=True,
             capture_output=True,
             text=True
         )
-
+        print(f"Compilation successful. Executable created at {exe_file}")
         # 10) Delete the .s file after successful linking
         if output_s_path.exists():
             output_s_path.unlink()
         if object_file.exists():
             object_file.unlink()
+            
+        print('File output:')
+        subprocess.run(
+            f'{Path(exe_file)}',
+    
+        )
+        print('\n')
         # Indicate successful compilation
-        print(f"Compilation successful. Executable created at {exe_file}")
         sys.exit(0)
 
     except subprocess.CalledProcessError as e:

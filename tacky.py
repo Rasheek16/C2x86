@@ -21,19 +21,38 @@
 #                 | Divide 
 #                 | Remainder
 # ------------------------------------------------------------------
+from typing import List
 
-class TackyProgram:
+class TackyIdentifier:
     """
-    program = Program(function_definition)
+    Represents an identifier, such as function names or variable names.
+    
+    Attributes:
+        name (str): The name of the identifier.
     """
-    def __init__(self, function_definition):
-        self.function_definition = function_definition
+    def __init__(self, name: str):
+        """
+        Initializes an Identifier instance.
+        
+        Args:
+            name (str): The name of the identifier.
+        """
+        self.name = name
 
-    def __repr__(self):
-        return f"TackyProgram(\n  {repr(self.function_definition)}\n)"
+    def __repr__(self) :
+        """
+        Returns a string representation of the Identifier.
+        
+        Returns:
+            str: The string representation.
+        """
+        return f"Identifier(name={self.name})"
 
-
-
+class TackyInstruction:
+    """
+    Base class for instructions in the function body.
+    """
+    pass
 class TackyFunction:
     """
     function_definition = Function(identifier, [instructions...])
@@ -42,19 +61,33 @@ class TackyFunction:
     - name: an identifier
     - body: a list of instructions (one or more).
     """
-    def __init__(self, name, body:list):
-        self.name = name          # An identifier (string or Var)
-        self.body = [body]        # A list of instructions: Return(...) or Unary(...)
+    def __init__(self, identifier,params:List[TackyIdentifier], body:List[TackyInstruction]):
+        self.name = identifier  
+        self.params=params # An identifier (string or Var)
+        self.body = body        # A list of instructions: Return(...) or Unary(...)
     
     def __repr__(self):
         return (
             "TackyFunction(\n"
-            f"    name={repr(self.name)},\n"
+            f"    identifier={repr(self.name)},\n"
+            f'    params={repr(self.params)}\n'
             f"    body=[\n        " + 
             ",\n        ".join(repr(instr) for instr in self.body) +
             "\n    ]\n"
             ")"
         )
+
+class TackyProgram:
+    """
+    program = Program(function_definition)
+    """
+    def __init__(self, function_definition:List[TackyFunction]):
+        self.function_definition = function_definition
+
+    def __repr__(self):
+        return f"TackyProgram(\n  {repr(self.function_definition)}\n)"
+
+
 
 
 
@@ -62,11 +95,6 @@ class TackyFunction:
 # Instructions
 # ------------------
 
-class TackyInstruction:
-    """
-    Base class for instructions in the function body.
-    """
-    pass
 
 
 class TackyReturn(TackyInstruction):
@@ -168,6 +196,8 @@ class TackyLabel(TackyInstruction):
     def __repr__(self):
         return f"TackyLabel(identifier={self.identifer})"
 
+
+
 # ------------------
 # Val = Constant(int) | Var(identifier)
 # ------------------
@@ -177,6 +207,21 @@ class TackyVal:
     Base class for values.
     """
     pass
+
+
+
+
+class TackyFunCall(TackyInstruction):
+    def __init__(self,fun_name:TackyIdentifier,args :List[TackyVal],dst:TackyVal):
+        self.fun_name= fun_name
+        self.args=args
+        self.dst=dst 
+    
+    def __repr__(self):
+        return f'TackyFunCall(fun_name={self.fun_name},args:{self.args},dst={self.dst})'
+
+   
+    
 
 
 class TackyConstant(TackyVal):
