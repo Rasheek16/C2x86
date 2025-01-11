@@ -58,261 +58,275 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
         new_instructions: List[Instruction] = []
         i=0
         # Iterate over each instruction in the function's instruction list
-        for instr in assembly_function.instructions:
-            # Handle 'Mov' instructions which move data between operands
-            if isinstance(instr, Mov):
-                # print('in mov',instr)
-                
-                # print(instr.dest, instr.src)
-                # Check if both src and dest are Stack operands
-                if isinstance(instr.src, Stack) and isinstance(instr.dest, Stack):
-                    """
-                    Invalid Mov Instruction:
-                        Both source and destination are Stack operands, which is not allowed in assembly.
-                        You cannot move data directly from one memory location to another without using a register.
-                    
-                    Fix:
-                        Introduce a temporary register (R10) to hold the data during the move.
-                        Steps:
-                            a. Move the data from src Stack to R10.
-                            b. Move the data from R10 to dest Stack.
-                    """
-                    # Create a Mov from src Stack to R10 register
-                    mov_to_reg = Mov(src=instr.src, dest=Reg(Registers.R10))
-                    # Create a Mov from R10 register to dest Stack
-                    mov_to_dest = Mov(src=Reg(Registers.R10), dest=instr.dest)
-                    
-                    # Append the two new Mov instructions to the new_instructions list
-                    new_instructions.extend([mov_to_reg, mov_to_dest])
-                    
-                    # Debug Statement: Confirm rewriting of invalid Mov instruction
-                    # logger.debug(f"Rewrote invalid Mov from {instr.src} to {instr.dest} using {Registers.R10}.")
-                else:
-                    """
-                    Valid Mov Instruction:
-                        At least one of src or dest is not a Stack operand.
-                        No replacement needed; keep the instruction as-is.
-                    """
-                    new_instructions.append(instr)
+        if isinstance(assembly_function,AssemblyStaticVariable):
+            # print(assembly_function)
             
-            # Handle 'Idiv' instructions which perform integer division
-            elif isinstance(instr, Idiv):
-                # print('in  idviv',instr)
-                
-                # Check if the operand is a constant (immediate value) or a Stack operand
-                
-                if isinstance(instr.operand, Imm) :
-                    """
-                    Fixing Up 'idiv' with Constant Operands:
-                        The 'idiv' instruction cannot directly operate on immediate (constant) values.
-                        Therefore, we need to move the constant into a temporary register before performing the division.
-                    
-                    Transformation:
-                        Original: idivl $3
-                        Rewritten:
-                            movl $3, %r10d
-                            idivl %r10d
-                    """
-                    # Create a Mov from the constant operand to R10 register
-                    mov_to_reg = Mov(src=instr.operand, dest=Reg(Registers.R10))
-                    # Create a new Idiv instruction using R10 register as the operand
-                    idiv_op = Idiv(operand=Reg(Registers.R10))
-                    
-                    # Append the transformed instructions to the new_instructions list
-                    new_instructions.extend([mov_to_reg, idiv_op])
-                 
-                
-                else:
-                    """
-                    Idiv Instruction without Stack or Constant Operand:
-                        Operand is already a register or another supported type.
-                        No replacement needed; keep the instruction as-is.
-                    """
-                    new_instructions.append(instr)
-            
-            # Handle 'Binary' instructions which perform add, subtract, and multiply operations
-            elif isinstance(instr, Binary):
-                # print('in bin',instr)
-                
-                # Handle 'Add' and 'Subtract' instructions
-                if instr.operator in (BinaryOperator.ADD, BinaryOperator.SUBTRACT):
-                    # print('in add',instr)
-                    
-                    # Check if src1 (destination) is a Stack operand
-                    # print(instr)
-                    if isinstance(instr.src1, Stack)  and isinstance(instr.src2,Stack):
-                    
-                        """
-                        Fixing Up 'add' and 'sub' Instructions with Stack Destination:
-                            The 'add' and 'sub' instructions cannot have a memory address as both source and destination.
-                            Therefore, if src1 is a Stack operand, we perform the operation in two steps using a temporary register (R10).
-                        
-                        Transformation:
-                            Original: addl -4(%rbp), -8(%rbp)
-                            Rewritten:
-                                movl -4(%rbp), %r10d
-                                addl %r10d, -8(%rbp)
-                        """
-                        # Create a Mov from src1 Stack operand to R10 register
-                        mov_to_reg = Mov(src=instr.src1, dest=Reg(Registers.R10))
-                        # Create a new Binary operation using R10 as the source and src2 as the original source2
-                        binary_op = Binary(
-                            operator=instr.operator,
-                            src1=Reg(Registers.R10),
-                            src2=instr.src2,
-                        )
-                        # print(mov_to_reg,binary_op)
-                    
-                        # Append the transformed instructions to the new_instructions list
-                        new_instructions.extend([mov_to_reg, binary_op])
-                        
-                        # Debug Statement: Confirm rewriting of add/sub instruction
-                        # logger.debug(f"Rewrote {instr.operator} from {instr.src2} to {instr.src1} using {Registers.R10}.")
-                    else:
-                        """
-                        Valid Add/Sub Instruction:
-                            Destination (src1) is not a Stack operand.
-                            No replacement needed; keep the instruction as-is.
-                        """
-                        new_instructions.append(instr)
-                
-                # Handle 'Multiply' instructions
-                elif instr.operator == BinaryOperator.MULTIPLY:
-
-                    
-                    # Check if src1 (destination) is a Stack operand
-                    # Create a Mov from src1 Stack operand to R11 register
-                        mov_to_reg = Mov(src=instr.src2, dest=Reg(Registers.R11))
-                        # Create a new Binary operation (imul) using R11 as the source
-                        imul_op = Binary(
-                            operator=instr.operator,
-                            src1=instr.src1,
-                            src2=Reg(Registers.R11)
-                        )
-                        # Create a Mov from R11 register back to src1 Stack operand
-                        mov_back = Mov(src=Reg(Registers.R11), dest=instr.src2)
-                        
-                        # Append the transformed instructions to the new_instructions list
-                        new_instructions.extend([mov_to_reg, imul_op, mov_back])
-         
-            
-            # Handle 'Unary' instructions which perform operations on a single operand
-            elif isinstance(instr, Unary):
-                # Check if the operand is a Stack operand
-                if isinstance(instr.operand, Stack):
-                    """
-                    Fixing Up 'Unary' Instructions with Stack Operand:
-                        The 'Unary' instruction operates on a memory location, which is not allowed in some assembly syntaxes.
-                        Therefore, we need to move the operand from the Stack to a temporary register, perform the Unary operation,
-                        and then move the result back to the Stack location.
-                    
-                    Transformation:
-                        Original: notl -4(%rbp)
-                        Rewritten:
-                            movl -4(%rbp), %r10d
-                            notl %r10d
-                            movl %r10d, -4(%rbp)
-                    """
-                    # Create a Mov from the Stack operand to R10 register
-                    mov_to_reg = Mov(src=instr.operand, dest=Reg(Registers.R10))
-                    # Create a new Unary operation using R10 as the operand
-                    unary_op = Unary(
-                        operator=instr.operator,
-                        operand=Reg(Registers.R10)
-                    )
-                    # Create a Mov from R10 register back to the Stack operand
-                    mov_back = Mov(src=Reg(Registers.R10), dest=instr.operand)
-                    
-                    # Append the transformed instructions to the new_instructions list
-                    new_instructions.extend([mov_to_reg, unary_op, mov_back])
-                    
-                    # Debug Statement: Confirm rewriting of Unary instruction
-                    # logger.debug(f"Rewrote {instr.operator} on {instr.operand} using {Registers.R10}.")
-                else:
-                    """
-                    Valid Unary Instruction:
-                        Operand is not a Stack operand.
-                        No replacement needed; keep the instruction as-is.
-                    """
-                    new_instructions.append(instr)
-            
-            # Handle 'AllocateStack' instructions if necessary
-            elif isinstance(instr, AllocateStack):
-                """
-                AllocateStack Instruction:
-                    Typically used to reserve space on the stack for local variables or temporaries.
-                    Since AllocateStack does not contain operands, no replacement is needed.
-                """
-                new_instructions.append(instr)
-                
-            elif isinstance(instr, Cmp):
-                """
-                AllocateStack Instruction:
-                    Typically used to reserve space on the stack for local variables or temporaries.
-                    Since AllocateStack does not contain operands, no replacement is needed.
-                """
-                if isinstance(instr.operand1,Stack) and isinstance(instr.operand2,Stack):
-                    mov = Mov(
-                        src=instr.operand1, dest=Reg(Registers.R10),
-                    )
-                    compl = Cmp(operand1=Reg(Registers.R10),operand2=instr.operand2)
-                    if not isinstance(compl.operand2,Stack):
-                        mov2 = Mov(
-                        src=instr.operand2, dest=Reg(Registers.R11),
-                    )
-                        compl2 = Cmp(operand1=instr.operand1,operand2=Reg(Registers.R11))
-                    
-                        new_instructions.extend([mov,mov2,compl2])
-            
-                    else:
-                            new_instructions.extend([mov,compl])
-                elif not isinstance(instr.operand2,Stack):
-                    
-                        movl = Mov(
-                            src=instr.operand2, dest=Reg(Registers.R11),
-                        )
-            
-                        compl = Cmp(operand1=instr.operand1,operand2=Reg(Registers.R11))
-                    
-                        new_instructions.extend([movl,compl])
-                    
-                    
-                else:
-                    new_instructions.append(instr)
-            
-            # Handle 'Ret' (return) instructions which typically do not contain operands
-            elif isinstance(instr, Ret):
-                """
-                Ret Instruction:
-                    Represents the return operation from a function.
-                    As it does not contain operands, no replacement is needed.
-                """
-                
-                new_instructions.append(instr)
-            
-            # Handle 'Cdq' (Convert Quadword to Doubleword) instructions
-            elif isinstance(instr, (Cdq,JmpCC,Jmp,Label,SetCC,Call,Push,DeallocateStack)):
-                """
-                Cdq Instruction:
-                    Sign-extends the AX register into the DX:AX register pair.
-                    Typically used before division operations.
-                    No operand replacement needed as it operates on fixed registers.
-                """
-                new_instructions.append(instr)
-            
-            # Handle any unsupported instruction types
-            else:
-                """
-                Unsupported Instruction Type:
-                    If the instruction type is not recognized or handled above, log an error and exit.
-                    This ensures that all instruction types are accounted for and handled appropriately.
-                """
-                logger.error(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_function.name}'.")
-                sys.exit(1)
-        # print(new_instructions)
-        # Update the function's instruction list with the new instructions
-        assembly_function.instructions = new_instructions
+            new_instructions=fix_instr(assembly_function.init,new_instructions,assembly_function)
+            # print(assembly_function.init)
+            assembly_function.init=new_instructions[0]
+        elif isinstance(assembly_function,AssemblyFunction):
+            for instr in assembly_function.instructions:
+                # print(instr)
+                # Handle 'Mov' instructions which move data between operands
+                new_instructions=fix_instr(instr,new_instructions,assembly_function)
+                # print(new_instructions)
+            assembly_function.instructions = new_instructions
+        else:
+            print('Invalid func in ',assembly_function)
     
         # Debug Statement: Confirm completion of instruction fixes
         # logger.debug(f"Completed fixing instructions for function '{assembly_function.name}'.")
         
+
+
+def fix_instr(instr,new_instructions,assembly_function):
+    if isinstance(instr, Mov):
+            # print('in mov',instr)
+        # print(instr)
+        # print(instr.dest, instr.src)
+        # Check if both src and dest are Stack operands
+        if isinstance(instr.src, (Stack,Data)) and isinstance(instr.dest, (Stack,Data)):
+            """
+            Invalid Mov Instruction:
+                Both source and destination are Stack operands, which is not allowed in assembly.
+                You cannot move data directly from one memory location to another without using a register.
+            
+            Fix:
+                Introduce a temporary register (R10) to hold the data during the move.
+                Steps:
+                    a. Move the data from src Stack to R10.
+                    b. Move the data from R10 to dest Stack.
+            """
+            # Create a Mov from src Stack to R10 register
+            mov_to_reg = Mov(src=instr.src, dest=Reg(Registers.R10))
+            # Create a Mov from R10 register to dest Stack
+            mov_to_dest = Mov(src=Reg(Registers.R10), dest=instr.dest)
+            
+            # Append the two new Mov instructions to the new_instructions list
+            new_instructions.extend([mov_to_reg, mov_to_dest])
+            
+            # Debug Statement: Confirm rewriting of invalid Mov instruction
+            # logger.debug(f"Rewrote invalid Mov from {instr.src} to {instr.dest} using {Registers.R10}.")
+        else:
+            """
+            Valid Mov Instruction:
+                At least one of src or dest is not a Stack operand.
+                No replacement needed; keep the instruction as-is.
+            """
+            new_instructions.append(instr)
+    
+    # Handle 'Idiv' instructions which perform integer division
+    elif isinstance(instr, Idiv):
+        # print('in  idviv',instr)
+        
+        # Check if the operand is a constant (immediate value) or a Stack operand
+        
+        if isinstance(instr.operand, Imm) :
+            """
+            Fixing Up 'idiv' with Constant Operands:
+                The 'idiv' instruction cannot directly operate on immediate (constant) values.
+                Therefore, we need to move the constant into a temporary register before performing the division.
+            
+            Transformation:
+                Original: idivl $3
+                Rewritten:
+                    movl $3, %r10d
+                    idivl %r10d
+            """
+            # Create a Mov from the constant operand to R10 register
+            mov_to_reg = Mov(src=instr.operand, dest=Reg(Registers.R10))
+            # Create a new Idiv instruction using R10 register as the operand
+            idiv_op = Idiv(operand=Reg(Registers.R10))
+            
+            # Append the transformed instructions to the new_instructions list
+            new_instructions.extend([mov_to_reg, idiv_op])
+            
+        
+        else:
+            """
+            Idiv Instruction without Stack or Constant Operand:
+                Operand is already a register or another supported type.
+                No replacement needed; keep the instruction as-is.
+            """
+            new_instructions.append(instr)
+    
+    # Handle 'Binary' instructions which perform add, subtract, and multiply operations
+    elif isinstance(instr, Binary):
+        # print('in bin',instr)
+        
+        # Handle 'Add' and 'Subtract' instructions
+        if instr.operator in (BinaryOperator.ADD, BinaryOperator.SUBTRACT):
+            # print('in add',instr)
+            
+            # Check if src1 (destination) is a Stack operand
+            # print(instr)
+            if isinstance(instr.src1, (Stack,Data))  and isinstance(instr.src2,(Stack,Data)):
+            
+                """
+                Fixing Up 'add' and 'sub' Instructions with Stack Destination:
+                    The 'add' and 'sub' instructions cannot have a memory address as both source and destination.
+                    Therefore, if src1 is a Stack operand, we perform the operation in two steps using a temporary register (R10).
+                
+                Transformation:
+                    Original: addl -4(%rbp), -8(%rbp)
+                    Rewritten:
+                        movl -4(%rbp), %r10d
+                        addl %r10d, -8(%rbp)
+                """
+                # Create a Mov from src1 Stack operand to R10 register
+                mov_to_reg = Mov(src=instr.src1, dest=Reg(Registers.R10))
+                # Create a new Binary operation using R10 as the source and src2 as the original source2
+                binary_op = Binary(
+                    operator=instr.operator,
+                    src1=Reg(Registers.R10),
+                    src2=instr.src2,
+                )
+                # print(mov_to_reg,binary_op)
+            
+                # Append the transformed instructions to the new_instructions list
+                new_instructions.extend([mov_to_reg, binary_op])
+                
+                # Debug Statement: Confirm rewriting of add/sub instruction
+                # logger.debug(f"Rewrote {instr.operator} from {instr.src2} to {instr.src1} using {Registers.R10}.")
+            else:
+                """
+                Valid Add/Sub Instruction:
+                    Destination (src1) is not a Stack operand.
+                    No replacement needed; keep the instruction as-is.
+                """
+                new_instructions.append(instr)
+        
+        # Handle 'Multiply' instructions
+        elif instr.operator == BinaryOperator.MULTIPLY:
+
+            
+            # Check if src1 (destination) is a Stack operand
+            # Create a Mov from src1 Stack operand to R11 register
+                mov_to_reg = Mov(src=instr.src2, dest=Reg(Registers.R11))
+                # Create a new Binary operation (imul) using R11 as the source
+                imul_op = Binary(
+                    operator=instr.operator,
+                    src1=instr.src1,
+                    src2=Reg(Registers.R11)
+                )
+                # Create a Mov from R11 register back to src1 Stack operand
+                mov_back = Mov(src=Reg(Registers.R11), dest=instr.src2)
+                
+                # Append the transformed instructions to the new_instructions list
+                new_instructions.extend([mov_to_reg, imul_op, mov_back])
+    
+    
+    # Handle 'Unary' instructions which perform operations on a single operand
+    elif isinstance(instr, Unary):
+        # Check if the operand is a Stack operand
+        if isinstance(instr.operand, Stack):
+            """
+            Fixing Up 'Unary' Instructions with Stack Operand:
+                The 'Unary' instruction operates on a memory location, which is not allowed in some assembly syntaxes.
+                Therefore, we need to move the operand from the Stack to a temporary register, perform the Unary operation,
+                and then move the result back to the Stack location.
+            
+            Transformation:
+                Original: notl -4(%rbp)
+                Rewritten:
+                    movl -4(%rbp), %r10d
+                    notl %r10d
+                    movl %r10d, -4(%rbp)
+            """
+            # Create a Mov from the Stack operand to R10 register
+            mov_to_reg = Mov(src=instr.operand, dest=Reg(Registers.R10))
+            # Create a new Unary operation using R10 as the operand
+            unary_op = Unary(
+                operator=instr.operator,
+                operand=Reg(Registers.R10)
+            )
+            # Create a Mov from R10 register back to the Stack operand
+            mov_back = Mov(src=Reg(Registers.R10), dest=instr.operand)
+            
+            # Append the transformed instructions to the new_instructions list
+            new_instructions.extend([mov_to_reg, unary_op, mov_back])
+            
+            # Debug Statement: Confirm rewriting of Unary instruction
+            # logger.debug(f"Rewrote {instr.operator} on {instr.operand} using {Registers.R10}.")
+        else:
+            """
+            Valid Unary Instruction:
+                Operand is not a Stack operand.
+                No replacement needed; keep the instruction as-is.
+            """
+            new_instructions.append(instr)
+    
+    # Handle 'AllocateStack' instructions if necessary
+    elif isinstance(instr, AllocateStack):
+        """
+        AllocateStack Instruction:
+            Typically used to reserve space on the stack for local variables or temporaries.
+            Since AllocateStack does not contain operands, no replacement is needed.
+        """
+        new_instructions.append(instr)
+        
+    elif isinstance(instr, Cmp):
+        """
+        AllocateStack Instruction:
+            Typically used to reserve space on the stack for local variables or temporaries.
+            Since AllocateStack does not contain operands, no replacement is needed.
+        """
+        if isinstance(instr.operand1,Stack) and isinstance(instr.operand2,Stack):
+            mov = Mov(
+                src=instr.operand1, dest=Reg(Registers.R10),
+            )
+            compl = Cmp(operand1=Reg(Registers.R10),operand2=instr.operand2)
+            if not isinstance(compl.operand2,Stack):
+                mov2 = Mov(
+                src=instr.operand2, dest=Reg(Registers.R11),
+            )
+                compl2 = Cmp(operand1=instr.operand1,operand2=Reg(Registers.R11))
+            
+                new_instructions.extend([mov,mov2,compl2])
+    
+            else:
+                    new_instructions.extend([mov,compl])
+        elif not isinstance(instr.operand2,Stack):
+            
+                movl = Mov(
+                    src=instr.operand2, dest=Reg(Registers.R11),
+                )
+    
+                compl = Cmp(operand1=instr.operand1,operand2=Reg(Registers.R11))
+            
+                new_instructions.extend([movl,compl])
+            
+            
+        else:
+            new_instructions.append(instr)
+    
+    # Handle 'Ret' (return) instructions which typically do not contain operands
+    elif isinstance(instr, Ret):
+        """
+        Ret Instruction:
+            Represents the return operation from a function.
+            As it does not contain operands, no replacement is needed.
+        """
+        
+        new_instructions.append(instr)
+    
+    # Handle 'Cdq' (Convert Quadword to Doubleword) instructions
+    elif isinstance(instr, (Cdq,JmpCC,Jmp,Label,SetCC,Call,Push,DeallocateStack,Imm)):
+        """
+        Cdq Instruction:
+            Sign-extends the AX register into the DX:AX register pair.
+            Typically used before division operations.
+            No operand replacement needed as it operates on fixed registers.
+        """
+        new_instructions.append(instr)
+    
+    # Handle any unsupported instruction types
+    else:
+        """
+        Unsupported Instruction Type:
+            If the instruction type is not recognized or handled above, log an error and exit.
+            This ensures that all instruction types are accounted for and handled appropriately.
+        """
+        logger.error(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_function.name}'.")
+        sys.exit(1)
+    return new_instructions

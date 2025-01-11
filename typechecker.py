@@ -1,91 +1,154 @@
-# from _ast5 import *
 
-# def typecheck_variable_declaration(decl,symbols:dict):
-#     if isinstance(decl,VarDecl):
-#         symbols[decl.name]['type']==Int()
-#         if not isinstance(decl.init,Null):
-#             typecheck_exp(decl.inti,symbols)
-            
-    
-
-
-# def typecheck_funciton_declaration(decl,symbols):
-#     if isinstance(decl,FunDecl):
-#         fun_name = decl.name
-#         fun_type = FunType(param_count=len(decl.params))
-#         if isinstance(decl.body,Null):
-#             raise ValueError('Body is Null')
-#         has_body =True
-#         already_defined = False
-        
-#         if fun_name in symbols:
-#             old_decl = symbols[fun_name]
-#             if old_decl != fun_type:
-#                 raise SyntaxError('Incompatiple Function declaration')
-#             already_defined = old_decl['defined']
-            
-#             if old_decl and has_body:
-#                 raise SyntaxError('Funtion defined more than once')
-            
-#         symbols[fun_name]={
-#             'fun_type':fun_type,
-#             'defined':already_defined or has_body
-#         }
-        
-#         if has_body:
-#             for param in decl.params:
-#                 symbols[param]=Int()
-            
-#             typecheck_block(decl.body)
-            
-        
-    
-# def typecheck_exp(e,symbols):
-#     if isinstance(e,FunctionCall):
-#         f_type = symbols[e.identifier]['fun_type']
-#         if f_type == Int():
-#             raise SyntaxError('VARIABLE USED AS FUNCTION')
-#         if isinstance(f_type,FunType):
-#             if f_type.param_count != len(e.args):
-#                 raise SyntaxError('Wrong no of parameters')
-        
-#         for arg  in e.args:
-#             typecheck_exp(arg,symbols)
-            
-#     elif isinstance(e,Var):
-#         _type=symbols[e.identifier]['type']
-#         if not isinstance(_type,Int):
-#             raise SyntaxError('Function name being used as a variable')
-    
     
 from _ast5 import *
 from typing import Optional, List
+from type_classes import *
 
-# Assuming Int and FunType are classes defined in _ast5
-# and that Null represents the absence of a value.
 
-def typecheck_variable_declaration(decl: VarDecl, symbols: dict):
+
+def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
     """
-    Type checks a variable declaration by adding it to the symbol table
-    and type checking its initializer if present.
+    Type checks a file-scope variable declaration and updates the symbol table accordingly.
+    Ensures linkage consistency and proper initialization handling.
     """
-    if decl.name.name in symbols:
-        raise SyntaxError(f"Variable '{decl.name.name}' is already declared.")
-    
-    # Assign the type Int to the variable in the symbol table
-    symbols[decl.name.name] = {'type': Int()}
-    #print(f"Declared variable '{decl.name.name}' with type Int.")
-    
-    # Type check the initializer if it exists
-    if decl.init is not None and not isinstance(decl.init, Null):
-        if isinstance(decl.init,Exp):
-            typecheck_exp(decl.init,symbols)
+    # Step 1: Derive the "new_init" based on the decl.init:
+    if isinstance(decl.init, Constant) and isinstance(decl.init.value, int):
+        # e.g. "static int foo = 4;" => real definition
+        new_init = Initial(decl.init)
+    elif isinstance(decl.init, Null):
+        # e.g. "static int foo;" => tentative
+        # e.g. "extern int foo;" => no initializer
+        if isinstance(decl.storage_class, Extern):
+            new_init = NoInitializer()
         else:
-            typecheck_statement(decl.init, symbols)
+            new_init = Tentative()
+    else:
+        # Non-constant initializer is not allowed at file scope per your spec
+        raise SyntaxError("Non-constant initializer!", decl.storage_class)
 
+    # Step 2: Determine linkage based on storage class
+    # static => internal linkage => global_scope=False
+    # otherwise => external linkage => global_scope=True
+    global_scope = not isinstance(decl.storage_class, Static)
 
-    
-def typecheck_function_declaration(decl: FunDecl, symbols: dict):
+    # Step 3: Check if the name already exists in the symbol table
+    var_name = decl.name.name
+    if var_name in symbols:
+        # We already have a declaration for this name
+        old_decl = symbols[var_name]
+
+        # Must be the same type
+        if not isinstance(old_decl['type'], Int):
+            raise TypeError("Function redeclared as variable")
+
+        # Merge linkage
+        old_global_scope = old_decl['attrs'].global_scope
+        if isinstance(decl.storage_class, Extern):
+            # 'extern' after a static => keep the old linkage (internal if it was static)
+            final_linkage = old_global_scope
+        else:
+            # If new is static but old was external (or vice versa), conflict
+            if old_global_scope != global_scope:
+                raise ValueError("Conflicting variable linkage")
+            final_linkage = old_global_scope
+
+        # Now do the initializer merge:
+        old_init = old_decl['attrs'].init  # could be Initial(...), Tentative(), NoInitializer()
+        new_init = new_init               # from above
+
+        # Helper checks:
+        def is_initial(i): return isinstance(i, Initial)
+        def is_tentative(i): return isinstance(i, Tentative)
+        def is_noinit(i): return isinstance(i, NoInitializer)
+
+        if is_initial(old_init):
+            # Old was already a real definition
+            if is_initial(new_init):
+                # Another real definition => conflict
+                raise ValueError("Conflicting file-scope variable definitions")
+            else:
+                # Keep the old real definition
+                final_init = old_init
+
+        elif is_tentative(old_init):
+            # Old was 'static int x;' with no init
+            if is_initial(new_init):
+                # Upgrading from tentative to real
+                final_init = new_init
+            else:
+                # Another 'static int x;' or 'extern int x;' => keep the old tentative
+                final_init = old_init
+
+        elif is_noinit(old_init):
+            # Old was 'extern int x;'
+            if is_initial(new_init) or is_tentative(new_init):
+                # Now we have a real or tentative => adopt new
+                final_init = new_init
+            else:
+                # Another extern => no change
+                final_init = old_init
+        else:
+            raise RuntimeError("Unknown initializer type in old declaration")
+
+    else:
+        # There's no old symbol => we take the new
+        final_linkage = global_scope
+        final_init = new_init
+
+    # Step 4: Construct the new attributes
+    attrs = StaticAttr(init=final_init, global_scope=final_linkage)
+
+    # Step 5: Update the symbol table
+    symbols[var_name] = {
+        'type': Int(),
+        'attrs': attrs
+    }
+
+        # print(symbols)
+         
+def typecheck_local_vairable_declaration(decl:VarDecl,symbols:dict):
+    try:
+        if isinstance(decl.storage_class,Extern):
+            if not isinstance(decl.init ,Null):
+                raise SyntaxError('Initializer on local extern variable declaration')
+            
+            if decl.name.name in symbols:
+                old_decl =  symbols[decl.name.name]
+                if not isinstance(old_decl['type'],Int):
+                    raise SyntaxError('Function redeclared as variable')
+            else:
+                # print(initial_value)
+                symbols[decl.name.name]={
+                    'type':Int(),
+                    'attrs':StaticAttr(init=NoInitializer(),global_scope=True)
+                }
+        elif isinstance(decl.storage_class,Static):
+            if isinstance(decl.init,Constant):
+                initial_value =Initial(decl.init)
+                # print(initial_value)
+            elif isinstance(decl.init,Null):
+                initial_value = Initial(Constant(0))
+                # initial_value = NoInitializer()
+            else:
+                raise SyntaxError('Non-constant Initializer on local static variable',decl.init)
+            # print(initial_value)
+           
+            symbols[decl.name.name]={
+                'type':Int(),
+                'attrs':StaticAttr(init=initial_value,global_scope=False)
+            }
+        else:
+            symbols[decl.name.name]={
+                'type':Int(),
+                'attrs':LocalAttr()
+            }
+            if not isinstance(decl.init,Null):
+                typecheck_exp(decl.init,symbols)
+    except Exception as e:
+        raise e
+        
+def typecheck_function_declaration(decl: FunDecl, symbols: dict,is_block_scope):
+    # print(decl)
     """
     Type checks a function declaration by adding it to the symbol table,
     ensuring no conflicting declarations, and type checking the function body.
@@ -93,15 +156,23 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict):
     fun_name = decl.name.name
     fun_type = FunType(param_count=len(decl.params))
     has_body = decl.body is not None and not isinstance(decl.body, Null)
-    #print(f"\nProcessing function '{fun_name}'. Has body: {has_body}")
-
+    already_defined = False
+    _global = decl.storage_class
+    if not isinstance(_global,Static):
+        _global=True 
+    else:
+        _global=False
+  
+    
     if fun_name in symbols:
         old_decl = symbols[fun_name]
-        #print(f"Function '{fun_name}' already in symbol table: {old_decl}")
+        # return
+        # print(f"Function '{fun_name}' already in symbol table: {old_decl}")
 
         # Ensure the existing declaration is a function
         if 'fun_type' not in old_decl:
             raise SyntaxError(f"Identifier '{fun_name}' previously declared as a variable.")
+        already_defined = old_decl['attrs'].defined
 
         # Compare the number of parameters
         if old_decl['fun_type'].param_count != fun_type.param_count:
@@ -110,17 +181,29 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict):
                 f"Expected {old_decl['fun_type'].param_count} parameters, "
                 f"got {fun_type.param_count}."
             )
-
-        already_defined = old_decl.get('defined', False)
-        #print(f"Function '{fun_name}' already defined: {already_defined}")
-
-        # Check if the function is being defined more than once
         if already_defined and has_body:
-            raise SyntaxError(f"Function '{fun_name}' is defined more than once.")
-
-        # If current declaration has a body, mark as defined
+            raise SyntaxError("Function is defined more than once")
+ 
+ 
+        if old_decl['attrs'].global_scope and isinstance(decl.storage_class,Static):
+            raise SyntaxError('Static funtion declarartion follow a non static ')
+        
+        if is_block_scope:
+            if _global and isinstance(decl.storage_class,Static):
+                raise SyntaxError('a block-scope function may only have extern storage class')
+            
+        _global = old_decl['attrs'].global_scope
+        print(_global)
+        attrs = FunAttr(defined=(already_defined or has_body), global_scope=_global)
+        print(attrs)
+        symbols[fun_name]={
+            'fun_type':FunType(param_count=len(decl.params)),
+            'attrs':attrs
+        }
+        
+    
         if has_body:
-            symbols[fun_name]['defined'] = True
+            # symbols[fun_name]['defined'] = True
             #print(f"Defining function '{fun_name}'.")
 
             # Add each parameter to the symbol table with type Int
@@ -128,14 +211,23 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict):
                 param_name = param.name.name
                 if param_name in symbols:
                     raise SyntaxError(f"Parameter '{param_name}' is already declared.")
-                symbols[param_name] = {'type': Int()}
+                symbols[param_name] = {'type': Int(),'attrs':None}
                 #print(f"Declared parameter '{param_name}' with type Int.")
-
+                
+       
+        
+        # print(decl.body)
+        typecheck_statement(decl.body, symbols)
             # Type check the function body
-            typecheck_statement(decl.body, symbols)
     else:
+        print(is_block_scope)
+        if is_block_scope:
+            if not _global and isinstance(decl.storage_class,Static):
+               
+                raise SyntaxError('a block-scope function may only have extern storage class')
+        
         # Add a new function declaration or definition
-        symbols[fun_name] = {'fun_type': fun_type, 'defined': has_body}
+        symbols[fun_name] = {'fun_type': FunType(param_count=len(decl.params)),'attrs':FunAttr(defined=has_body,global_scope=_global)}
         #print(f"Declared function '{fun_name}' with type FunType(param_count={fun_type.param_count}).")
 
         if has_body:
@@ -146,9 +238,8 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict):
                 param_name = param.name.name
                 if param_name in symbols:
                     raise SyntaxError(f"Parameter '{param_name}' is already declared.")
-                symbols[param_name] = {'type': Int()}
+                symbols[param_name] = {'type': Int(),'attrs':None}
                 #print(f"Declared parameter '{param_name}' with type Int.")
-
             # Type check the function body
             typecheck_statement(decl.body, symbols)
 
@@ -158,6 +249,7 @@ def typecheck_exp(e: Expression, symbols: dict):
     """
     Type checks an expression by ensuring correct usage of variables and functions.
     """
+    
     if isinstance(e, FunctionCall):
         fun_name = e.identifier.name
         
@@ -165,9 +257,10 @@ def typecheck_exp(e: Expression, symbols: dict):
             raise NameError(f"Function '{fun_name}' is not defined.")
         
         fun_entry = symbols[fun_name]
+   
         
         # Ensure that the identifier is a function
-        if 'fun_type' not in fun_entry:
+        if  not isinstance(fun_entry['fun_type'],FunType):
             raise SyntaxError(f"Variable '{fun_name}' used as a function.")
         
         f_type = fun_entry['fun_type']
@@ -193,9 +286,7 @@ def typecheck_exp(e: Expression, symbols: dict):
         # Ensure that the identifier is a variable, not a function
         if 'type' not in var_entry:
             raise SyntaxError(f"Function '{var_name}' used as a variable.")
-        
         var_type = var_entry['type']
-        
         if not isinstance(var_type, Int):
             raise SyntaxError(f"Identifier '{var_name}' does not have type Int.")
         
@@ -225,7 +316,10 @@ def typecheck_exp(e: Expression, symbols: dict):
             typecheck_exp(e.expr, symbols)
             #print(f"Unary operation on '{e.expr}'.")
     elif isinstance(e,Null):
+        
         pass
+    elif isinstance(e,Conditional):
+        typecheck_statement(e,symbols)
     else:
         raise TypeError(f"Unsupported expression type for type checking: {type(e)}")
 
@@ -241,7 +335,8 @@ def typecheck_statement(statement: Statement, symbols: dict):
         return statement
 
     if isinstance(statement, VarDecl):
-        typecheck_variable_declaration(statement, symbols)
+        # print(symbols)
+        typecheck_local_vairable_declaration(statement, symbols)
     
     elif isinstance(statement,InitDecl):
         typecheck_statement(statement.declaration.declaration,symbols)
@@ -249,7 +344,7 @@ def typecheck_statement(statement: Statement, symbols: dict):
     elif isinstance(statement,InitExp):
         typecheck_statement(statement.exp,symbols)
     elif isinstance(statement, FunDecl):
-        typecheck_function_declaration(statement, symbols)
+        typecheck_function_declaration(statement, symbols,is_block_scope=True)
     
     elif isinstance(statement, (Break, Continue)):
         # Assuming labeling is handled elsewhere; no type checking needed
@@ -266,7 +361,16 @@ def typecheck_statement(statement: Statement, symbols: dict):
             #print("Type checked a 'while' loop.")
         
         elif isinstance(statement, For):
-            if statement.init:
+            if isinstance(statement.init,InitDecl):
+                if statement.init and not isinstance(statement.init,Null):
+                    if isinstance(statement.init.declaration.declaration,VarDecl):
+                        if isinstance(statement.init.declaration.declaration.storage_class,(Extern,Static)):
+                            print('here')
+                            raise SyntaxError('Loop initializer cannot have storage class')
+                        else: 
+                            typecheck_statement(statement.init, symbols)
+                        
+            else:
                 typecheck_statement(statement.init, symbols)
             if statement.condition:
                 typecheck_exp(statement.condition, symbols)
@@ -294,9 +398,10 @@ def typecheck_statement(statement: Statement, symbols: dict):
     elif isinstance(statement, D):
         # Handle different types of declarations within D
         if isinstance(statement.declaration, FunDecl):
-            typecheck_function_declaration(statement.declaration, symbols)
+            print(statement.declaration)
+            typecheck_function_declaration(statement.declaration, symbols,is_block_scope=True)
         elif isinstance(statement.declaration, VarDecl):
-            typecheck_variable_declaration(statement.declaration, symbols)
+            typecheck_local_vairable_declaration(statement.declaration, symbols)
         else:
             raise TypeError(f"Unsupported declaration type in D: {type(statement.declaration)}")
     
@@ -356,11 +461,17 @@ def typecheck_program(program:Program):
     """
     Initiates the type checking process for the entire program.
     """
-    symbols = {}  # Single symbol table dictionary
+      # Single symbol table dictionary
+    symbols = {}
     #print("Starting type checking of the program.")
     for stmt in program.function_definition:
-        #print(stmt)
-        typecheck_statement(stmt, symbols)
-    
+        if isinstance(stmt,VarDecl):
+            
+            typecheck_file_scope_variable_declaration(stmt,symbols)
+        elif isinstance(stmt,FunDecl):
+        
+            typecheck_function_declaration(stmt, symbols,False)
+        else:
+            typecheck_statement(stmt,symbols)
     #print("Type checking completed successfully.")
-    return program
+    return program,symbols

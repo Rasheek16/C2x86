@@ -81,6 +81,16 @@ class Reg(Operand):
 
     def __repr__(self):
         return f"Reg({self.value})"
+    
+class Data(Operand):
+    """
+    A pseudo identifier (Grammar: Pseudo(identifier)).
+    """
+    def __init__(self, name):
+        self.identifier = name
+
+    def __repr__(self):
+        return f"Data(identifier={self.identifier})"
 
 
 # Optional: If you want a named 'Register' class:
@@ -374,14 +384,16 @@ class AssemblyFunction:
     and a list of instructions.
     (Grammar: function_definition = Function(identifier, instruction*))
     """
-    def __init__(self, name, instructions:list):
+    def __init__(self, name,_global, instructions:list):
         self.name = name
+        self._global=_global
         self.instructions = instructions
 
     def __repr__(self):
         return (
             "AssemblyFunction("
             f"name={repr(self.name)},"
+            f"global={self._global},"
             f"instructions=[\n        " + 
             ",\n        ".join(repr(instr) for instr in self.instructions) +
             "\n    ]\n"
@@ -389,12 +401,27 @@ class AssemblyFunction:
         )
 
 
+
+
+class AssemblyStaticVariable:
+    def __init__(self,identifier,_global,init):
+        self.name = identifier
+        self._global =_global
+        self.init = init
+    
+    def __repr__(self):
+        return f'StaticVariable(name={self.name},_global={self._global},init={self.init})'
+    
+class TopLevel:
+    assembly_func=AssemblyFunction
+    static_var = AssemblyStaticVariable
+
 class AssemblyProgram:
     """
     A top-level assembly program, typically containing a single assembly function.
     (Grammar: program = Program(function_definition))
     """
-    def __init__(self, function_definition:List[AssemblyFunction]):
+    def __init__(self, function_definition:List[TopLevel]):
         self.function_definition = function_definition
 
     def __repr__(self):

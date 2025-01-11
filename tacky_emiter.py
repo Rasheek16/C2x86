@@ -3,7 +3,7 @@
 from _ast5 import *  # Your high-level AST classes
 from tacky import *
 from typing import List, Union
-
+from type_classes import *
 # Initialize label counters
 temp_false_label = 0
 temp_true_label = 0
@@ -29,6 +29,31 @@ def get_e2_label() -> str:
     global temp_e2_label
     temp_e2_label += 1
     return f"e2_{temp_e2_label}"
+
+def convert_symbols_to_tacky(symbols:dict):
+    # print(symbols)
+    tacks_defs=[]
+    for name,entry in symbols.items():
+        if entry['attrs']!=None:
+            if isinstance(entry['attrs'],StaticAttr):
+                if isinstance(entry['attrs'].init,Initial):
+                    tacks_defs.append(TackyStaticVariable(identifier=name,_global =entry['attrs'].global_scope,init=entry['attrs'].init.value))
+                elif isinstance(entry['attrs'].init,Tentative):
+                    tacks_defs.append(TackyStaticVariable(identifier=name,_global =entry['attrs'].global_scope,init=Constant(0)))
+                else:
+                    continue
+            else:
+                continue
+        else:
+            continue
+    return tacks_defs
+                
+                
+                
+            
+        
+    
+
 
 # A global counter for generating unique temporary names
 temp_counter = 0
@@ -284,7 +309,7 @@ def emit_statement(stmt, instructions: List[TackyInstruction]):
         if isinstance(stmt.declaration,FunDecl):
             convert_fun_decl_to_tacky(stmt.declaration)
         else:
-            if stmt.declaration.init is not None and not isinstance(stmt.declaration.init, Null):
+            if stmt.declaration.init is not None and not isinstance(stmt.declaration.init, Null) and not isinstance(stmt.declaration.storage_class,Static):
                 # Emit assignment to initialize the variable
                 assign_expr = Assignment(
                     left=Var(stmt.declaration.name),
@@ -434,13 +459,14 @@ def convert_fun_decl_to_tacky(fun_decl: FunDecl) -> TackyFunction:
     # if not has_return:
     instructions.append(TackyReturn(val=TackyConstant(0)))
 
-    return TackyFunction(
-        identifier=fun_decl.name.name,      # Function name
+    return TopLevel.tack_func(
+        identifier=fun_decl.name.name,
+        _global=False,# Function name
         params=param_names,           # Function parameters
         body=instructions             # Function body instructions
     )
 
-def emit_tacky_program(ast_program: Program) -> TackyProgram:
+def emit_tacky_program(ast_program: Program,symbols) -> TackyProgram:
     """
     Converts the entire AST Program (which may have multiple functions)
     into a TackyProgram containing multiple TackyFunction definitions.
@@ -452,15 +478,32 @@ def emit_tacky_program(ast_program: Program) -> TackyProgram:
             # Only process if the function has a body (i.e., it's a definition)
             if fun_decl.body is not None and not isinstance(fun_decl.body, Null):
                 t_func = convert_fun_decl_to_tacky(fun_decl)
+                t_func._global=symbols[t_func.name]['attrs'].global_scope
                 tacky_funcs.append(t_func)
             # Else, discard declarations that have no body
         else:
-            raise TypeError(f"Unsupported top-level node: {type(fun_decl)}")
+            pass 
+            # raise TypeError(f"Unsupported top-level node: {type(fun_decl)}")
     # tacky_funcs.append(TackyReturn(0))
+    
+    instructions=[]
+    tacky_symbols=[]
+    symbols_new = convert_symbols_to_tacky(symbols)
+    print(symbols_new)
+    for i in symbols_new:
+        print(i.init)
+        i.init=emit_tacky_expr(i.init,instructions)
+        tacky_symbols.append(i)
+    # print(symbols)
+    # output=emit_tacky_expr(s,instructions)
+    # tack_symbols.extend(output)
+        
+    tacky_funcs.extend(tacky_symbols)
     return TackyProgram(function_definition=tacky_funcs)
 
-def emit_tacky(program_ast: Program) -> TackyProgram:
+def emit_tacky(program_ast: Program,symbols) :
     """
     High-level function that converts a full AST 'Program' node into a TackyProgram.
     """
-    return emit_tacky_program(program_ast)
+    # print(symbols)
+    return emit_tacky_program(program_ast,symbols),symbols

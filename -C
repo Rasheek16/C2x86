@@ -1,0 +1,32 @@
+   .globl read_x
+   .text
+read_x:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq    $32, %rsp
+   movl $4, -8(%rbp)
+   cmpl $4, -8(%rbp)
+   movl $0, -16(%rbp)
+   sete    -16(%rbp)
+   cmpl $0, -16(%rbp)
+   je    .Lfalse_1
+   movl -24(%rbp), %eax
+    movq   %rbp, %rsp
+    popq   %rbp
+    ret
+   jmp  .Lend_1
+.Lfalse_1:
+   movl $1, -32(%rbp)
+   movl -32(%rbp), %r10d
+   negl %r10d
+   movl %r10d, -32(%rbp)
+   movl -32(%rbp), %eax
+    movq   %rbp, %rsp
+    popq   %rbp
+    ret
+.Lend_1:
+   movl $0, %eax
+    movq   %rbp, %rsp
+    popq   %rbp
+    ret
+.section .note.GNU-stack,"",@progbits

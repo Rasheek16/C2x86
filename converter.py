@@ -22,11 +22,16 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
     if isinstance(tacky_ast, TackyProgram):
         # Recursively convert the function_definition part of the TackyProgram
         assembly_functions = []
-        for func in tacky_ast.function_definition:
-            # print(func.name)
-            assembly_function = convert_to_assembly_ast(func)
-            assembly_functions.append(assembly_function)
-        
+        for defn in tacky_ast.function_definition:
+            if isinstance(defn,TackyFunction):
+                # print(func.name)
+                assembly_function = convert_to_assembly_ast(defn)
+                assembly_functions.append(assembly_function)
+            elif isinstance(defn,TackyStaticVariable):
+                print(defn)
+                static_var = TopLevel.static_var(identifier=defn.name,_global = defn._global,init=convert_to_assembly_ast(defn.init))
+                assembly_functions.append(static_var)
+                
         return AssemblyProgram(
             function_definition=assembly_functions
         )
@@ -77,8 +82,9 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
                 instructions.append(converted_instrs)
         # Create an AssemblyFunction with the converted instructions
         
-        return AssemblyFunction(
+        return TopLevel.assembly_func(
             name=tacky_ast.name,  # Assuming tacky_ast.name is an Identifier
+            _global=tacky_ast._global,
             instructions=instructions
         )
     
@@ -121,7 +127,7 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
         
         bytes_to_remove = 8 * len(stack_args)+ stack_padding
         if bytes_to_remove !=0:
-            print('Bytes to remove',bytes_to_remove)
+            # print('Bytes to remove',bytes_to_remove)
             instructions.append(DeallocateStack(value=bytes_to_remove))
             
         assembly_dst = convert_to_assembly_ast(tacky_ast.dst)
@@ -140,7 +146,7 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
     elif isinstance(tacky_ast, TackyUnary):        
         # Convert a Unary operation by moving src to dst and applying the operator
         if tacky_ast.operator ==TackyUnaryOperator.NOT:
-            print('inside not')
+            # print('inside not')
             return [
                 Cmp(operand1=Imm(0),operand2=convert_to_assembly_ast(tacky_ast.src)),
                 Mov(src=Imm(0),dest=convert_to_assembly_ast(tacky_ast.dst)),
@@ -256,7 +262,7 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
     
         # Handle unsupported binary operators by raising an error
         elif tacky_ast.operator in (TackyBinaryOperator.GREATER_OR_EQUAL,TackyBinaryOperator.LESS_OR_EQUAL,TackyBinaryOperator.LESS_THAN,TackyBinaryOperator.NOT_EQUAL,TackyBinaryOperator.EQUAL,TackyBinaryOperator.OR,TackyBinaryOperator.AND):
-            print(tacky_ast)
+            # print(tacky_ast)
             return [Cmp(operand1=convert_to_assembly_ast(tacky_ast.src2),operand2=convert_to_assembly_ast(tacky_ast.src1)),
                     Mov(src=Imm(0),dest=convert_to_assembly_ast(tacky_ast.dst)),
                     SetCC(Cond_code=convert_operator(tacky_ast.operator),operand=convert_to_assembly_ast(tacky_ast.dst))
@@ -280,6 +286,7 @@ def convert_to_assembly_ast(tacky_ast) -> AssemblyProgram:
         # Convert a constant value into an Imm operand
         return Imm(tacky_ast.value)
     
+    # elif isinstance(tacky_ast,AssemblyStaticVariable):
     # Handle Variable operand
     elif isinstance(tacky_ast, TackyVar):
         # Convert a variable into a Pseudo operand

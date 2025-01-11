@@ -2,6 +2,27 @@ from typing import List, Optional, Union
 from enum import Enum
 
 
+
+    
+class Static():
+    def __init__(self, *args, **kwargs):
+        pass 
+    def __repr__(self):
+        return f'Static()'
+    
+class Extern():
+    def __init__(self, *args, **kwargs):
+        pass 
+    def __repr__(self):
+        return f"Extern()"
+    
+class StorageClass:
+    Static=Static
+    Extern=Extern
+    
+
+
+
 # --------------------------
 # Enum Definitions for Operators
 # --------------------------
@@ -272,50 +293,6 @@ class FunctionCall(Exp):
 # --------------------------
 # Declaration Class
 # --------------------------
-
-class Declaration:
-    
-    def __init__(self, *args, **kwargs):
-        # super(CLASS_NAME, self).__init__(*args, **kwargs)
-        pass 
-    
-    # """
-    # Represents a variable declaration in the AST.
-    
-    # Attributes:
-    #     name (Identifier): The name of the variable being declared.
-    #     init (Optional[Exp]): The optional initializer expression.
-    # """
-    # def __init__(self, name: Identifier, init: Optional[Exp] = None):
-    #     """
-    #     Initializes a Declaration instance.
-        
-    #     Args:
-    #         name (Identifier): The variable's identifier.
-    #         init (Optional[Exp]): The initializer expression, if any.
-        
-    #     Raises:
-    #         ValueError: If name is not an Identifier instance or init is not an Exp instance.
-    #     """
-    #     # if not isinstance(name, Identifier):
-    #     #     raise ValueError("Declaration name must be an Identifier instance.")
-    #     # if init is not None and not isinstance(init, Exp):
-    #     #     raise ValueError("Initializer must be an Exp instance or None.")
-    #     self.name = name
-    #     self.init = init
-
-    # def __repr__(self) -> str:
-        # """
-        # Returns a string representation of the Declaration.
-        
-        # Returns:
-        #     str: The string representation.
-        # """
-        # if self.init:
-        #     return f"Declaration(name={self.name}, init={self.init})"
-        # else:
-            # return f"Declaration(name={self.name}, init=None)"
-
 class Block:
     def __init__(self, block_items: List):
         self.block_items = block_items
@@ -327,7 +304,6 @@ class Block:
         items_repr = ",\n        ".join(repr(item) for item in self.block_items)
         return f"Block([\n        {items_repr}\n    ])"
     
-
 class Parameter():
     def __init__(self, _type,name:Optional[Identifier]):
         self._type=_type
@@ -335,17 +311,7 @@ class Parameter():
     def __repr__(self):
         return f'Parameter(type={self._type},name = {self.name})'
 
-class FunctionDeclaration():
-    def __init__(self,_name:Identifier,params:List[Parameter],body=Optional[Block]):    
-        self._name=_name
-        self.params=params
-        self.body=body
-    
-class VariableDeclaration():
-    name:Identifier
-    init:Optional[Exp]
-    
-class FunDecl(Declaration):
+class FunDecl():
     def __init__(self,name:Identifier,params:List[Parameter],body:Optional[Block]=None):    
             self.name=name
             self.params=params
@@ -355,15 +321,49 @@ class FunDecl(Declaration):
         return f'FunDecl(name={self.name},params={self.params},body={self.body})'
 
 
-class VarDecl(Declaration):
+
+
+# class FunctionDeclaration():
+#     def __init__(self,_name:Identifier,params:List[Parameter],body:Optional[Block]=None,storage_class:Optional[StorageClass]=None):    
+        
+#         self._name=_name
+#         self.params=params
+#         self.body=body
+        
+#     def __repr__(self):
+#         return f'FunDecl(name={self.name},params={self.params},body={self.body},storage_class={self.storage_class})'
     
-    def __init__(self,name:Identifier,init:Optional[Exp]):
+    
+# class VariableDeclaration():
+#     name:Identifier
+#     init:Optional[Exp]
+    
+class FunDecl():
+    def __init__(self,name:Identifier,params:List[Parameter],body:Optional[Block]=None,storage_class:Optional[StorageClass]=None):    
+            self.name=name
+            self.params=params
+            self.body=body
+            self.storage_class = storage_class
+    def __repr__(self):
+        return f'FunDecl(name={self.name},params={self.params},body={self.body},storage_class={self.storage_class})'
+        
+        # return f'FunDecl(name={self.name},params={self.params},body={self.body})'
+
+
+class VarDecl():
+    
+    def __init__(self,name:Identifier,init:Optional[Exp],storage_class:Optional[StorageClass]=None):
         self.name=name
         self.init=init
-        
+        self.storage_class=storage_class
     def __repr__(self):
-        return f'VarDecl(name={self.name},init={self.init})'
+        return f'VarDecl(name={self.name},init={self.init},storage_class={self.storage_class})'
 
+
+class Declaration:
+    FuncDecl=FunDecl
+    VarDecl=VarDecl
+    
 # --------------------------
 # Statement Classes
 # --------------------------
@@ -659,7 +659,7 @@ class For(Statement):
         self.label = label 
 
     def __repr__(self):
-        return f'\nFor(init={self.init},condition={self.condition},body={self.body},identifier={self.label}.post={self.post}\n)'
+        return f'For(init={self.init},condition={self.condition},body={self.body},identifier={self.label}.post={self.post})'
 
 
 
@@ -712,7 +712,7 @@ class Program:
     Attributes:
         function_definition (Function): The main function definition of the program.
     """
-    def __init__(self, function_definition:List[FunDecl]):
+    def __init__(self, function_definition:List[Declaration]):
         """
         Initializes a Program instance.
         
@@ -733,7 +733,7 @@ class Program:
         Returns:
             str: The string representation.
         """
-        return f"Program(\n  functions={self.function_definition}\n)"
+        return f"Program(\n body={self.function_definition}\n)"
 
 
 
@@ -754,10 +754,9 @@ class Argument():
     
     
 class Int():
-    
-    def __init__(self, *args, **kwargs):
-        # super(CLASS_NAME, self).__init__(*args, **kwargs)
-        pass
+    def __init__(self):
+       pass
+       
     
     def __repr__(self):
         return f'Int()'

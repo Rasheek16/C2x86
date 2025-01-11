@@ -5,7 +5,7 @@ from _ast5 import (
     DoWhile, Break, Continue, If, Return, 
     Compound, Parameter, BlockItem, Program, 
     InitDecl, InitExp, Expression, 
-    D, S, Statement, Block
+    D, S, Statement, Block,Extern,StorageClass
 )
 from tacky_emiter import make_temporary_var, convert_binop, convert_unop
 from typing import List, Dict, Any, Optional
@@ -33,42 +33,68 @@ def get_label():
 # -------------------------------------------------------------------------
 # 2) Resolve Declarations (VarDecl / FunDecl)
 # -------------------------------------------------------------------------
-def resolve_declaration(declaration, identifier_map: dict):
+
+def resole_file_scope_var(decl:VarDecl,identifier_map) -> VarDecl:
+    identifier_map[decl.name.name]={'unique_name':decl.name.name,'from_current_scope':True,'has_linkage':True}
+    return decl
+    
+
+def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)-> VarDecl:
+    # print(declaration,is_file_scope)
     """
     Resolves a single declaration (either VarDecl or FunDecl).
     - VarDecl => create a unique name for local variables.
     - FunDecl => preserve the original name (has_linkage=True).
     """
     if isinstance(declaration, VarDecl):
-        # Ensure we have an Identifier for the name
-        if not isinstance(declaration.name, Identifier):
-            raise TypeError(f"Declaration name must be an Identifier, got {type(declaration.name)}")
+        # print(is_file_scope)
+        if is_file_scope:
+            return resole_file_scope_var(declaration,identifier_map)
+        # Ensure we have an Identifier for the name 
+        else:
+            # print(is_file_scope)
+            if not isinstance(declaration.name, Identifier):
+                raise TypeError(f"Declaration name must be an Identifier, got {type(declaration.name)}")
 
-        original_name = declaration.name.name
-        # Check for duplicates in the current scope
-        if (original_name in identifier_map 
-            and identifier_map[original_name]['from_current_scope']):
-            raise ValueError(f"Duplicate variable declaration: '{original_name}'")
+            original_name = declaration.name.name
+            print()
+            # Check for duplicates in the current scope
+            if original_name in identifier_map and identifier_map[original_name]['from_current_scope']==True:
+                print(original_name)
+                # print(identifier_map[original_name])
+                # print(declaration.storage_class)
+                # print(isinstance(declaration.storage_class,Extern))
+                if not (identifier_map[original_name]['has_linkage'] and  isinstance(declaration.storage_class,Extern)):
+                    raise ValueError(f"Duplicate variable declaration: '{original_name}' / Conflicting local declarations.")
 
-        # Generate a unique name for the variable
-        unique_name = make_temporary_var()
-        identifier_map[original_name] = {
-            'unique_name': unique_name,
-            'from_current_scope': True,
-            'has_linkage': False
-        }
+            if isinstance(declaration.storage_class,Extern):
+                identifier_map[original_name] = {
+                'unique_name': original_name,
+                'from_current_scope': True,
+                'has_linkage': True
+            }
+                return declaration
+            
+            else:
+                # Generate a unique name for the variable
+                unique_name = make_temporary_var()
+                identifier_map[original_name] = {
+                    'unique_name': unique_name,
+                    'from_current_scope': True,
+                    'has_linkage': False
+                }
 
-        # Resolve the initialization if present
-        init = None
-        if declaration.init is not None:
-            init = resolve_exp(declaration.init, identifier_map)
+                # Resolve the initialization if present
+                init = None
+                if declaration.init is not None:
+                    init = resolve_exp(declaration.init, identifier_map)
 
-        # Return a VarDecl with the new unique name
-        return VarDecl(name=Identifier(unique_name), init=init)
+                # Return a VarDecl with the new unique name
+                return VarDecl(name=Identifier(unique_name), init=init,storage_class=declaration.storage_class)
 
     elif isinstance(declaration, FunDecl):
         # If there's no body, raise an error or handle differently as needed
-        if isinstance(declaration.body, Null):
+        if isinstance(declaration.body, Null) and not declaration.storage_class=='static':
             return resolve_function_declaration(declaration, identifier_map)
         else:
             raise SyntaxError("Nested Functions are not supported")
@@ -149,6 +175,7 @@ def resolve_block_items(block_items: List[BlockItem], identifier_map: dict) -> L
     resolved_body = []
     for block_item in block_items:
         if isinstance(block_item, D):
+            # print('here')
             # Declaration node: could be VarDecl or FunDecl
             resolved_decl = resolve_declaration(block_item.declaration, identifier_map)
             resolved_body.append(D(declaration=resolved_decl))
@@ -382,13 +409,11 @@ def label_program(program: Program):
     """
     # If program.function_definition is a single function, label it
     # If it's a list of functions, label each.
-    for func in program.function_definition:
-        if isinstance(func.body, list):
-            # If the body is just a list of block items
-            label_statement(func.body, None)
-        elif isinstance(func.body, (list, Block)):
-            # Or if your AST has a compound block for function bodies
-            label_statement(func.body, None)
+    for decl in program.function_definition:
+        if isinstance(decl, FunDecl):
+            label_statement(decl.body, None)
+        elif isinstance(decl,VarDecl):
+            pass 
         else:
             pass
     return program
@@ -425,14 +450,14 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict) -> FunDecl
     new_params = []
     for param in decl.params:
         new_params.append(resolve_param(param, inner_map))
-
     # Resolve the function body (if it's a Block) => block_items
     if isinstance(decl.body, Block):
+        # print('here')
         new_body = resolve_block_items(decl.body.block_items, inner_map)
     else:
         new_body = decl.body  # or raise error if needed
 
-    return FunDecl(name=decl.name, params=new_params, body=new_body)
+    return FunDecl(name=decl.name, params=new_params, body=new_body,storage_class=decl.storage_class)
 
 
 def resolve_param(param: Parameter, identifier_map: dict) -> Parameter:
@@ -463,7 +488,7 @@ def resolve_param(param: Parameter, identifier_map: dict) -> Parameter:
 # -------------------------------------------------------------------------
 # 12) The Top-Level Variable Resolution Pass
 # -------------------------------------------------------------------------
-def variable_resolution_pass(program: Program) -> Program:
+def variable_resolution_pass(program: Program) :
     """
     Perform the variable resolution pass on each function in the program.
     1) Create an empty identifier_map.
@@ -473,13 +498,21 @@ def variable_resolution_pass(program: Program) -> Program:
     identifier_map = {}
     resolved_funcs = []
     # program.function_definition might be a list of FunDecl or a single FunDecl
-    for func_decl in program.function_definition:
-        new_func = resolve_function_declaration(func_decl, identifier_map)
-        resolved_funcs.append(new_func)
+    for decl in program.function_definition:
+        if isinstance(decl,FunDecl):
+            # print('New func')
+            new = resolve_function_declaration(decl, identifier_map)
+        elif isinstance(decl,VarDecl):
+            # print('New var')
+            new = resolve_declaration(decl, identifier_map,is_file_scope=True)
+            
+            
+        resolved_funcs.append(new)
 
     new_program = Program(function_definition=resolved_funcs)
-    labeled_program = typecheck_program(label_program(new_program))
-    return labeled_program
+    labeled_program ,symbols=typecheck_program(label_program(new_program))
+  
+    return labeled_program ,symbols
 
 
     

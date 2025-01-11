@@ -56,13 +56,14 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
             return  # Done, exit code 0
 
         #) variable resolution pass 
-        ast = variable_resolution_pass(ast)
+        ast,symbols = variable_resolution_pass(ast)
         if stage =='--validate':
             print(ast)
+            print(symbols)
             return
         # 4) Emit Tacky IR
       
-        tacky_ir = emit_tacky(ast)
+        tacky_ir,symbols = emit_tacky(ast,symbols)
         if stage == '--tacky':
             print("Tacky IR:")
             print(tacky_ir)
@@ -73,7 +74,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
         # print(current_param_offset)
         # 6) Replace Pseudoregisters
         # This pass replaces all Pseudo operands with Stack operands and returns stack allocation
-        [a_ast,stack_allocation] = replace_pseudoregisters(a_ast)
+        [a_ast,stack_allocation] = replace_pseudoregisters(a_ast,symbols)
         # print("After Replacing Pseudoregisters:")
         # print(a_ast)
 
@@ -92,9 +93,9 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
         # If no output_file is given, default to input_file.s
         if not output_file:
             output_file = input_path.with_suffix('.s')
-
+        # print('symbols',symbols)
         output_s_path = Path(output_file)
-        emitter = CodeEmitter(str(output_s_path))
+        emitter = CodeEmitter(str(output_s_path),symbols)
         emitter.emit_program(a_ast)
         emitter.save()
 
@@ -134,10 +135,10 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
             object_file.unlink()
             
         print('File output:')
-        subprocess.run(
-            f'{Path(exe_file)}',
+        # subprocess.run(
+        #     f'{Path(exe_file)}',
     
-        )
+        # )
         print('\n')
         # Indicate successful compilation
         sys.exit(0)

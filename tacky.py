@@ -53,6 +53,7 @@ class TackyInstruction:
     Base class for instructions in the function body.
     """
     pass
+
 class TackyFunction:
     """
     function_definition = Function(identifier, [instructions...])
@@ -61,7 +62,8 @@ class TackyFunction:
     - name: an identifier
     - body: a list of instructions (one or more).
     """
-    def __init__(self, identifier,params:List[TackyIdentifier], body:List[TackyInstruction]):
+    def __init__(self, identifier,_global:bool,params:List[TackyIdentifier], body:List[TackyInstruction]):
+        self._global = _global 
         self.name = identifier  
         self.params=params # An identifier (string or Var)
         self.body = body        # A list of instructions: Return(...) or Unary(...)
@@ -70,6 +72,7 @@ class TackyFunction:
         return (
             "TackyFunction(\n"
             f"    identifier={repr(self.name)},\n"
+            f'    global={self._global}\n'
             f'    params={repr(self.params)}\n'
             f"    body=[\n        " + 
             ",\n        ".join(repr(instr) for instr in self.body) +
@@ -77,11 +80,28 @@ class TackyFunction:
             ")"
         )
 
+
+class TackyStaticVariable:
+    def __init__(self,identifier,_global,init):
+        self.name = identifier
+        self._global =_global
+        self.init = init
+    
+    def __repr__(self):
+        return f'StaticVariable(name={self.name},_global={self._global},init={self.init})'
+        
+
+class TopLevel:
+    tack_func=TackyFunction
+    static_var = TackyStaticVariable
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+    
+    
 class TackyProgram:
     """
     program = Program(function_definition)
     """
-    def __init__(self, function_definition:List[TackyFunction]):
+    def __init__(self, function_definition:List[TopLevel]):
         self.function_definition = function_definition
 
     def __repr__(self):

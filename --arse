@@ -1,0 +1,30 @@
+   .globl main
+main:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq    $32, %rsp
+   movl $1, %r11d
+   cmpl $0, %r11d
+   je    .Le2_1
+   movl $3, %eax
+   cdq
+   movl $2, %r10d
+   idivl %r10d
+   movl %edx, -8(%rbp)
+   movl -8(%rbp), %r10d
+   movl %r10d, -16(%rbp)
+   jmp  .Lend_1
+.Le2_1:
+   movl $4, -16(%rbp)
+.Lend_1:
+   movl -16(%rbp), %r10d
+   movl %r10d, -24(%rbp)
+   movl -24(%rbp), %eax
+    movq   %rbp, %rsp
+    popq   %rbp
+    ret
+   movl $0, %eax
+    movq   %rbp, %rsp
+    popq   %rbp
+    ret
+.section .note.GNU-stack,"",@progbits

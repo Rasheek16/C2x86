@@ -2,9 +2,10 @@ from assembly_ast import *
 import sys
 
 class CodeEmitter:
-    def __init__(self, file_name, platform="linux"):
+    def __init__(self, file_name, symbols,platform="linux"):
         self.file_name = file_name
         self.platform = platform
+        self.symbols=symbols
         self.output = []
 
     def emit_line(self, line=""):
@@ -19,19 +20,47 @@ class CodeEmitter:
         for func in program.function_definition:
             if isinstance(func, AssemblyFunction):
                 self.emit_function(func)
+            elif isinstance(func,AssemblyStaticVariable):
+                    # print()
+                    self.emit_static_var(func)
             else:
                 raise ValueError(f"function_definition is not a valid FunctionAst: {type(program.function_definition)}")
         
         if self.platform == "linux":
             self.emit_line(".section .note.GNU-stack,\"\",@progbits")
 
+    def emit_static_var(self,instruction):
+        try:
+            # if isinstance()
+            long_op = instruction.init.value
+            # if isinstance(long_op,Constant):
+                
+            if instruction.init.value != 0 :
+                if instruction._global==True:
+                    self.emit_line(f'   .globl {instruction.name}')
+                self.emit_line('   .data')
+                self.emit_line('   .align 4')
+                self.emit_line(f'{instruction.name}:')
+                self.emit_line(f'   .long {long_op}')
+            else:
+                if instruction._global==True:
+                    self.emit_line(f'   .globl {instruction.name}')
+                self.emit_line('   .bss')
+                self.emit_line('   .align 4')
+                self.emit_line(f'{instruction.name}:')
+                self.emit_line(f'   .zero 4')
+        except Exception as e:
+            raise SyntaxError('Error in static var',e)
+        
     def emit_function(self, function):
+        
         """Emit a function definition."""
         func_name = function.name
         if self.platform == "macos":
             func_name = f"_{func_name}"  # Add underscore prefix for macOS
-        
-        self.emit_line(f"   .globl {func_name}")
+        if function._global==True:
+            self.emit_line(f"   .globl {func_name}")
+        self.emit_line(f'   .text')
         self.emit_line(f"{func_name}:")
         self.emit_line(f'   pushq   %rbp')
         self.emit_line(f'   movq    %rsp, %rbp')
@@ -49,9 +78,9 @@ class CodeEmitter:
             self.emit_line(f"   movl {src}, {dest}")
         
         elif isinstance(instruction, Ret):
-            self.emit_line('    movq   %rbp, %rsp')
-            self.emit_line("    popq   %rbp")
-            self.emit_line('    ret')
+            self.emit_line('   movq   %rbp, %rsp')
+            self.emit_line("   popq   %rbp")
+            self.emit_line('   ret')
         
         elif isinstance(instruction, Unary):
             operator = convertOperatorToAssembly(instruction.operator)
@@ -85,6 +114,8 @@ class CodeEmitter:
             # print(label)
             self.emit_line(f'   set{code}    {label}')
         
+        
+        
         elif isinstance(instruction,Label):
             label = convertOperandToAssembly(instruction.identifier)
             self.emit_line(f'.L{label}:')
@@ -94,7 +125,11 @@ class CodeEmitter:
             operand= Convert8BYTEoperand(instruction.operand)
             self.emit_line(f'   pushq {operand}')
         elif isinstance(instruction,Call):
-            self.emit_line(f'   call {instruction.identifier}@PLT')
+            defined = self.symbols[instruction.identifier]['attrs'].defined
+            if defined:
+                self.emit_line(f'   call {instruction.identifier}')
+            else:
+                self.emit_line(f'   call {instruction.identifier}@PLT')
          
         elif isinstance(instruction, Idiv):
             # print(instruction)
@@ -170,6 +205,8 @@ def convertOperandToAssembly(operand: Operand) -> str:
     elif isinstance(operand, Imm):
         # Immediate values
         return f'${operand.value}'
+    elif isinstance(operand,Data):
+        return f'{operand.identifier}(%rip)'
     else:
         raise ValueError(f"Invalid operand type: {type(operand).__name__}")
     

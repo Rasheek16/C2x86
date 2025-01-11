@@ -7,10 +7,15 @@ from _ast5 import *
 return_flag = False
 
 def isKeyword(token):
-    if token in ('int','return','main','void'):
+    if token in ('int','return','main','void','int','extern','static'):
         return True 
     return False
-    
+
+def isSpecifier(token):
+    if token in ('int','extern','static'):
+        return True 
+    return False
+
 temp_label_counter=1
 def get_temp_label():
     global temp_label_counter
@@ -98,13 +103,14 @@ def parse_program(tokens: List[str]) -> Program:
     """
     try:
         # Parse the function definition
-        function_definition = parse_function_definition(tokens)
+        body = parse_declarations(tokens)
         
         # The grammar specifies only one function. If there are remaining tokens, it's an error.
         if tokens:
+            
             raise SyntaxError("Unexpected tokens after function definition")
         
-        return Program(function_definition=function_definition)
+        return Program(function_definition=body)
     except Exception as e:
         print(f"Syntax Error: {e}")
         sys.exit(1)
@@ -117,7 +123,7 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
         _,tokens=take_token(tokens)
         # list_params
         return list_params,tokens
-    elif next_token=='int':
+    elif next_token in ('int','extern','static'):
         token,tokens=take_token(tokens)
         next_token=tokens[0]
         if isIdentifier(next_token) and not isKeyword(next_token):
@@ -131,7 +137,7 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
             raise SyntaxError('In parse param list Expected identifier , got',next_token)
         while True:
             expect(',',tokens)
-            next_token=='int'
+            next_token in ('int','extern','static')
             token,tokens=take_token(tokens)
             next_token=tokens[0]
             if isIdentifier(next_token) and not isKeyword(next_token):
@@ -159,23 +165,8 @@ def parse_args_list(tokens)->Tuple[List[Exp],str]:
     
         
     
-def parse_func_declaration(tokens):
-    # print(tokens)
-    expect("int", tokens)
-    # Parse <identifier> for the variable name
-    identifier_token, tokens = take_token(tokens)
-    if not isIdentifier(identifier_token):
-        raise SyntaxError(f"Invalid identifier in parse declaration: '{identifier_token}'")
-    func_name = Identifier(identifier_token)
-    # print(func_name)
-    # func_name =
-    next_token= tokens[0]
-    # print(next_token)
-    if next_token=='(':
-         return parse_func_decl(tokens,func_name)
-    else:
-        raise SyntaxError('Exected ( in function declaration got ',next_token)
-def parse_func_decl(tokens,func_name:Identifier)->Tuple[FunDecl,str]:
+
+def parse_func_decl(tokens,func_name:Identifier,storage_class)->Tuple[FunDecl,str]:
  try:
     exp=Null()
     expect('(',tokens)
@@ -186,43 +177,36 @@ def parse_func_decl(tokens,func_name:Identifier)->Tuple[FunDecl,str]:
     
     if next_token==';':
         _,tokens=take_token(tokens)
-        exp1=FunDecl(name=func_name,params=exp,body=Null()),tokens
+        exp1=FunDecl(name=func_name,params=exp,body=Null(),storage_class=storage_class),tokens
         return exp1
     elif next_token=='{':
         list_block_items,tokens=parse_block(tokens)
         # func=FunctionDeclaration(name=func_name,init=exp,body=list_block_items)
-        return FunDecl(name=func_name,params=exp,body=Block(list_block_items)),tokens
+      
+        return FunDecl(name=func_name,params=exp,body=Block(list_block_items),storage_class=storage_class),tokens
  except Exception as e:
     raise SyntaxError('Error in parse_func_decl',e)
         
     
     
-def parse_function_definition(tokens: List[str]) -> List[FunctionDeclaration]:
-    """
-    Parses the <function> ::= "int" <identifier> "(" "void" ")" "{" { <block-item> } "}" rule.
-    
-    Args:
-        tokens (List[str]): The list of tokens to parse.
-    
-    Returns:
-        Function: The parsed Function AST node.
-    
-    Raises:
-        SyntaxError: If parsing fails.
-    """
+def parse_declarations(tokens):
     try:
-        function_body=[]
+        body=[]
         # Expect "int" keyword
         while tokens:
         # Expect "{" to start the function body
             # print(tokens)
-            function,tokens = parse_func_declaration(tokens)
-            function_body.append(function)
+            sub,tokens = parse_declaration(tokens)
+      
+            body.append(sub)
         # Return the Function AST node
-        return function_body
+        return body
     except Exception as e:
         print(f"Syntax Error in function definition: {e}")
         sys.exit(1)
+
+
+
 
 def parse_block(tokens)->Tuple[List[BlockItem],str]:
     expect("{", tokens)
@@ -251,7 +235,7 @@ def parse_block(tokens)->Tuple[List[BlockItem],str]:
 def parse_block_item(tokens):
     # token,tokens = take_token(tokens)
    
-    if tokens[0] == "int":
+    if tokens[0] in ('int','static','extern'):
     
         declaration,tokens = parse_declaration(tokens)
        
@@ -267,9 +251,9 @@ def parse_block_item(tokens):
         
     # block_items.append(block_item)
 
-def parse_variable_declaration(tokens:List[str],var_name:str)->Tuple[VarDecl,str]:
+def parse_variable_declaration(tokens:List[str],var_name:str,storage_class)->Tuple[VarDecl,str]:
     try:
-        
+      
         # Initialize 'init' to None (optional initializer)
         init = Null()
         # new_token = 
@@ -286,34 +270,83 @@ def parse_variable_declaration(tokens:List[str],var_name:str)->Tuple[VarDecl,str
         expect(";", tokens)
         # print(tokens)
         # Return the Declaration AST node
-        return VarDecl(name=var_name, init=init),tokens
+        return VarDecl(name=var_name, init=init,storage_class=storage_class),tokens
     except Exception as e:
         print(f"Syntax Error in declaration: {e}")
         sys.exit(1)
     
+def parse_specifier(tokens):
+    if isSpecifier(tokens[0]):
+        specifer,tokens=take_token(tokens)
+        return specifer,tokens
+    else:
+        raise SyntaxError('Unknown Specifier',tokens[0])
+        
+def parse_type_and_storage_class(specifiers:List):
+    try:
+        types=[]
+        storage_classes:List[str]=[]
+        for specifier in specifiers:
+            if specifier=='int':
+                types.append(specifier)
+            else:
+                storage_classes.append(specifier)
+                
+        if len(types)!=1:
+            raise ValueError('Invalid type specifier.')
+        if len(storage_classes)>1:
+            raise ValueError('Invalid storage classes.')
+        _type=Int()
+        # storage_class=storage_class
+
+        if len(storage_classes)==1:
+            # print('here')
+            storage_class = parse_storage_class(storage_classes[0])
+            # print('here')
+        else:
+            storage_class=Null()
+        
+        return _type,storage_class
+
+    except Exception as e:
+        raise ValueError('Invalid storage types / type')
+
+def parse_storage_class(storage_class):
+    # print(storage_class)
+    if storage_class=='static':
+       return Static()
+    elif storage_class=='extern':
+       return Extern()
+    else:
+       raise ValueError('Invalid storage class')
+    
 
 def parse_declaration(tokens: List[str]):
-     
     # Expect "int" keyword
-        expect("int", tokens)
-        # Parse <identifier> for the variable name
-        identifier_token, tokens = take_token(tokens)
-        if not isIdentifier(identifier_token):
-            raise SyntaxError(f"Invalid identifier in parse declaration: '{identifier_token}'")
-        var_name = Identifier(identifier_token)
-        func_name = Identifier(identifier_token)
-        # func_name =
-        next_token= tokens[0]
-        if next_token =='(':
-            func_decl,tokens=parse_func_decl(tokens,func_name)
-            return func_decl,tokens
-        elif next_token in ('=',';'):
-     
-            var_dec,tokens = parse_variable_declaration(tokens,var_name)
-            return var_dec,tokens
-        else:
-            # print('inside decleration',tokens)
-            raise SyntaxError('Invalid token expected = or ( for',next_token)
+    specifiers=[]
+    while isSpecifier(tokens[0]):
+        specifier,tokens=parse_specifier(tokens)
+        specifiers.append(specifier)
+    
+    _type,storage_class= parse_type_and_storage_class(specifiers)
+    identifier_token, tokens = take_token(tokens)
+    
+    if not isIdentifier(identifier_token):
+        raise SyntaxError(f"Invalid identifier in parse declaration: '{identifier_token}'")
+    var_name = Identifier(identifier_token)
+    func_name = Identifier(identifier_token)
+    # func_name =
+    next_token= tokens[0]
+    if next_token =='(':
+        # print('here')
+        func_decl,tokens=parse_func_decl(tokens,func_name,storage_class)
+        return func_decl,tokens
+    elif next_token in ('=',';'):
+        var_dec,tokens = parse_variable_declaration(tokens,var_name,storage_class)
+        return var_dec,tokens
+    else:
+        # print('inside decleration',tokens)
+        raise SyntaxError('Invalid token expected = or ( for',next_token)
 
 
 def parse_statement(tokens: List[str]) -> Statement:
@@ -408,10 +441,10 @@ def parse_statement(tokens: List[str]) -> Statement:
         elif next_token == "for":
             _, tokens = take_token(tokens)  # consume 'for'
             expect("(", tokens)
-            
+           
             # Parse initialization
             init, tokens = parse_for_init(tokens)
-            
+        
             # Expect and consume first semicolon if it's not a declaration
             if not isinstance(init, InitDecl):
                 expect(";", tokens)
@@ -455,7 +488,9 @@ def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
     Returns:
         Tuple[Statement, List[str]]: The initialization statement and the remaining tokens.
     """
-    if tokens[0] == 'int':
+  
+    if tokens[0] in ('int','extern','static'):
+        # print('here')
         # Parse declaration (e.g., int i = 0)
         if tokens[2]=='(':
             raise SyntaxError('Function not permitted in loop headers')
@@ -564,16 +599,12 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
         print(f"Syntax Error in expression: {e}")
         sys.exit(1)
 
-
 def parse_conditional_middle(tokens):
     token,tokens = take_token(tokens)
     exp,tokens=parse_exp(tokens,min_prec=0)
     expect(':',tokens)
     return exp,tokens
-    
-    
-    
-    
+      
 
 def parse_binop_info(token: str) -> Optional[dict]:
     """
