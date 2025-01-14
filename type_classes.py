@@ -2,6 +2,27 @@ class InitialValue:
     """Base class for initial values."""
     pass
 
+
+    
+class IntInit():
+    def __init__(self, value):
+        self.value=value 
+    def __repr__(self):
+        return f'IntInit(value={self.value})'
+    
+class LongInit():
+    def __init__(self, value):
+        self.value=value 
+    def __repr__(self):
+        return f'LongInit(value={self.value})'
+
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+    
+    
+class StaticInit:
+    IntInit=IntInit 
+    LongInit=LongInit
+
 class Tentative(InitialValue):
     """Represents a tentative definition without an initializer."""
     
@@ -16,7 +37,7 @@ class Tentative(InitialValue):
 class Initial(InitialValue):
     """Represents an initialized variable with a specific value."""
     
-    def __init__(self, value):
+    def __init__(self, value:StaticInit):
         self.value = value  # You can adjust the type based on your needs
     
     def __repr__(self):

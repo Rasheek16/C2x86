@@ -82,13 +82,14 @@ class TackyFunction:
 
 
 class TackyStaticVariable:
-    def __init__(self,identifier,_global,init):
+    def __init__(self,identifier,_global,_type,init):
         self.name = identifier
         self._global =_global
         self.init = init
+        self._type=_type
     
     def __repr__(self):
-        return f'StaticVariable(name={self.name},_global={self._global},init={self.init})'
+        return f'TackyStaticVariable(name={self.name},_global={self._global},type={self._type},init={self.init})'
         
 
 class TopLevel:
@@ -216,6 +217,31 @@ class TackyLabel(TackyInstruction):
     def __repr__(self):
         return f"TackyLabel(identifier={self.identifer})"
 
+
+class TackySignExtend(TackyInstruction):
+    """
+    Represents a binary operation in the AST.
+    """
+    def __init__(self, source,destination):
+        
+        self.src = source        # Left operand (expression)
+        self.dst = destination        # temporary dest variable
+
+    def __repr__(self):
+        return f"TackySignExtend(src={self.src}, dst={self.dst})"
+
+
+class TackyTruncate(TackyInstruction):
+    """
+    Represents a binary operation in the AST.
+    """
+    def __init__(self, source,destination):
+        
+        self.src = source        # Left operand (expression)
+        self.dst = destination        # temporary dest variable
+
+    def __repr__(self):
+        return f"TackyTruncate(src={self.src}, dst={self.dst})"
 
 
 # ------------------

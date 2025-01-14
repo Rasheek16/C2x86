@@ -1,32 +1,146 @@
-   .globl read_x
+   .globl return_truncated_long
    .text
-read_x:
+return_truncated_long:
    pushq   %rbp
    movq    %rsp, %rbp
-   subq    $32, %rsp
-   movl $4, -8(%rbp)
-   cmpl $4, -8(%rbp)
-   movl $0, -16(%rbp)
-   sete    -16(%rbp)
-   cmpl $0, -16(%rbp)
+   subq $16, %rsp
+   movq %rdi, -16(%rbp)
+   movl -16(%rbp), %r10d
+   movl %r10d, -20(%rbp)
+   movl -20(%rbp), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .globl return_extended_int
+   .text
+return_extended_int:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq $16, %rsp
+   movl %edi, -12(%rbp)
+   movslq -12(%rbp), %r11
+   movq %r11, -24(%rbp)
+   movq -24(%rbp), %rax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .globl truncate_on_assignment
+   .text
+truncate_on_assignment:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq $32, %rsp
+   movq %rdi, -16(%rbp)
+   movl %esi, -20(%rbp)
+   movq -16(%rbp), %r10
+   movq %r10, -24(%rbp)
+   movl -20(%rbp), %r10d
+   cmpl %r10d, -24(%rbp)
+   movl $0, -28(%rbp)
+   sete    -28(%rbp)
+   movl -28(%rbp), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .globl main
+   .text
+main:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq $80, %rsp
+   movq $4294967298, %rdi
+   call return_truncated_long
+   movl %eax, -12(%rbp)
+   movl -12(%rbp), %r10d
+   movl %r10d, -24(%rbp)
+   cmpq $2, -24(%rbp)
+   movl $0, -28(%rbp)
+   setne    -28(%rbp)
+   cmpl $0, -28(%rbp)
    je    .Lfalse_1
-   movl -24(%rbp), %eax
-    movq   %rbp, %rsp
-    popq   %rbp
-    ret
+   movl $1, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
    jmp  .Lend_1
 .Lfalse_1:
-   movl $1, -32(%rbp)
+.Lend_1:
+   movl $10, -32(%rbp)
    movl -32(%rbp), %r10d
    negl %r10d
    movl %r10d, -32(%rbp)
-   movl -32(%rbp), %eax
-    movq   %rbp, %rsp
-    popq   %rbp
-    ret
-.Lend_1:
+   movl -32(%rbp), %edi
+   call return_extended_int
+   movq %rax, -40(%rbp)
+   movq -40(%rbp), %r10
+   movq %r10, -24(%rbp)
+   movl $10, -44(%rbp)
+   movl -44(%rbp), %r10d
+   negl %r10d
+   movl %r10d, -44(%rbp)
+   movslq -44(%rbp), %r11
+   movq %r11, -56(%rbp)
+   movq -56(%rbp), %r10
+   cmpq %r10, -24(%rbp)
+   movl $0, -60(%rbp)
+   setne    -60(%rbp)
+   cmpl $0, -60(%rbp)
+   je    .Lfalse_2
+   movl $2, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_2
+.Lfalse_2:
+.Lend_2:
+   movq $4294967298, %r10
+   movq %r10, -64(%rbp)
+   cmpl $2, -64(%rbp)
+   movl $0, -68(%rbp)
+   setne    -68(%rbp)
+   cmpl $0, -68(%rbp)
+   je    .Lfalse_3
+   movl $3, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_3
+.Lfalse_3:
+.Lend_3:
+   movq $17179869184, %rdi
+   movl $0, %esi
+   call truncate_on_assignment
+   movl %eax, -72(%rbp)
+   cmpl $0, -72(%rbp)
+   movl $0, -76(%rbp)
+   sete    -76(%rbp)
+   cmpl $0, -76(%rbp)
+   je    .Lfalse_4
+   movl $4, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_4
+.Lfalse_4:
+.Lend_4:
    movl $0, %eax
-    movq   %rbp, %rsp
-    popq   %rbp
-    ret
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
 .section .note.GNU-stack,"",@progbits

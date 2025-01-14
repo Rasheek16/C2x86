@@ -3,7 +3,7 @@ import sys
 import subprocess
 from lexer import lex
 from parser import parse_program
-from converter import convert_to_assembly_ast
+from converter import Converter
 from code_emitter import CodeEmitter
 from pathlib import Path
 from tacky_emiter import emit_tacky
@@ -59,22 +59,27 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
         ast,symbols = variable_resolution_pass(ast)
         if stage =='--validate':
             print(ast)
-            print(symbols)
+            print('symbols after validateion',symbols)
             return
         # 4) Emit Tacky IR
       
-        tacky_ir,symbols = emit_tacky(ast,symbols)
+        tacky_ir,symbols1 = emit_tacky(ast,symbols)
         if stage == '--tacky':
             print("Tacky IR:")
             print(tacky_ir)
             return  # Done, exit code 0
 
         # 5) Convert To Assembly Ast
-        a_ast =convert_to_assembly_ast(tacky_ir) 
-        # print(current_param_offset)
+        conv=Converter(symbols1)
+        a_ast,backend_symbol_table =conv.convert_to_assembly_ast(tacky_ir) 
+        da=backend_symbol_table
+        # print(symbols)
+        # exit()
         # 6) Replace Pseudoregisters
         # This pass replaces all Pseudo operands with Stack operands and returns stack allocation
-        [a_ast,stack_allocation] = replace_pseudoregisters(a_ast,symbols)
+        [a_ast,stack_allocation,backend_symbol_table] = replace_pseudoregisters(a_ast,symbols,da)
+        # print(backend_symbol_table)
+        # exit()
         # print("After Replacing Pseudoregisters:")
         # print(a_ast)
 

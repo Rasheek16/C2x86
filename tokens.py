@@ -38,6 +38,8 @@ patterns = [
      ('comma',r','),
      ('static',r'\bstatic\b'),
      ('extern',r'\bextern\b'),
+     ('long_keyword',r'\blong\b'),
+     ('long_int_constant',r'\b[0-9]+[1l]\b')
 ]
 
 

@@ -18,12 +18,21 @@
 #
 # ---------------------------------------------------------------------------
 from enum import Enum
-from typing import List
+from typing import List,Optional
 
 
 # ------------------
 # Operand and subclasses
 # ------------------
+
+
+
+class AssemblyType:
+    longWord='LongWord'
+    quadWord='QuadWord' 
+    
+    
+
 
 class Operand:
     """
@@ -75,7 +84,7 @@ class Reg(Operand):
     """
     def __init__(self, value):
         # We check against the valid enumerations in 'Registers'
-        if value not in (Registers.AX, Registers.R10,Registers.DX,Registers.R11,Registers.R8,Registers.R9,Registers.CX,Registers.DI,Registers.SI):
+        if value not in (Registers.AX, Registers.R10,Registers.DX,Registers.R11,Registers.R8,Registers.R9,Registers.CX,Registers.DI,Registers.SI,Registers.SP):
             raise TypeError(f"Invalid register value: {value}")
         self.value = value
 
@@ -109,6 +118,11 @@ class Data(Operand):
 # ------------------
 
 class Instruction:
+    
+        
+    
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+    
     """
     Base class for assembly instructions.
     """
@@ -120,12 +134,29 @@ class Mov(Instruction):
     mov SRC, DEST
     (Grammar: Mov(operand src, operand dst))
     """
+    def __init__(self,assembly_type, src, dest):
+        self.src = src
+        self.dest = dest
+        self._type=assembly_type
+        
+    def get_type(self):
+        return self._type
+    def __repr__(self):
+        return f"Mov(src={repr(self.src)}, dest={repr(self.dest)},type={self._type})"
+    
+    
+class Movsx(Instruction):
+    """
+    mov SRC, DEST
+    (Grammar: Mov(operand src, operand dst))
+    """
     def __init__(self, src, dest):
         self.src = src
         self.dest = dest
 
     def __repr__(self):
-        return f"Mov(src={repr(self.src)}, dest={repr(self.dest)})"
+        return f"Movsx(src={repr(self.src)}, dest={repr(self.dest)})"
+    
 
 
 class Ret(Instruction):
@@ -142,25 +173,31 @@ class Unary(Instruction):
     unary_operator, operand
     (Grammar: Unary(unary_operator, operand))
     """
-    def __init__(self, operator, operand):
+    def __init__(self, operator,assembly_type, operand):
         self.operator = operator 
         self.operand = operand
+        self._type=assembly_type
+    def get_type(self):
+        return self._type
+        
     
     def __repr__(self):
-        return f"Unary(operator={self.operator}, operand={self.operand})"
+        return f"Unary(operator={self.operator},assembly_type={self._type} operand={self.operand})"
         
         
 class Binary(Instruction):
     """
     Represents a binary operation in the AST.
     """
-    def __init__(self, operator: str, src1, src2):
+    def __init__(self, operator: str,assembly_type,src1, src2):
         self.operator = operator  # e.g., '+', '-', '*', '/', '%'
         self.src1 = src1          # Left operand (expression)
         self.src2 = src2        # Right operand (expression)
-
+        self._type=assembly_type
+    def get_type(self):
+        return self._type
     def __repr__(self):
-        return f"Binary(operator='{self.operator}', left={self.src1}, right={self.src2})"
+        return f"Binary(operator='{self.operator}', assembly_type={self._type},left={self.src1}, right={self.src2})"
   
 class Idiv(Instruction):
     """
@@ -171,7 +208,11 @@ class Idiv(Instruction):
     storing the quotient and remainder in designated registers.
     """
     
-    def __init__(self, operand):
+    def __init__(self, assembly_type,operand):
+        self._type=assembly_type
+        self.operand=operand
+    def get_type(self):
+        return self._type
         """
         Initializes the Idiv instruction with the specified operand.
         
@@ -190,7 +231,7 @@ class Idiv(Instruction):
         Returns:
             str: A string representing the Idiv instruction.
         """
-        return f'Idiv(operand={self.operand})'  # Corrected to use self.operand
+        return f'Idiv(assembly_type={self._type},operand={self.operand})'  # Corrected to use self.operand
 
     
 class Cdq(Instruction):
@@ -202,14 +243,18 @@ class Cdq(Instruction):
     a division operation to prepare the registers for signed division.
     """
     
-    def __init__(self):
+    def __init__(self,assembly_type):
+        self._type=assembly_type
+        
+    def get_type(self):
+        return self._type
         """
         Initializes the Cqd instruction.
         
         Since the CDQ instruction operates on predefined registers (EAX and EDX) and does not
         require any operands, the initializer does not take any parameters.
         """
-        pass  # No operands needed for CDQ as it operates on specific registers
+          # No operands needed for CDQ as it operates on specific registers
 
     def __repr__(self):
         """
@@ -221,15 +266,18 @@ class Cdq(Instruction):
         Returns:
             str: A string representing the Cqd instruction.
         """
-        return f'Cqd()'  # Represents the CDQ instruction with no operands
+        return f'Cqd(assembly_type={self._type})'  # Represents the CDQ instruction with no operands
 
 class Cmp(Instruction):
-    def __init__(self, operand1 , operand2):
+    def __init__(self, operand1 ,assembly_type, operand2):
+        # super().__init__(assembly_type)
         self.operand1=operand1
         self.operand2=operand2
-    
+        self._type=assembly_type
+    def get_type(self):
+        return self._type
     def __repr__(self):
-        return f'Cmp(Operand1={self.operand1},Operand2 ={self.operand2})'
+        return f'Cmp(Operand1={self.operand1},assemby_type={self._type},Operand2 ={self.operand2})'
     
 class Jmp(Instruction):
     def __init__(self,indentifier):
@@ -280,8 +328,9 @@ class DeallocateStack(Instruction):
         return f"DeallocateStack(value={self.value})"
 
 class Push(Instruction):
-    def __init__(self,operand:Operand):
+    def __init__(self,operand:Operand,_type):
         self.operand= operand
+        self._type=_type
     def __repr__(self):
         return f'Push(operand={self.operand})'
 
@@ -361,6 +410,7 @@ class Registers:
     R9='R9'
     R10 = "R10" # General-Purpose Register: available for various operations
     R11 = "R11" # General-Purpose Register: available for various operations
+    SP='SP'
 
     # Additional registers can be defined here based on the target architecture
     # For example:
@@ -404,13 +454,15 @@ class AssemblyFunction:
 
 
 class AssemblyStaticVariable:
-    def __init__(self,identifier,_global,init):
+    def __init__(self,identifier,_global,alignment,init):
         self.name = identifier
         self._global =_global
+        self.alignment=alignment
         self.init = init
     
     def __repr__(self):
-        return f'StaticVariable(name={self.name},_global={self._global},init={self.init})'
+        return f'StaticVariable(name={self.name},_global={self._global},alignment={self.alignment},init={self.init})'
+    
     
 class TopLevel:
     assembly_func=AssemblyFunction

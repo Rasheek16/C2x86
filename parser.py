@@ -12,9 +12,15 @@ def isKeyword(token):
     return False
 
 def isSpecifier(token):
-    if token in ('int','extern','static'):
+    if token in ('int','extern','static','long','int'):
         return True 
     return False
+
+def isType(token):
+    if token in ('int','long'):
+        return True 
+    return False
+        
 
 temp_label_counter=1
 def get_temp_label():
@@ -32,7 +38,7 @@ def isIntegerConstant(token: str) -> bool:
     Returns:
         bool: True if the token is an integer constant, False otherwise.
     """
-    return re.fullmatch(r"\d+", token) is not None
+    return (re.fullmatch(r"\d+", token) is not None or re.match(r'\b\d+l\b',token) is not None) 
 
 
 def isIdentifier(token: str) -> bool:
@@ -88,7 +94,7 @@ def expect(expected: str, tokens: List[str]):
 
 
 def parse_program(tokens: List[str]) -> Program:
-    # print(tokens)
+    # ##tokens)
     """
     Parses the <program> ::= <function> rule.
     
@@ -109,10 +115,10 @@ def parse_program(tokens: List[str]) -> Program:
         if tokens:
             
             raise SyntaxError("Unexpected tokens after function definition")
-        
+        #body)
         return Program(function_definition=body)
     except Exception as e:
-        print(f"Syntax Error: {e}")
+        ##f"Syntax Error: {e}")
         sys.exit(1)
 
 
@@ -123,37 +129,53 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
         _,tokens=take_token(tokens)
         # list_params
         return list_params,tokens
-    elif next_token in ('int','extern','static'):
-        token,tokens=take_token(tokens)
+    elif isSpecifier(next_token):
+        specifiers=[]
+        while tokens and isSpecifier(tokens[0]):
+            specifiers.append(tokens[0])     
+            token,tokens=take_token(tokens)
+        _type,storage_class=parse_type_and_storage_class(specifiers)
+        if not isinstance(storage_class,Null):
+            raise SyntaxError('Storage class cannot have specifier.')
+        # token,tokens=take_token(tokens)
         next_token=tokens[0]
         if isIdentifier(next_token) and not isKeyword(next_token):
             token,tokens =take_token(tokens)
-            list_params.append(Parameter('int',Identifier(token)))
+            list_params.append(Parameter(_type,Identifier(token)))
             if tokens[0] == ")":
-                
-                # print(list_params)
                 return list_params,tokens
         else:
             raise SyntaxError('In parse param list Expected identifier , got',next_token)
-        while True:
+        while tokens:
             expect(',',tokens)
-            next_token in ('int','extern','static')
-            token,tokens=take_token(tokens)
             next_token=tokens[0]
-            if isIdentifier(next_token) and not isKeyword(next_token):
-                token,tokens =take_token(tokens)
-                list_params.append(Parameter('int',Identifier(next_token)))
-                if tokens[0] == ")":
-                    return list_params,tokens
-                else: 
-                    pass 
+            # ##next_token)
+            if isSpecifier(next_token):
+                specifiers=[]
+                ##'here2')
+                while tokens and isSpecifier(tokens[0]):
+                    specifiers.append(tokens[0])     
+                    token,tokens=take_token(tokens)
+                _type,storage_class=parse_type_and_storage_class(specifiers)
+                next_token=tokens[0]
+                if isIdentifier(next_token) and not isKeyword(next_token):
+                    token,tokens =take_token(tokens)
+                    list_params.append(Parameter(_type,Identifier(next_token)))
+                    if tokens[0] == ")":
+                        # ##list_params)
+                        return list_params,tokens
+                    else: 
+                        pass 
+                else:
+                    raise SyntaxError('In parse param Expected identifier , got in loop ',next_token)
             else:
-                raise SyntaxError('In parse param Expected identifier , got in loop ',next_token)
+                raise SyntaxError('Unexpected end of input expected an identifier got ',token)
            
                 
 def parse_args_list(tokens)->Tuple[List[Exp],str]:
     arg_body = []
     if tokens[0]!=')':
+        
         exp,tokens=parse_exp(tokens)
         arg_body.append(exp)
     while tokens and tokens[0] != ")":
@@ -166,7 +188,7 @@ def parse_args_list(tokens)->Tuple[List[Exp],str]:
         
     
 
-def parse_func_decl(tokens,func_name:Identifier,storage_class)->Tuple[FunDecl,str]:
+def parse_func_decl(tokens,func_name:Identifier,_type,storage_class)->Tuple[FunDecl,str]:
  try:
     exp=Null()
     expect('(',tokens)
@@ -174,16 +196,15 @@ def parse_func_decl(tokens,func_name:Identifier,storage_class)->Tuple[FunDecl,st
    
     expect(')',tokens)
     next_token  = tokens[0]
-    
     if next_token==';':
         _,tokens=take_token(tokens)
-        exp1=FunDecl(name=func_name,params=exp,body=Null(),storage_class=storage_class),tokens
+        exp1=FunDecl(name=func_name,params=exp,fun_type=_type,body=Null(),storage_class=storage_class),tokens
         return exp1
     elif next_token=='{':
         list_block_items,tokens=parse_block(tokens)
         # func=FunctionDeclaration(name=func_name,init=exp,body=list_block_items)
       
-        return FunDecl(name=func_name,params=exp,body=Block(list_block_items),storage_class=storage_class),tokens
+        return FunDecl(name=func_name,params=exp,fun_type=_type,body=Block(list_block_items),storage_class=storage_class),tokens
  except Exception as e:
     raise SyntaxError('Error in parse_func_decl',e)
         
@@ -195,14 +216,14 @@ def parse_declarations(tokens):
         # Expect "int" keyword
         while tokens:
         # Expect "{" to start the function body
-            # print(tokens)
+            # ##tokens)
             sub,tokens = parse_declaration(tokens)
       
             body.append(sub)
         # Return the Function AST node
         return body
     except Exception as e:
-        print(f"Syntax Error in function definition: {e}")
+        ##f"Syntax Error in function definition: {e}")
         sys.exit(1)
 
 
@@ -216,44 +237,44 @@ def parse_block(tokens)->Tuple[List[BlockItem],str]:
         #* { <block-item> } Curly braces indicate code repetition
     while tokens and tokens[0] != "}":
         block = parse_block_item(tokens)
-        # print('block:',block)
+        # ##'block:',block)
         if block:  # Append only if valid
             function_body.append(block)
-            # print(block)
+            # ##block)
         # function_body.append(block)
         # Expect "}" to end the function body
    
-        # print('func',function_body)
+        # ##'func',function_body)
         
     expect("}", tokens)
-    # print(function_body)
+    # ##function_body)
     
-    # print(function_body)
+    # ##function_body)
     return function_body,tokens
     
 
 def parse_block_item(tokens):
     # token,tokens = take_token(tokens)
    
-    if tokens[0] in ('int','static','extern'):
-    
+    if tokens[0] in ('int','static','extern','long'):
         declaration,tokens = parse_declaration(tokens)
-       
+        ##'declaration')
         block_item = D(declaration)
        
         return block_item
     else:
-        # print('parse statement')
+        # ##'parse statement')
         # It's a statement
         statement = parse_statement(tokens)
+        # ##statement)
         block_item = S(statement)
         return block_item
         
     # block_items.append(block_item)
 
-def parse_variable_declaration(tokens:List[str],var_name:str,storage_class)->Tuple[VarDecl,str]:
+def parse_variable_declaration(tokens:List[str],var_name:str,_type,storage_class)->Tuple[VarDecl,str]:
     try:
-      
+        
         # Initialize 'init' to None (optional initializer)
         init = Null()
         # new_token = 
@@ -262,17 +283,19 @@ def parse_variable_declaration(tokens:List[str],var_name:str,storage_class)->Tup
         if tokens and tokens[0] == "=":
             # Consume "="
             expect("=", tokens)
-            # print(tokens)
+            # ##tokens)
             # Parse <exp> for the initializer
+            # ##tokens)
             init, tokens = parse_exp(tokens)
-            # print(tokens)
+            # ##tokens)
         # Expect ";" to end the declaration
         expect(";", tokens)
-        # print(tokens)
+        # ##tokens)
         # Return the Declaration AST node
-        return VarDecl(name=var_name, init=init,storage_class=storage_class),tokens
+        # ##'in var decl')
+        return VarDecl(name=var_name, init=init,var_type=_type,storage_class=storage_class),tokens
     except Exception as e:
-        print(f"Syntax Error in declaration: {e}")
+        ##f"Syntax Error in declaration: {e}")
         sys.exit(1)
     
 def parse_specifier(tokens):
@@ -281,28 +304,39 @@ def parse_specifier(tokens):
         return specifer,tokens
     else:
         raise SyntaxError('Unknown Specifier',tokens[0])
-        
+    
+    
+def parse_types(types):
+    if types==['int']:
+        return Int()
+    if types==['int','long'] or types==['long','int'] or types==['long']:
+        ##'type',types)
+        return Long()
+    else:
+        raise SyntaxError('Invalid specifier type combination')
+    
 def parse_type_and_storage_class(specifiers:List):
     try:
         types=[]
         storage_classes:List[str]=[]
         for specifier in specifiers:
-            if specifier=='int':
+            if specifier in ('int','long'):
                 types.append(specifier)
             else:
                 storage_classes.append(specifier)
-                
-        if len(types)!=1:
+        _type = parse_types(types)
+        if len(types)==0:
             raise ValueError('Invalid type specifier.')
         if len(storage_classes)>1:
             raise ValueError('Invalid storage classes.')
-        _type=Int()
+        ##specifiers)
+        # _type=Int()
         # storage_class=storage_class
 
         if len(storage_classes)==1:
-            # print('here')
+            # ##'here')
             storage_class = parse_storage_class(storage_classes[0])
-            # print('here')
+            # ##'here')
         else:
             storage_class=Null()
         
@@ -312,7 +346,7 @@ def parse_type_and_storage_class(specifiers:List):
         raise ValueError('Invalid storage types / type')
 
 def parse_storage_class(storage_class):
-    # print(storage_class)
+    # ##storage_class)
     if storage_class=='static':
        return Static()
     elif storage_class=='extern':
@@ -324,13 +358,14 @@ def parse_storage_class(storage_class):
 def parse_declaration(tokens: List[str]):
     # Expect "int" keyword
     specifiers=[]
+    
     while isSpecifier(tokens[0]):
+        # ##tokens[0])
         specifier,tokens=parse_specifier(tokens)
         specifiers.append(specifier)
-    
     _type,storage_class= parse_type_and_storage_class(specifiers)
     identifier_token, tokens = take_token(tokens)
-    
+    # ##identifier_token)
     if not isIdentifier(identifier_token):
         raise SyntaxError(f"Invalid identifier in parse declaration: '{identifier_token}'")
     var_name = Identifier(identifier_token)
@@ -338,14 +373,16 @@ def parse_declaration(tokens: List[str]):
     # func_name =
     next_token= tokens[0]
     if next_token =='(':
-        # print('here')
-        func_decl,tokens=parse_func_decl(tokens,func_name,storage_class)
+        # ##'here in func decl')
+        func_decl,tokens=parse_func_decl(tokens,func_name,_type,storage_class)
         return func_decl,tokens
     elif next_token in ('=',';'):
-        var_dec,tokens = parse_variable_declaration(tokens,var_name,storage_class)
+        # ##next_token)
+        var_dec,tokens = parse_variable_declaration(tokens,var_name,_type=_type,storage_class=storage_class)
+        # ##var_dec)
         return var_dec,tokens
     else:
-        # print('inside decleration',tokens)
+        # ##'inside decleration',tokens)
         raise SyntaxError('Invalid token expected = or ( for',next_token)
 
 
@@ -362,6 +399,7 @@ def parse_statement(tokens: List[str]) -> Statement:
     Raises:
         SyntaxError: If parsing fails.
     """
+    ##tokens[0])
     try:
         if not tokens:
             raise SyntaxError("Unexpected end of input when parsing statement.")
@@ -381,15 +419,17 @@ def parse_statement(tokens: List[str]) -> Statement:
             expect(";", tokens)
             return Null()
         elif next_token =='if':
-            # print('inside if')
+            ##'in stmt')
+            
+            # ##'inside if')
             token,tokens=take_token(tokens)
             expect('(',tokens)
             exp_node,tokens = parse_exp(tokens)
             expect(')',tokens)
             statement = parse_statement(tokens)
-            # print(statement)
-            # print(statement)
-            # print(tokens[0])
+            # ##statement)
+            # ##statement)
+            # ##tokens[0])
             # el_statement=None
             if tokens and tokens[0]=='else':
                 token,tokens=take_token(tokens)
@@ -397,7 +437,7 @@ def parse_statement(tokens: List[str]) -> Statement:
                 return If(exp=exp_node,then=statement,_else = el_statement)
                 # el_statement=parse_statement(['return','0',';'])
             return If(exp=exp_node,then=statement,_else=Null())
-            # print('outside if')
+            # ##'outside if')
         elif next_token=='{':
             block,tokens=parse_block(tokens)
             return Compound(block=block)
@@ -421,15 +461,15 @@ def parse_statement(tokens: List[str]) -> Statement:
             temp_label=get_temp_label()
             return While(exp,statement)
         elif next_token=='do':
-            # print('here')
+            # ##'here')
             _,tokens=take_token(tokens)
            
             statement=parse_statement(tokens)
-            # print(statement)
+            # ##statement)
             expect('while',tokens)
             expect('(',tokens)
             exp,tokens=parse_exp(tokens)
-            # print(exp)
+            # ##exp)
             expect(')',tokens)
             expect(';',tokens)
             # exp2,tokens=parse_exp(tokens)
@@ -444,9 +484,9 @@ def parse_statement(tokens: List[str]) -> Statement:
            
             # Parse initialization
             init, tokens = parse_for_init(tokens)
-        
             # Expect and consume first semicolon if it's not a declaration
             if not isinstance(init, InitDecl):
+                ##init)
                 expect(";", tokens)
             
             # Parse condition
@@ -460,7 +500,7 @@ def parse_statement(tokens: List[str]) -> Statement:
             
             # Expect closing parenthesis
             expect(")", tokens)
-            # print(tokens)
+            # ##tokens)
             # Parse loop body
             body = parse_statement(tokens)
             # optional get_temp_label() or other side-effect
@@ -475,7 +515,7 @@ def parse_statement(tokens: List[str]) -> Statement:
             return Expression(exp_node)
     
     except Exception as e:
-        print(f"Syntax Error in statement: {e}")
+        ##f"Syntax Error in statement: {e}")
         sys.exit(1)
 
 def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
@@ -489,14 +529,15 @@ def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
         Tuple[Statement, List[str]]: The initialization statement and the remaining tokens.
     """
   
-    if tokens[0] in ('int','extern','static'):
-        # print('here')
+    if tokens[0] in ('int','extern','static','long'):
+        # ##'here')
         # Parse declaration (e.g., int i = 0)
         if tokens[2]=='(':
             raise SyntaxError('Function not permitted in loop headers')
         decl, tokens = parse_declaration(tokens)
+        # #print
         init_decl = InitDecl(declaration=decl)
-        # print(init_decl)
+        # ##init_decl)
         return init_decl, tokens
     
     elif isIdentifier(tokens[0]) and not isKeyword(tokens[0]):
@@ -543,10 +584,10 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
     """
     try:
         # Parse the left-hand side (lhs) as a factor
-        # print('exp',tokens)
+        # ##'exp',tokens[0])
         lhs, tokens = parse_factor(tokens)
-        
-        # print(tokens)
+        # ##)
+        # ##tokens)
         while True:
             if not tokens:
                 break
@@ -563,7 +604,7 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
             
             # Consume the operator
             # operator_token, tokens = take_token(tokens)
-            # print(operator_token)
+            # ##operator_token)
             # operator = parse_binop(operator_token)
             
             # Determine the next minimum precedence based on associativity
@@ -572,22 +613,22 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
             else:  # 'RIGHT'
                 next_min_prec = prec
             next_token = tokens[0]
-            # print(tokens)
+            # ##tokens)
             if next_token =='=':
-                # print('found assignment')
+                # ##'found assignment')
                 _,tokens = take_token(tokens)
                 right,tokens = parse_exp(tokens,next_min_prec)
-                # print(right)
+                # ##right)
                 lhs = Assignment(lhs,right)
             elif next_token =='?':
                 middle,tokens = parse_conditional_middle(tokens)
                 right,token = parse_exp(tokens,next_min_prec)
                 lhs  = Conditional(condition=lhs,exp2=middle,exp3=right)
             else:
-                # print('not assignent')
+                # ##'not assignent')
                 token,tokens = take_token(tokens)
                 operator = parse_binop(token)
-                # print('Parsed operator')
+                # ##'Parsed operator')
                 # Parse the right-hand side (rhs) expression
                 rhs, tokens = parse_exp(tokens, next_min_prec)
                 
@@ -596,7 +637,7 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
                 
         return lhs, tokens
     except Exception as e:
-        print(f"Syntax Error in expression: {e}")
+        ##f"Syntax Error in expression: {e}")
         sys.exit(1)
 
 def parse_conditional_middle(tokens):
@@ -695,7 +736,7 @@ def parse_unop(operator_token: str) -> UnaryOperator:
 
 
 def parse_factor(tokens: List[str]):
-    # print(tokens)
+    # ##tokens)
     """
     Parses a <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")" rule.
     
@@ -712,10 +753,13 @@ def parse_factor(tokens: List[str]):
         raise SyntaxError("Unexpected end of input when parsing factor.")
     
     next_token = tokens[0]
-    # print(next_token)
+    # ##next_token)
+    # ##next_token)
     # 1. If it's an integer literal, parse_int.
     if isIntegerConstant(next_token):
-        return parse_int(tokens)
+            # ##'heresa')
+        # vals=parse_constant
+        return parse_constant(tokens),tokens
     
     # 2. If it's one of the unary operators
     elif next_token in ("-", "~", "!"):
@@ -725,21 +769,36 @@ def parse_factor(tokens: List[str]):
         expr, tokens = parse_factor(tokens)
         return Unary(operator=operator, expr=expr), tokens
     elif isIdentifier(next_token) and  not isKeyword(next_token) and tokens[1]=='(':
-        # print('inside func')
+        # ##'inside func')
         identifier_token, tokens = take_token(tokens)
         identifier = Identifier(name=identifier_token)
-        # print(identifier)
+        # ##identifier)
         expect('(',tokens)
-        # print(tokens)
-        # if isIdentifier(tokens[0]) and not isKeyword(tokens[0]):
+    
         arg_list,tokens=parse_args_list(tokens)
-        # print('arg_list')
-        # print('Arguments=',arg_list)
-        
+    
         
         expect(')',tokens)    
         return FunctionCall(identifier,arg_list),tokens
     
+    elif next_token[0]=='(' and isSpecifier(tokens[1]):
+        expect('(',tokens)
+        specifiers=[]
+        while tokens and isSpecifier(tokens[0]):
+            specifiers.append(tokens[0])
+            _,tokens=take_token(tokens)
+            
+        # _type,storage_class=parse_type_and_storage_class(specifiers)
+        cast_type, storage_class = parse_type_and_storage_class(specifiers)
+        if not isinstance(storage_class,Null):
+            raise SyntaxError('a storage class cannot be specified while type conversion')
+            
+            
+        expect(')',tokens)
+        cast_expr, tokens = parse_factor(tokens)
+        
+        return Cast(target_type=cast_type,exp=cast_expr),tokens
+            
     # 3. If it's an identifier, parse_var.
     elif isIdentifier(next_token) and  not isKeyword(next_token):
         identifier_token, tokens = take_token(tokens)
@@ -757,12 +816,12 @@ def parse_factor(tokens: List[str]):
         return expr, tokens
  
     else:
-        # print(tokens)
+        # ##tokens)
         # If none of the above matches, it's an error for this grammar
         raise SyntaxError(f"Expected <int>, <identifier>, '(', or unary operator, got '{next_token}'")
 
 
-def parse_int(tokens: List[str]):
+def parse_constant(tokens: List[str]):
     """
     Parses an <int> ::= ? A constant token ? rule.
     
@@ -776,8 +835,21 @@ def parse_int(tokens: List[str]):
         SyntaxError: If the token is not a valid integer.
     """
     token, tokens = take_token(tokens)
+    ##token)
     try:
-        value = int(token)
-        return Constant(value=value), tokens
+        value=token
+        ##value)
+        if value.endswith('l'):
+            return Constant(Const.constLong(value.replace('l','')))
+        else:
+            value=int(value)
+        # value = Loj(token,base=10)
+        if value>2**63 -1:
+            raise ValueError('Constant is too large to represent as an int or long')
+        
+        if isinstance(value,int) and value <= 2**31-1:
+            return Constant(Const.constInt(value))
+        return Constant(Const.constLong(value))
+        # return Constant(value=value), tokens
     except ValueError:
         raise SyntaxError(f"Expected an integer, got '{token}'")

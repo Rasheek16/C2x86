@@ -1,0 +1,192 @@
+   .globl not
+   .text
+not:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq    $16, %rsp
+   movl %edi, -8(%rbp)
+   cmpl $0, -8(%rbp)
+   movl $0, -16(%rbp)
+   sete    -16(%rbp)
+   movl -16(%rbp), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .globl if_cond
+   .text
+if_cond:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq    $16, %rsp
+   movl %edi, -8(%rbp)
+   cmpl $0, -8(%rbp)
+   je    .Lfalse_1
+   movl $ConstInt(int=1,type=Int()), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_1
+.Lfalse_1:
+.Lend_1:
+   movl $ConstInt(int=0,type=Int()), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .globl and
+   .text
+and:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq    $32, %rsp
+   movl %edi, -8(%rbp)
+   movl %esi, -16(%rbp)
+   cmpl $0, -8(%rbp)
+   je    .Lfalse_2
+   cmpl $0, -16(%rbp)
+   je    .Lfalse_2
+   movl $Constant(value=ConstInt(int=1,type=typing.Optional)), -24(%rbp)
+   jmp  .Lend_2
+.Lfalse_2:
+   movl $ConstInt(int=0,type=typing.Optional), -24(%rbp)
+.Lend_2:
+   movl -24(%rbp), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .globl or
+   .text
+or:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq    $32, %rsp
+   movl %edi, -8(%rbp)
+   movl %esi, -16(%rbp)
+   cmpl $0, -8(%rbp)
+   jne    .Ltrue_1
+   cmpl $0, -16(%rbp)
+   jne    .Ltrue_1
+   movl $0, -24(%rbp)
+   jmp  .Lend_3
+.Ltrue_1:
+   movl $1, -24(%rbp)
+.Lend_3:
+   movl -24(%rbp), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .globl main
+   .text
+main:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq    $96, %rsp
+   movl $ConstLong(Long=1152921504606846976l,type=Long()), -8(%rbp)
+   movl $ConstLong(Long=0l,type=Long()), -16(%rbp)
+   movl -8(%rbp), %edi
+   call not
+   movl %eax, -24(%rbp)
+   cmpl $0, -24(%rbp)
+   je    .Lfalse_3
+   movl $ConstInt(int=1,type=Int()), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_4
+.Lfalse_3:
+.Lend_4:
+   movl -16(%rbp), %edi
+   call not
+   movl %eax, -32(%rbp)
+   cmpl $0, -32(%rbp)
+   movl $0, -40(%rbp)
+   sete    -40(%rbp)
+   cmpl $0, -40(%rbp)
+   je    .Lfalse_4
+   movl $ConstInt(int=2,type=Int()), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_5
+.Lfalse_4:
+.Lend_5:
+   movl -8(%rbp), %edi
+   call if_cond
+   movl %eax, -48(%rbp)
+   cmpl $0, -48(%rbp)
+   movl $0, -56(%rbp)
+   sete    -56(%rbp)
+   cmpl $0, -56(%rbp)
+   je    .Lfalse_5
+   movl $ConstInt(int=3,type=Int()), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_6
+.Lfalse_5:
+.Lend_6:
+   movl -16(%rbp), %edi
+   call if_cond
+   movl %eax, -64(%rbp)
+   cmpl $0, -64(%rbp)
+   je    .Lfalse_6
+   movl $ConstInt(int=4,type=Int()), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_7
+.Lfalse_6:
+.Lend_7:
+   movl -16(%rbp), %edi
+   movl $ConstInt(int=1,type=Int()), %esi
+   call and
+   movl %eax, -72(%rbp)
+   cmpl $0, -72(%rbp)
+   je    .Lfalse_7
+   movl $ConstInt(int=5,type=Int()), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_8
+.Lfalse_7:
+.Lend_8:
+   movl $ConstInt(int=1,type=Int()), %edi
+   movl -8(%rbp), %esi
+   call or
+   movl %eax, -80(%rbp)
+   cmpl $0, -80(%rbp)
+   movl $0, -88(%rbp)
+   sete    -88(%rbp)
+   cmpl $0, -88(%rbp)
+   je    .Lfalse_8
+   movl $ConstInt(int=6,type=Int()), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_9
+.Lfalse_8:
+.Lend_9:
+   movl $ConstInt(int=0,type=Int()), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+.section .note.GNU-stack,"",@progbits

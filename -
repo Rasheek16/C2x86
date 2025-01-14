@@ -1,0 +1,112 @@
+   .globl main
+   .text
+main:
+   pushq   %rbp
+   movq    %rsp, %rbp
+    subq $176, %rsp
+   movl $0, -8(%rbp)
+   movl $0, -12(%rbp)
+   movl $1, -16(%rbp)
+   movl $100, -20(%rbp)
+.Lstart_loop.2:
+   movl -20(%rbp), %r10d
+   movslq %r10d, %r11
+   movq %r11, -24(%rbp)
+   movl $0, %r10d
+   movslq %r10d, %r11
+   movq %r11, -32(%rbp)
+   movq -32(%rbp), %r10
+   cmpq %r10, -24(%rbp)
+   movl $0, -40(%rbp)
+   setg    -40(%rbp)
+   cmpl $0, -40(%rbp)
+   je    .Lbreak_loop.2
+   movl $1, -44(%rbp)
+   movl -44(%rbp), %r10d
+   movslq %r10d, %r11
+   movq %r11, -48(%rbp)
+   movl -16(%rbp), %r10d
+   movslq %r10d, %r11
+   movq %r11, -56(%rbp)
+   movq -48(%rbp), %r10
+   movq %r10, -64(%rbp)
+   movq -56(%rbp), %r10
+    addq %r10, -64(%rbp)
+   movq -64(%rbp), %r10
+   movq %r10, -72(%rbp)
+   movl -72(%rbp), %r10d
+   movl %r10d, -16(%rbp)
+.Lcontinue_loop.2:
+   movl -20(%rbp), %r10d
+   movslq %r10d, %r11
+   movq %r11, -80(%rbp)
+   movl $1, %r10d
+   movslq %r10d, %r11
+   movq %r11, -88(%rbp)
+   movq -80(%rbp), %r10
+   movq %r10, -96(%rbp)
+   movq -88(%rbp), %r10
+    subq %r10, -96(%rbp)
+   movl -96(%rbp), %r10d
+   movl %r10d, -104(%rbp)
+   movl -104(%rbp), %r10d
+   movl %r10d, -20(%rbp)
+   jmp  .Lstart_loop.2
+.Lbreak_loop.2:
+   movl -16(%rbp), %r10d
+   movslq %r10d, %r11
+   movq %r11, -112(%rbp)
+   movl $101, %r10d
+   movslq %r10d, %r11
+   movq %r11, -120(%rbp)
+   movq -120(%rbp), %r10
+   cmpq %r10, -112(%rbp)
+   movl $0, -128(%rbp)
+   sete    -128(%rbp)
+   cmpl $0, -128(%rbp)
+   je    .Lfalse_1
+   movl -8(%rbp), %r10d
+   movslq %r10d, %r11
+   movq %r11, -136(%rbp)
+   movl $0, %r10d
+   movslq %r10d, %r11
+   movq %r11, -144(%rbp)
+   movq -144(%rbp), %r10
+   cmpq %r10, -136(%rbp)
+   movl $0, -152(%rbp)
+   sete    -152(%rbp)
+   cmpl $0, -152(%rbp)
+   je    .Lfalse_1
+   movl $1, -156(%rbp)
+   jmp  .Lend_1
+.Lfalse_1:
+   movl $0, -156(%rbp)
+.Lend_1:
+   cmpl $0, -156(%rbp)
+   je    .Lfalse_2
+   movl -12(%rbp), %r10d
+   movslq %r10d, %r11
+   movq %r11, -160(%rbp)
+   movl $0, %r10d
+   movslq %r10d, %r11
+   movq %r11, -168(%rbp)
+   movq -168(%rbp), %r10
+   cmpq %r10, -160(%rbp)
+   movl $0, -176(%rbp)
+   sete    -176(%rbp)
+   cmpl $0, -176(%rbp)
+   je    .Lfalse_2
+   movl $1, -180(%rbp)
+   jmp  .Lend_2
+.Lfalse_2:
+   movl $0, -180(%rbp)
+.Lend_2:
+   movl -180(%rbp), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+.section .note.GNU-stack,"",@progbits

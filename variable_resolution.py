@@ -5,12 +5,13 @@ from _ast5 import (
     DoWhile, Break, Continue, If, Return, 
     Compound, Parameter, BlockItem, Program, 
     InitDecl, InitExp, Expression, 
-    D, S, Statement, Block,Extern,StorageClass
+    D, S, Statement, Block,Extern,Cast
 )
-from tacky_emiter import make_temporary_var, convert_binop, convert_unop
+# from tacky_emiter import , convert_binop, convert_unop
 from typing import List, Dict, Any, Optional
 import copy
 from typechecker import typecheck_program
+from tacky_emiter import temp_counter,make_temporary_var
 
 # -------------------------------------------------------------------------
 # 1) Global Labeling Variables
@@ -57,10 +58,10 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)->
                 raise TypeError(f"Declaration name must be an Identifier, got {type(declaration.name)}")
 
             original_name = declaration.name.name
-            print()
+            # print()
             # Check for duplicates in the current scope
             if original_name in identifier_map and identifier_map[original_name]['from_current_scope']==True:
-                print(original_name)
+                # print(original_name)
                 # print(identifier_map[original_name])
                 # print(declaration.storage_class)
                 # print(isinstance(declaration.storage_class,Extern))
@@ -90,7 +91,7 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)->
                     init = resolve_exp(declaration.init, identifier_map)
 
                 # Return a VarDecl with the new unique name
-                return VarDecl(name=Identifier(unique_name), init=init,storage_class=declaration.storage_class)
+                return VarDecl(name=Identifier(unique_name),var_type=declaration.var_type, init=init,storage_class=declaration.storage_class)
 
     elif isinstance(declaration, FunDecl):
         # If there's no body, raise an error or handle differently as needed
@@ -118,7 +119,9 @@ def resolve_exp(expression, identifier_map: dict):
         resolved_left = resolve_exp(expression.left, identifier_map)
         resolved_right = resolve_exp(expression.right, identifier_map)
         return Assignment(left=resolved_left, right=resolved_right)
-
+    elif isinstance(expression,Cast):
+        resolved_exp=resolve_exp(expression.exp,identifier_map)
+        return Cast(target_type=expression.target_type,exp = resolved_exp)      
     elif isinstance(expression, Conditional):
         # Resolve condition and both branches
         resolved_condition = resolve_exp(expression.condition, identifier_map)
@@ -154,6 +157,7 @@ def resolve_exp(expression, identifier_map: dict):
             new_func_name = identifier_map[func_name]['unique_name']
             # Resolve arguments
             new_args = [resolve_exp(arg, identifier_map) for arg in expression.args]
+            # arg_type = [arg for arg in expression.args]
             return FunctionCall(Identifier(new_func_name), new_args)
         else:
             raise SyntaxError(f"Function '{func_name}' is not declared")
@@ -355,7 +359,7 @@ def label_statement(statement: Statement, current_label: Optional[str] = None) -
     elif isinstance(statement, (Return, Var, Constant)):
         pass  # no label needed
 
-    elif isinstance(statement, (Expression, Assignment, Binary, Unary)):
+    elif isinstance(statement, (Expression, Assignment, Binary, Unary,Cast)):
         pass  # no label needed
 
     elif isinstance(statement, Null):
@@ -457,7 +461,7 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict) -> FunDecl
     else:
         new_body = decl.body  # or raise error if needed
 
-    return FunDecl(name=decl.name, params=new_params, body=new_body,storage_class=decl.storage_class)
+    return FunDecl(name=decl.name, params=new_params, fun_type=decl.fun_type,body=new_body,storage_class=decl.storage_class)
 
 
 def resolve_param(param: Parameter, identifier_map: dict) -> Parameter:
