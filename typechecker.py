@@ -3,11 +3,38 @@ from typing import Optional, List
 from type_classes import *
 import sys
 
+
+def size(_type):
+    if type(_type)==Int():
+        return 4
+    elif type(_type)==Long():
+        return 8
+    elif type(_type)==UInt():
+        return 4
+    elif type(_type)==ULong():
+        return 8
+
+def isSigned(_type):
+    if type(_type)==Int() or type(_type)==Long():
+        return True
+    return False
+    
+
+
 def get_common_type(type1, type2):
     if type(type1) == type(type2):
         return type1
+    if size(type1) == size(type2):
+        if isSigned(type1):
+            return type2 
+        else:
+            return type1
+    if size(type1) > size(type2):
+        return type1
     else:
-        return Long()
+        return type2
+
+
 
 def convert_to(e: Exp, t: any):
     # #e.get_type())
@@ -30,15 +57,21 @@ def convert_to(e: Exp, t: any):
     return cast_exp
 
 def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
+    print(decl)
     if not isinstance(decl.init, Null):
+        print('here')
         typecheck_exp(decl.init, symbols)
 
     if isinstance(decl.init, Constant) and isinstance(decl.init.value, (ConstInt, ConstLong)):
         if isinstance(decl.init.get_type(), Long):
             new_init = Initial(Constant(StaticInit.LongInit(decl.init.value)))
         else:
-            new_init = Initial(StaticInit.IntInit(Constant(decl.init.value)))
-          
+            new_init = Initial(Constant(StaticInit.IntInit(decl.init.value)))
+    elif isinstance(decl.init, Constant) and isinstance(decl.init.value, (ConstUInt, ConstULong)):
+        if isinstance(decl.init.get_type(), ULong):
+            new_init = Initial(Constant(StaticInit.ULongInit(decl.init.value)))
+        else:
+            new_init = Initial(Constant(StaticInit.UIntInit(decl.init.value)))
     elif isinstance(decl.init, Null):
         if isinstance(decl.storage_class, Extern):
             new_init = NoInitializer()
@@ -46,7 +79,6 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
             new_init = Tentative()
     else:
         raise SyntaxError("Non-constant initializer!", decl.storage_class)
-
     global_scope = not isinstance(decl.storage_class, Static)
     var_name = decl.name.name
 
@@ -192,6 +224,11 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
                 f"Incompatible function declarations for '{fun_name}'. "
                 f"Expected {old_decl['fun_type'].param_count} parameters, got {fun_type.param_count}."
             )
+            
+    
+        # exit()
+        if type(old_decl['fun_type'].ret) != type(fun_type.ret):
+            raise SyntaxError(f"Function '{fun_name}' has conflicting return types.")
         old_decl_params = [param._type for param in old_decl['fun_type'].params]
         new_decl_params = [param._type for param in decl.params]
         for i in range(len(old_decl_params)):
@@ -365,6 +402,14 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         elif isinstance(e.value, ConstLong):
             # e.set_type(Long())
             e.set_type(Long())
+            return e
+        elif isinstance(e.value, ConstULong):
+            # e.set_type(Long())
+            e.set_type(ULong())
+            return e
+        elif isinstance(e.value, ConstUInt):
+            # e.set_type(Long())
+            e.set_type(UInt())
             return e
         else:
             raise SyntaxError('Invalid value const')
@@ -589,6 +634,8 @@ def typecheck_program(program: Program):
     symbols = {}
     for stmt in program.function_definition:
         if isinstance(stmt, VarDecl):
+            print(stmt)
+            # exit()
             typecheck_file_scope_variable_declaration(stmt, symbols)
         elif isinstance(stmt, FunDecl):
             typecheck_function_declaration(stmt, symbols, False)

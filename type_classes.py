@@ -10,11 +10,22 @@ class IntInit():
     def __repr__(self):
         return f'IntInit(value={self.value})'
     
+    
+class UIntInit():
+    def __init__(self, value):
+        self.value=value 
+    def __repr__(self):
+        return f'UIntInit(value={self.value})'
 class LongInit():
     def __init__(self, value):
         self.value=value 
     def __repr__(self):
         return f'LongInit(value={self.value})'
+class ULongInit():
+    def __init__(self, value):
+        self.value=value 
+    def __repr__(self):
+        return f'ULongInit(value={self.value})'
 
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
     
@@ -22,6 +33,8 @@ class LongInit():
 class StaticInit:
     IntInit=IntInit 
     LongInit=LongInit
+    UIntInit=UIntInit 
+    ULongInit=ULongInit
 
 class Tentative(InitialValue):
     """Represents a tentative definition without an initializer."""
