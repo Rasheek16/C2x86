@@ -77,7 +77,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
         # exit()
         # 6) Replace Pseudoregisters
         # This pass replaces all Pseudo operands with Stack operands and returns stack allocation
-        # [a_ast,stack_allocation,backend_symbol_table] = replace_pseudoregisters(a_ast,symbols,da)
+        [a_ast,stack_allocation,backend_symbol_table] = replace_pseudoregisters(a_ast,symbols,da)
         # print(backend_symbol_table)
         # exit()
         # print("After Replacing Pseudoregisters:")
@@ -85,7 +85,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None):
 
         # 7) Fixing Up Instructions
         # This pass inserts AllocateStack and rewrites invalid Mov instructions
-        # fix_up_instructions(a_ast, stack_allocation)
+        fix_up_instructions(a_ast, stack_allocation)
         # print("After Fixing Up Instructions:")
         # print(a_ast)
      

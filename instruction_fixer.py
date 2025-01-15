@@ -163,64 +163,6 @@ def fix_instr(instr,new_instructions,assembly_function):
                 new_instructions.extend([mov_to_reg, mov_to_dest])
             else:
                 new_instructions.append(instr)
-    # if isinstance(instr, Mov):
-      
-    #     # print(instr.dest, instr.src)
-    #     # Check if both src and dest are Stack operands
-    #     if isinstance(instr.src, (Stack,Data)) and isinstance(instr.dest, (Stack,Data)):
-    #         """
-    #         Invalid Mov Instruction:
-    #             Both source and destination are Stack operands, which is not allowed in assembly.
-    #             You cannot move data directly from one memory location to another without using a register.
-            
-    #         Fix:
-    #             Introduce a temporary register (R10) to hold the data during the move.
-    #             Steps:
-    #                 a. Move the data from src Stack to R10.
-    #                 b. Move the data from R10 to dest Stack.
-    #         """
-    #         # Create a Mov from src Stack to R10 register
-            
-    #         mov_to_reg = Mov(assembly_type=instr._type,src=instr.src, dest=Reg(Registers.R10))
-    #         # Create a Mov from R10 register to dest Stack
-    #         mov_to_dest = Mov(assembly_type=instr._type,src=Reg(Registers.R10), dest=instr.dest)
-            
-    #         # Append the two new Mov instructions to the new_instructions list
-    #         new_instructions.extend([mov_to_reg, mov_to_dest])
-    #     elif isinstance(instr.src,Imm) and( int(instr.src.value)>=2147483647 and instr._type==AssemblyType.longWord):
-    #             print(instr)
-    #             # exit()
-    #             instr.src.value=int(instr.src.value) & 0xFFFFFFFF
-    #             print(instr)    
-    #             # exit()
-    #             instr._type=AssemblyType.longWord
-                
-    #             mov_to_reg = Mov(assembly_type=instr._type,src=instr.src, dest=Reg(Registers.R10))
-    #         # Create a Mov from R10 register to dest Stack
-    #             mov_to_dest = Mov(assembly_type=instr._type,src=Reg(Registers.R10), dest=instr.dest)
-            
-    #         # Append the two new Mov instructions to the new_instructions list
-    #             new_instructions.extend([mov_to_reg, mov_to_dest])
-    #         # else:
-    #             # pass
-    #     elif isinstance(instr.src,Imm) and (int(instr.src.value)>=2147483647 and isinstance(instr.dest,(Stack,Data))):
-    #         # exit()
-    #         Mov1=Mov(assembly_type=AssemblyType.quadWord,src=instr.src,dest=Reg(Registers.R10))
-    #         Mov2=Mov(assembly_type=AssemblyType.quadWord,src=Reg(Registers.R10),dest=instr.dest)
-    #         new_instructions.extend([Mov1,Mov2])
-    
-    #         # Debug Statement: Confirm rewriting of invalid Mov instruction
-    #         # logger.debug(f"Rewrote invalid Mov from {instr.src} to {instr.dest} using {Registers.R10}.")
-    #     else:
-    #         """
-    #         Valid Mov Instruction:
-    #             At least one of src or dest is not a Stack operand.
-    #             No replacement needed; keep the instruction as-is.
-    #         """
-    #         new_instructions.append(instr)
-    
-    # Handle 'Idiv' instructions which perform integer division
- 
     elif isinstance(instr, (Idiv,Div)):
         
         # print('in  idviv',instr)
@@ -297,7 +239,7 @@ def fix_instr(instr,new_instructions,assembly_function):
                 
                 # Debug Statement: Confirm rewriting of add/sub instruction
                 # logger.debug(f"Rewrote {instr.operator} from {instr.src2} to {instr.src1} using {Registers.R10}.")
-            elif int(instr.src1.value) >=2147483647 and isinstance(instr.src2,Stack):
+            elif isinstance(instr.src1,Imm) and int(instr.src1.value) >=2147483647 and isinstance(instr.src2,Stack):
                     movl = Mov(
                         assembly_type=instr._type,
                         src=instr.src1, 
@@ -320,7 +262,7 @@ def fix_instr(instr,new_instructions,assembly_function):
                 # Create a Mov from src1 Stack operand to R11 register
                 # Create a new Binary operation (imul) using R11 as the source
                 
-                if int(instr.src1.value) >=2147483647:
+                if isinstance(instr.src1,Imm) and int(instr.src1.value) >=2147483647:
                     mov_to_reg = Mov(assembly_type=AssemblyType.quadWord,src=instr.src2, dest=Reg(Registers.R11))
                     movl = Mov(
                         assembly_type=AssemblyType.quadWord,
@@ -408,7 +350,7 @@ def fix_instr(instr,new_instructions,assembly_function):
         # exit()
         
         new_instructions.append(Binary(operator=BinaryOperator.SUBTRACT,assembly_type=AssemblyType.quadWord,src1=Imm(instr.value),src2=Reg(Registers.SP)))
-        print('in allocate')
+        # print('in allocate')
         
     elif isinstance(instr, Cmp):
         # print(instr)
