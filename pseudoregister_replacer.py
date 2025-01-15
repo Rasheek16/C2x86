@@ -152,7 +152,11 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
             elif isinstance(instr,Movsx):
                 instr.dest=replace_pseudo_with_operand(instr.dest)
                 instr.src=replace_pseudo_with_operand(instr.src)
-                
+            elif isinstance(instr, MovZeroExtend):
+                instr.dest = replace_pseudo_with_operand(instr.dest)
+                instr.src = replace_pseudo_with_operand(instr.src)
+            elif isinstance(instr, Div):
+                instr.operand = replace_pseudo_with_operand(instr.operand)
             elif isinstance(instr, (AllocateStack, Ret, Cdq, JmpCC, Jmp, Label, Call, DeallocateStack, Imm)):
                 # These instructions do not contain Pseudo operands; no action needed
                 pass

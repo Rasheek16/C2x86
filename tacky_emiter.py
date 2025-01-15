@@ -156,7 +156,7 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
     """
     if isinstance(expr, Constant):
         # print(expr)
-        if not isinstance(expr.value,(ConstInt,ConstLong)):
+        if not isinstance(expr.value,(ConstInt,ConstLong,ConstUInt,ConstULong)):
             return TackyConstant(expr.value._int)
         return TackyConstant(expr.value)
     elif isinstance(expr, Var):

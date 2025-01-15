@@ -129,6 +129,19 @@ class Instruction:
     pass
 
 
+class MovZeroExtend(Instruction):
+    """
+    mov SRC, DEST
+    (Grammar: Mov(operand src, operand dst))
+    """
+    def __init__(self, src, dest):
+        self.src = src
+        self.dest = dest
+        # self._type=assembly_type
+
+    def __repr__(self):
+        return f"MovZeroExtend(src={repr(self.src)}, dest={repr(self.dest)})"
+
 class Mov(Instruction):
     """
     mov SRC, DEST
@@ -199,6 +212,41 @@ class Binary(Instruction):
     def __repr__(self):
         return f"Binary(operator='{self.operator}', assembly_type={self._type},left={self.src1}, right={self.src2})"
   
+  
+class Div(Instruction):
+    """
+    Represents an integer division instruction in the intermediate representation.
+    
+    The Idiv instruction performs signed integer division between two operands.
+    It typically divides the value in a specific register (e.g., EAX) by the provided operand,
+    storing the quotient and remainder in designated registers.
+    """
+    
+    def __init__(self, assembly_type,operand):
+        self._type=assembly_type
+        self.operand=operand
+    def get_type(self):
+        return self._type
+        """
+        Initializes the Idiv instruction with the specified operand.
+        
+        Parameters:
+            operand (Operand): The operand by which the current value will be divided.
+        """
+        self.operand = operand  # Operand to divide by
+
+    def __repr__(self):
+        """
+        Returns a string representation of the Idiv instruction.
+        
+        This method is useful for debugging and logging purposes, providing a clear
+        textual representation of the instruction and its operand.
+        
+        Returns:
+            str: A string representing the Idiv instruction.
+        """
+        return f'Div(assembly_type={self._type},operand={self.operand})'  # Corrected to use self.operand
+    
 class Idiv(Instruction):
     """
     Represents an integer division instruction in the intermediate representation.
@@ -491,3 +539,7 @@ class Cond_code:
     GE='GE'
     L='L'
     LE='LE'
+    A='A'
+    AE='AE'
+    B='B'
+    BE='BE'

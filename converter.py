@@ -1,11 +1,12 @@
 from tacky import *
 from assembly_ast import *
-from _ast5 import Int , Long,ConstInt,ConstLong
+from _ast5 import Int , Long,ConstInt,ConstLong,ConstUInt,ConstULong,UInt,ULong
 import sys
 from typing import Union, List ,Dict,Optional
 from type_classes import *
 PARAMETER_REGISTERS = ['DI', 'SI', 'DX', 'CX', 'R8', 'R9']
 from instruction_fixer import is_signed_32_bit
+from typechecker import isSigned
 current_param_offset={}
 
 
@@ -58,11 +59,12 @@ class Converter():
         
     def get_type(self, src):
         if isinstance(src, TackyConstant):
-            if isinstance(src.value, ConstInt):
+            if isinstance(src.value, (ConstInt,ConstUInt)):
                 return AssemblyType.longWord
-            elif isinstance(src.value, ConstLong):
+            elif isinstance(src.value, (ConstLong,ConstULong)):
                 return AssemblyType.quadWord
             else:
+                print(src)
                 raise TypeError(f"Unsupported constant type: {type(src.value)}")
 
         elif isinstance(src, TackyVar):
@@ -77,10 +79,10 @@ class Converter():
             val_type = self.symbols[var_name]['val_type']
             # print(self.symbols[var_name])
             # Direct type check
-            if isinstance(val_type, Int) or isinstance(val_type, type(Int)) :
+            if isinstance(val_type,( Int,UInt)) or isinstance(val_type, type(Int)) or isinstance(val_type, type(UInt)):
                
                 return AssemblyType.longWord
-            elif isinstance(val_type, Long):
+            elif isinstance(val_type, (Long,ULong)):
                 return AssemblyType.quadWord
             else:
                
@@ -290,7 +292,7 @@ class Converter():
                 src=self.convert_to_assembly_ast(tacky_ast.src)
                 return [
                     Mov(assembly_type=self.get_type(tacky_ast.src),src=self.convert_to_assembly_ast(tacky_ast.src), dest=self.convert_to_assembly_ast(tacky_ast.dst)),
-                    Unary(operator=self.convert_operator(tacky_ast.operator),assembly_type=self.get_type(tacky_ast.src), operand=self.convert_to_assembly_ast(tacky_ast.dst))
+                    Unary(operator=self.convert_operator(tacky_ast.operator,False),assembly_type=self.get_type(tacky_ast.src), operand=self.convert_to_assembly_ast(tacky_ast.dst))
                     
                 ]
             
@@ -314,19 +316,37 @@ class Converter():
                 # dest=self.convert_to_assembly_ast(tacky_ast.dst)
                 # print(dest)
                 # exit()
-                return [
-                    # Move the dividend to the AX register
-                    Mov(assembly_type=self.get_type(tacky_ast.src1),src=self.convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
+            
+                if isSigned(type(tacky_ast.src1)):
                     
-                    # Convert Doubleword to Quadword: Sign-extend AX into DX:AX
-                    Cdq(assembly_type=self.get_type(tacky_ast.src1)),
+                    return [
+                        # Move the dividend to the AX register
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=self.convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
+                        
+                        # Convert Doubleword to Quadword: Sign-extend AX into DX:AX
+                        Cdq(assembly_type=self.get_type(tacky_ast.src1)),
+                        
+                        # Perform signed integer division: AX / src2
+                        Idiv(assembly_type=self.get_type(tacky_ast.src1),operand=self.convert_to_assembly_ast(tacky_ast.src2)),
+                        
+                        # Move the quotient from AX to the destination variable
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=Reg(Registers.AX), dest=self.convert_to_assembly_ast(tacky_ast.dst))
+                    ]
+                else:
+                    return [
+                        # Move the dividend to the AX register
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=self.convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
+                        
+                        # Zero-extend AX into EAX
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=Imm(0), dest=Reg(Registers.DX)),
+                        
+                        # Perform unsigned integer division: EAX / src2
+                        Div(assembly_type=self.get_type(tacky_ast.src1),operand=self.convert_to_assembly_ast(tacky_ast.src2)),
+                        
+                        # Move the quotient from AX to the destination variable
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=Reg(Registers.AX), dest=self.convert_to_assembly_ast(tacky_ast.dst))
+                    ]
                     
-                    # Perform signed integer division: AX / src2
-                    Idiv(assembly_type=self.get_type(tacky_ast.src1),operand=self.convert_to_assembly_ast(tacky_ast.src2)),
-                    
-                    # Move the quotient from AX to the destination variable
-                    Mov(assembly_type=self.get_type(tacky_ast.src1),src=Reg(Registers.AX), dest=self.convert_to_assembly_ast(tacky_ast.dst))
-                ]
             
             # Handle remainder operations resulting from integer division
             elif tacky_ast.operator == TackyBinaryOperator.REMAINDER:
@@ -343,20 +363,36 @@ class Converter():
                 
                 This sequence adheres to the x86 assembly convention where the remainder is stored in the DX register after division.
                 """
-                return [
-                    # Move the dividend to the AX register
-                    Mov(assembly_type=self.get_type(tacky_ast.src1),src=self.convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
-                    
-                    # Convert Doubleword to Quadword: Sign-extend AX into DX:AX
-                    Cdq(assembly_type=self.get_type(tacky_ast.src1)),
-                    
-                    # Perform signed integer division: AX / src2
-                    Idiv(assembly_type=self.get_type(tacky_ast.src1),operand=self.convert_to_assembly_ast(tacky_ast.src2)),
-                    
-                    # Move the remainder from DX to the destination variable
-                    Mov(assembly_type=self.get_type(tacky_ast.src1),src=Reg(Registers.DX), dest=self.convert_to_assembly_ast(tacky_ast.dst))
-                ]
-            
+                if isSigned(type(tacky_ast.src1)):
+                
+                    return [
+                        # Move the dividend to the AX register
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=self.convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
+                        
+                        # Convert Doubleword to Quadword: Sign-extend AX into DX:AX
+                        Cdq(assembly_type=self.get_type(tacky_ast.src1)),
+                        
+                        # Perform signed integer division: AX / src2
+                        Idiv(assembly_type=self.get_type(tacky_ast.src1),operand=self.convert_to_assembly_ast(tacky_ast.src2)),
+                        
+                        # Move the remainder from DX to the destination variable
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=Reg(Registers.DX), dest=self.convert_to_assembly_ast(tacky_ast.dst))
+                    ]
+                else:
+                    return [
+                        # Move the dividend to the AX register
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=self.convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
+                        
+                        # Zero-extend AX into EAX
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=Imm(0), dest=Reg(Registers.DX)),
+                        
+                        # Perform unsigned integer division: EAX / src2
+                        Div(assembly_type=self.get_type(tacky_ast.src1),operand=self.convert_to_assembly_ast(tacky_ast.src2)),
+                        
+                        # Move the remainder from DX to the destination variable
+                        Mov(assembly_type=self.get_type(tacky_ast.src1),src=Reg(Registers.DX), dest=self.convert_to_assembly_ast(tacky_ast.dst))
+                    ]
+                
             # Handle addition, subtraction, and multiplication operations
             elif tacky_ast.operator in (
                 TackyBinaryOperator.ADD,
@@ -392,7 +428,7 @@ class Converter():
                     
                     # Perform the binary operation with the second operand and store the result in the destination register
                     Binary(
-                        operator=self.convert_operator(tacky_ast.operator),
+                        operator=self.convert_operator(tacky_ast.operator,False),
                         src1=self.convert_to_assembly_ast(tacky_ast.src2),
                         assembly_type=self.get_type(tacky_ast.src1),
                         src2=self.convert_to_assembly_ast(tacky_ast.dst)
@@ -407,20 +443,35 @@ class Converter():
                 # print(self.symbols[tacky_ast.src1.identifier])
                 # exit()
                 
-                print(self.get_type(tacky_ast.src1))
-                print('src',)
-                print(tacky_ast.src2)
+                # print(self.get_type(tacky_ast.src1))
+                # print('src',)
+                # print(tacky_ast.src2)
+                if isSigned(type(tacky_ast.src1)):
                 # if tacky_ast.operator == TackyBinaryOperator.NOT_EQUAL:
                     # exit()
-                return [Cmp(assembly_type=self.get_type(tacky_ast.src2),operand1=self.convert_to_assembly_ast(tacky_ast.src2),operand2=self.convert_to_assembly_ast(tacky_ast.src1)),
-                        Mov(assembly_type=self.get_type(tacky_ast.dst),src=Imm(0),dest=self.convert_to_assembly_ast(tacky_ast.dst)),
-                        SetCC(Cond_code=self.convert_operator(tacky_ast.operator),operand=self.convert_to_assembly_ast(tacky_ast.dst))
-                        ]
+                    return [Cmp(assembly_type=self.get_type(tacky_ast.src2),operand1=self.convert_to_assembly_ast(tacky_ast.src2),operand2=self.convert_to_assembly_ast(tacky_ast.src1)),
+                            Mov(assembly_type=self.get_type(tacky_ast.dst),src=Imm(0),dest=self.convert_to_assembly_ast(tacky_ast.dst)),
+                            SetCC(Cond_code=self.convert_operator(tacky_ast.operator,True),operand=self.convert_to_assembly_ast(tacky_ast.dst))
+                            ]
+                else:
+                    return [Cmp(assembly_type=self.get_type(tacky_ast.src2),operand1=self.convert_to_assembly_ast(tacky_ast.src2),operand2=self.convert_to_assembly_ast(tacky_ast.src1)),
+                            Mov(assembly_type=self.get_type(tacky_ast.dst),src=Imm(0),dest=self.convert_to_assembly_ast(tacky_ast.dst)),
+                            SetCC(Cond_code=self.convert_operator(tacky_ast.operator,False),operand=self.convert_to_assembly_ast(tacky_ast.dst))
+                            ]
+                    
             elif tacky_ast.operator == TackyBinaryOperator.GREATER_THAN:
-                return [Cmp(assembly_type=self.get_type(tacky_ast.src1),operand1=self.convert_to_assembly_ast(tacky_ast.src2),operand2=self.convert_to_assembly_ast(tacky_ast.src1)),
-                        Mov(assembly_type=self.get_type(tacky_ast.dst),src=Imm(0),dest=self.convert_to_assembly_ast(tacky_ast.dst)),
-                        SetCC(Cond_code=Cond_code.G,operand=self.convert_to_assembly_ast(tacky_ast.dst))
-                        ]
+                if isSigned(type(tacky_ast.src1)):
+                
+                    return [Cmp(assembly_type=self.get_type(tacky_ast.src1),operand1=self.convert_to_assembly_ast(tacky_ast.src2),operand2=self.convert_to_assembly_ast(tacky_ast.src1)),
+                            Mov(assembly_type=self.get_type(tacky_ast.dst),src=Imm(0),dest=self.convert_to_assembly_ast(tacky_ast.dst)),
+                            SetCC(Cond_code=self.convert_operator(tacky_ast.operator,True),operand=self.convert_to_assembly_ast(tacky_ast.dst))
+                            ]
+                else:
+                    return [Cmp(assembly_type=self.get_type(tacky_ast.src1),operand1=self.convert_to_assembly_ast(tacky_ast.src2),operand2=self.convert_to_assembly_ast(tacky_ast.src1)),
+                            Mov(assembly_type=self.get_type(tacky_ast.dst),src=Imm(0),dest=self.convert_to_assembly_ast(tacky_ast.dst)),
+                            SetCC(Cond_code=self.convert_operator(tacky_ast.operator,False),operand=self.convert_to_assembly_ast(tacky_ast.dst))
+                            ]
+                    
             else:
                 """
                 Error Handling:
@@ -432,7 +483,7 @@ class Converter():
             return tacky_ast
         # Handle Constant operand
         elif isinstance(tacky_ast, TackyConstant):
-            if isinstance(tacky_ast.value,(ConstInt,ConstLong)):
+            if isinstance(tacky_ast.value,(ConstInt,ConstLong,ConstUInt,ConstULong)):
                 return Imm(tacky_ast.value._int)
             return Imm(tacky_ast.value)
             # Convert a constant value into an Imm operand
@@ -485,7 +536,7 @@ class Converter():
             sys.exit(1)
 
 
-    def convert_operator(self,op: str) -> str:
+    def convert_operator(self,op: str,isSigned) -> str:
         """
         Converts a Tacky unary or binary operator to its Assembly equivalent.
         
@@ -521,18 +572,32 @@ class Converter():
         elif op == 'Multiply':
             return BinaryOperator.MULTIPLY  # Corresponds to the multiplication operation, e.g., 'x * y'
         
-        elif op=='GreaterThan':
-            return Cond_code.G
-        elif op=='LessThan':
-            return Cond_code.L
-        elif op=='GreaterOrEqual':
-            return Cond_code.GE
-        elif op=='LessOrEqual':
-            return Cond_code.LE
-        elif op=='NotEqual':
-            return Cond_code.NE
-        elif op=='Equal':
-            return Cond_code.E
+        if isSigned:
+            if op=='GreaterThan':
+                return Cond_code.G
+            elif op=='LessThan':
+                return Cond_code.L
+            elif op=='GreaterOrEqual':
+                return Cond_code.GE
+            elif op=='LessOrEqual':
+                return Cond_code.LE
+            elif op=='NotEqual':
+                return Cond_code.NE
+            elif op=='Equal':
+                return Cond_code.E
+        elif not isSigned:
+            if op=='GreaterThan':
+                return Cond_code.A
+            elif op=='LessThan':
+                return Cond_code.B
+            elif op=='GreaterOrEqual':
+                return Cond_code.AE
+            elif op=='LessOrEqual':
+                return Cond_code.BE
+            elif op=='NotEqual':
+                return Cond_code.NE
+            elif op=='Equal':
+                return Cond_code.E
         # If the operator does not match any known unary or binary operators, raise an error
         else:
             # Raises a ValueError with a descriptive message indicating the unsupported operator

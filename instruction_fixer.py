@@ -220,7 +220,8 @@ def fix_instr(instr,new_instructions,assembly_function):
     #         new_instructions.append(instr)
     
     # Handle 'Idiv' instructions which perform integer division
-    elif isinstance(instr, Idiv):
+ 
+    elif isinstance(instr, (Idiv,Div)):
         
         # print('in  idviv',instr)
         
@@ -523,7 +524,30 @@ def fix_instr(instr,new_instructions,assembly_function):
             No operand replacement needed as it operates on fixed registers.
         """
         new_instructions.append(instr)
-    
+     
+    elif isinstance(instr,MovZeroExtend):
+        if isinstance(instr.dest,Reg):
+            return new_instructions.append(
+                Mov(
+                    assembly_type=AssemblyType.longWord,
+                    src=instr.src,
+                    dest=instr.dest
+                )
+            ) 
+        elif isinstance(instr.dest,Stack):
+            mov = Mov(
+                assembly_type=AssemblyType.longWord,
+                src=instr.src,
+                dest=Reg(Registers.R11),
+            )
+            mov2=Mov(
+                assembly_type=AssemblyType.quadWord,
+                src=Reg(Registers.R11),
+                dest=instr.dest
+            )
+            new_instructions.extend([mov,mov2])
+        else:
+            new_instructions.append(instr)
     elif isinstance(instr,Movsx):
         if isinstance(instr.dest,Stack) and isinstance(instr.src,Imm):
             mov = Mov(
