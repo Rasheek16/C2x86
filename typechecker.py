@@ -15,7 +15,7 @@ def size(_type):
         return 8
 
 def isSigned(_type):
-    if type(_type)==Int() or type(_type)==Long():
+    if type(_type)==type(Int()) or type(_type)==type(Long()):
         return True
     return False
     
