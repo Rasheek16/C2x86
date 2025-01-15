@@ -5,17 +5,17 @@ import sys
 
 
 def size(_type):
-    if type(_type)==Int():
+    if type(_type)==type(Int()):
         return 4
-    elif type(_type)==Long():
+    elif type(_type)==type(Long()):
         return 8
-    elif type(_type)==UInt():
+    elif type(_type)==type(UInt()):
         return 4
-    elif type(_type)==ULong():
+    elif type(_type)==type(ULong()):
         return 8
 
 def isSigned(_type):
-    if type(_type)==Int() or type(_type)==Long():
+    if type(_type)==type(Int()) or type(_type)==type(Long()):
         return True
     return False
     
@@ -195,8 +195,8 @@ def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
                 # common_type=get_common_type(decl.var_type,decl.init.get_type())
                 # print('common_type',common_type)
                 decl.init=convert_to(decl.init,decl.var_type)
-                    # print('decl',decl)
-                    # exit()
+                # print('decl',decl)
+                # exit()
             return decl
                 
     except Exception as e:
@@ -248,7 +248,7 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
         _global = old_decl['attrs'].global_scope
         attrs = FunAttr(defined=(already_defined or has_body), global_scope=_global)
         symbols[fun_name] = {
-            'fun_type': FunType(param_count=len(decl.params), params=decl.params, ret=decl.fun_type),
+            'fun_type': FunType(param_count=len(decl.params), params=decl.params, ret=fun_type.ret),
             'attrs': attrs
         }
 
@@ -257,13 +257,15 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
                 param_name = param.name.name
                 if param_name in symbols:
                     raise SyntaxError(f"Parameter '{param_name}' is already declared.")
-                symbols[param_name] = {'type': Int(),'val_type':param._type,'ret':decl.fun_type,'attrs':None}
+                symbols[param_name] = {'type': Int(),'val_type':param._type,'ret':fun_type.ret,'attrs':None}
             for stmt in decl.body:
                 if not isinstance(stmt, Return):
-                    typecheck_statement(decl.body, symbols, fun_type)
+                    print(fun_type)
+                    # exit()
+                    typecheck_statement(decl.body, symbols, fun_type.ret)
                 else:
                     if stmt.exp is not None and not isinstance(stmt.exp, Null):
-                        typed_return = typecheck_exp(stmt.exp, symbols, fun_type)
+                        typed_return = typecheck_exp(stmt.exp, symbols, fun_type.ret) 
                         convert_to(typed_return, decl.fun_type)
     else:
         if is_block_scope:
@@ -285,8 +287,8 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
             for stmt in decl.body:
                 if not isinstance(stmt, Return):
                     # #decl.fun_type)
-                    stmt=typecheck_statement(decl.body, symbols, decl.fun_type)
-                    stmts.extend(stmt)
+                    typecheck_statement(decl.body, symbols, decl.fun_type)
+                    # stmts.extend(stmt)
                     # if decl.name.name=='truncate_on_assignment':
                             # print('here')
                             # print(stmts)
@@ -300,7 +302,7 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
                     # exit()
                 else:
                     if stmt.exp is not None and not isinstance(stmt.exp, Null):
-                        typed_return = typecheck_exp(stmt.exp, symbols, fun_type)
+                        typed_return = typecheck_exp(stmt.exp, symbols, decl.fun_type)
                         # #typed_return)
                         cast=convert_to(typed_return, decl.fun_type)
                         stmts.append(cast)
@@ -387,6 +389,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
                 # #func_type)
                 #'e',e)
                 #func_type)
+              
                 e.exp=convert_to(e.exp, func_type)
                 #'expr',e)
                 # exit()

@@ -229,6 +229,8 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         if t==inner_type:
             return result
         dst_name = make_temporary(symbols,expr.target_type)
+        print(expr)
+        exit()
         if size(t)==size(inner_type):
             instructions.append(TackyCopy(result,dst_name))
         elif size(t)<size(inner_type):
