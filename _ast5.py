@@ -24,6 +24,24 @@ class Long(Type):
     def __repr__(self):
         return f'Long()'
 
+class ULong(Type):
+    def __init__(self):
+       pass
+       
+    
+    def __repr__(self):
+        return f'ULong()'
+    
+    
+class UInt(Type):
+    def __init__(self):
+       pass
+       
+    
+    def __repr__(self):
+        return f'UInt()'
+
+
 class FunType(Type):
     
     def __init__(self, param_count:int,params,ret:Type):
@@ -191,11 +209,36 @@ class ConstLong(Exp):
     def __repr__(self):
         return f'ConstLong(Long={self._int},type={self._type})'
         
+
+class ConstUInt(Exp):
+    def __init__(self,_int,exp_type=UInt()):
+        super().__init__(exp_type)
+        self._int=_int 
+        # self._type = super().get_type()
+        
+    
+    def __repr__(self):
+        return f'ConstUInt(int={self._int},type={self._type})'
+        
+        
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+    
+
+class ConstULong(Exp):
+    def __init__(self,_int,exp_type=ULong()):
+        super().__init__(exp_type)
+        self._int=_int 
+        
+    
+    def __repr__(self):
+        return f'ConstULong(Long={self._int},type={self._type})'
         
         
 class Const():
     constInt=ConstInt
     constLong=ConstLong 
+    constUInt=ConstUInt
+    constULong=ConstULong
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
     
 

@@ -1,5 +1,4 @@
 patterns = [
-    ("Identifier",r"[a-zA-Z_]\w*\b"),
      ("Constant", r"[0-9]+\b"),
      ("int_keyword", r"int\b"),
      ("void_keyword", r"void\b"),
@@ -39,7 +38,13 @@ patterns = [
      ('static',r'\bstatic\b'),
      ('extern',r'\bextern\b'),
      ('long_keyword',r'\blong\b'),
-     ('long_int_constant',r'\b[0-9]+[1l]\b')
+     ('signed_keyword',r'\bigned\b'),
+     ('unsigned_keyword',r'\bunsigned\b'),
+     ('unsigned_int_constant',r'[0-9]+[uU]\b'),
+     ('long_int_constant',r'[0-9]+[1l]\b'),
+     ('signed_long_constant',r'[0-9]+([lL][uU]|[uU][lL])\b'),
+    ("Identifier",r"[a-zA-Z_]\w*\b"),
+     
 ]
 
 
