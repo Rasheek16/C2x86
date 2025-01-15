@@ -117,6 +117,22 @@ class TackyProgram:
 # ------------------
 
 
+class TackyZeroExtend(TackyInstruction):
+    """
+    instruction = Unary(unary_operator, val src, val dst)
+    """
+    def __init__(self, src, dst):
+ # 'Complement' or 'Negate'
+        self.src = src            # A val
+        self.dst = dst            # Another val
+                                  
+    def __repr__(self):
+        return (
+            "TackyZeroExtend(\n"
+            f"  src={repr(self.src)},\n"
+            f"  dst={repr(self.dst)}\n"
+            ")"
+        )
 
 class TackyReturn(TackyInstruction):
     """

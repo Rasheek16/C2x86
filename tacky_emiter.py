@@ -4,6 +4,7 @@ from _ast5 import *  # Your high-level AST classes
 from tacky import *
 from typing import List, Union
 from type_classes import *
+from typechecker import size,isSigned
 # Initialize label counters
 temp_false_label = 0
 temp_true_label = 0
@@ -221,33 +222,24 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
 
         instructions.append(TackyLabel(end_label))
         return tmp_result
-    elif isinstance(expr,Cast):
-        print('found cast')
-        #print('Foun cast')
-        # print('here')
-        # print(expr)
-        # print(dst_name)
-        print(expr)
-        # exit(0)
-        
+    elif isinstance(expr,Cast):      
         result  = emit_tacky_expr(expr.exp,instructions,symbols=symbols)
-        # print(result.identifier)
-        # print('cast',expr )
-        # exit(0)
-        if expr.target_type==expr.exp._type:
-            #print('exit cast1')
+        inner_type = expr.exp._type
+        t = expr.target_type
+        if t==inner_type:
             return result
         dst_name = make_temporary(symbols,expr.target_type)
-        # print(result)
-        dst =dst_name
-        if type(expr.target_type)==type(Long()):
-            instructions.append(TackySignExtend(result,dst))
+        if size(t)==size(inner_type):
+            instructions.append(TackyCopy(result,dst_name))
+        elif size(t)<size(inner_type):
+            instructions.append(TackyTruncate(result,dst_name))
+        elif isSigned(inner_type):
+            instructions.append(TackySignExtend(result,dst_name))
         else:
-            instructions.append(TackyTruncate(result,dst))
-        #print('exit cast2')
-        # print(instructions)
-        # exit()
-        return dst   
+            instructions.append(TackyZeroExtend(result,dst_name))
+            
+        return dst_name
+  
     elif isinstance(expr, Binary):
         if expr.operator in ('And', 'Or'):
             # Short-circuit evaluation for logical operators
