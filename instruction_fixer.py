@@ -83,7 +83,7 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
             for instr in assembly_function.instructions:
                 # print(instr)
                 # Handle 'Mov' instructions which move data between operands
-                new_instructions=fix_instr(instr,new_instructions,assembly_function)
+                new_instructions=fix_instr(instr,new_instructions)
                 # print(new_instructions)
             assembly_function.instructions = new_instructions
         else:
@@ -94,17 +94,17 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
         
 
 
-def fix_instr(instr,new_instructions,assembly_function):
+def fix_instr(instr,new_instructions:list):
     
     if isinstance(instr, Mov):
         # Handle large immediate values that need truncation
         if isinstance(instr.src, Imm):
             # If this is a long to int conversion (moving to a 32-bit register/memory)
-            if instr._type == AssemblyType.longWord and int(instr.src.value) >= 2147483647:
+            if instr._type == AssemblyType.longWord and int(instr.src.value) >= 2147483647 :
                 # Properly truncate the value to 32 bits
                 truncated_value = int(instr.src.value) & 0xFFFFFFFF
                 # If value is too large for direct move, use intermediate register
-                if truncated_value >= 2147483647:
+                if truncated_value >= 2147483647 :
                     # First move to r10 as quadword
                     mov_to_reg = Mov(
                         assembly_type=AssemblyType.quadWord,
@@ -126,10 +126,10 @@ def fix_instr(instr,new_instructions,assembly_function):
                         dest=instr.dest
                     )
                     new_instructions.append(new_mov)
-            elif isinstance(instr.src,Imm) and (int(instr.src.value)>=2147483647 and isinstance(instr.dest,(Stack,Data))):
+            elif isinstance(instr.src,Imm) and (int(instr.src.value)>=2147483647  and isinstance(instr.dest,(Stack,Data))):
                 # exit()
-                Mov1=Mov(assembly_type=AssemblyType.quadWord,src=instr.src,dest=Reg(Registers.R10))
-                Mov2=Mov(assembly_type=AssemblyType.quadWord,src=Reg(Registers.R10),dest=instr.dest)
+                Mov1=Mov(assembly_type=instr._type,src=instr.src,dest=Reg(Registers.R10))
+                Mov2=Mov(assembly_type=instr._type,src=Reg(Registers.R10),dest=instr.dest)
                 new_instructions.extend([Mov1,Mov2])
             else:
                 # Handle stack-to-stack moves
@@ -222,6 +222,8 @@ def fix_instr(instr,new_instructions,assembly_function):
     # Handle 'Idiv' instructions which perform integer division
  
     elif isinstance(instr, (Idiv,Div)):
+        print(instr)
+        # exit()
         
         # print('in  idviv',instr)
         
@@ -241,20 +243,26 @@ def fix_instr(instr,new_instructions,assembly_function):
             """
             # Create a Mov from the constant operand to R10 register
             mov_to_reg = Mov(assembly_type=instr._type,src=instr.operand, dest=Reg(Registers.R10))
+            if isinstance(instr,Div):
+                idiv_op = Div(assembly_type=instr._type,operand=Reg(Registers.R10))
+            else:
             # Create a new Idiv instruction using R10 register as the operand
-            idiv_op = Idiv(assembly_type=instr._type,operand=Reg(Registers.R10))
+                idiv_op = Idiv(assembly_type=instr._type,operand=Reg(Registers.R10))
             
             # Append the transformed instructions to the new_instructions list
             new_instructions.extend([mov_to_reg, idiv_op])
             
         
         else:
+            print('here')
+            new_instructions.append(instr)
+            # print
+            # exit()
             """
             Idiv Instruction without Stack or Constant Operand:
                 Operand is already a register or another supported type.
                 No replacement needed; keep the instruction as-is.
             """
-            new_instructions.append(instr)
     
     # Handle 'Binary' instructions which perform add, subtract, and multiply operations
     elif isinstance(instr, Binary):
@@ -297,7 +305,7 @@ def fix_instr(instr,new_instructions,assembly_function):
                 
                 # Debug Statement: Confirm rewriting of add/sub instruction
                 # logger.debug(f"Rewrote {instr.operator} from {instr.src2} to {instr.src1} using {Registers.R10}.")
-            elif int(instr.src1.value) >=2147483647 and isinstance(instr.src2,Stack):
+            elif  isinstance(instr.src1,Imm) and int(instr.src1.value) >= 2147483647 and isinstance(instr.src2,Stack):
                     movl = Mov(
                         assembly_type=instr._type,
                         src=instr.src1, 
@@ -320,7 +328,7 @@ def fix_instr(instr,new_instructions,assembly_function):
                 # Create a Mov from src1 Stack operand to R11 register
                 # Create a new Binary operation (imul) using R11 as the source
                 
-                if int(instr.src1.value) >=2147483647:
+                if isinstance(instr.src1,Imm) and int(instr.src1.value) >=2147483647 :
                     mov_to_reg = Mov(assembly_type=AssemblyType.quadWord,src=instr.src2, dest=Reg(Registers.R11))
                     movl = Mov(
                         assembly_type=AssemblyType.quadWord,
@@ -419,8 +427,7 @@ def fix_instr(instr,new_instructions,assembly_function):
             Since AllocateStack does not contain operands, no replacement is needed.
         """
         if isinstance(instr.operand1,(Stack,Data)) and isinstance(instr.operand2,(Data,Stack)):
-            print(instr)
-            # exit()
+
             mov = Mov(
                 assembly_type=instr._type,
                 src=instr.operand1, 
@@ -445,16 +452,19 @@ def fix_instr(instr,new_instructions,assembly_function):
     
             else:
                 new_instructions.extend([mov,compl])
-        elif isinstance(instr.operand1,Imm) and int(instr.operand1.value) >=2147483647:
-                print(instr)
-                # exit()
+        
+  
+            
+        
+        elif isinstance(instr.operand1,Imm):
+        
                 movl = Mov(
-                        assembly_type=AssemblyType.quadWord,
+                        assembly_type=instr._type,
                         src=instr.operand1, 
                         dest=Reg(Registers.R10),
                     )
                 compl = Cmp(
-                    assembly_type=AssemblyType.quadWord,
+                    assembly_type=instr._type,
                     operand1=Reg(Registers.R10),
                     operand2=instr.operand2)
                 if not isinstance(compl.operand2,Stack):
@@ -473,8 +483,6 @@ def fix_instr(instr,new_instructions,assembly_function):
                     new_instructions.extend([movl,compl])
             
         elif not isinstance(instr.operand2,(Stack,Data)):
-                print(instr)
-                # exit()
                 movl = Mov(
                     assembly_type=instr._type,
                     src=instr.operand2, 
@@ -488,8 +496,7 @@ def fix_instr(instr,new_instructions,assembly_function):
             
                 new_instructions.extend([movl,compl])
         else:
-            print(instr)
-            # exit()
+
             new_instructions.append(instr)
     
     # Handle 'Ret' (return) instructions which typically do not contain operands
@@ -598,6 +605,6 @@ def fix_instr(instr,new_instructions,assembly_function):
             If the instruction type is not recognized or handled above, log an error and exit.
             This ensures that all instruction types are accounted for and handled appropriately.
         """
-        logger.error(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_function.name}'.")
+        logger.error(f"Unsupported instruction type: {type(instr).__name__} in function' ")
         sys.exit(1)
     return new_instructions

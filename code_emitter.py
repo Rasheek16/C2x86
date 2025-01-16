@@ -173,11 +173,19 @@ class CodeEmitter:
                 op = convertOperandToAssembly(instruction.operand)
             else:
                 op = Convert8BYTEoperand(instruction.operand)
+            self.emit_line(f'   idiv{convert_type(instruction._type)} {op}')  # Perform division
+            
+        elif isinstance(instruction, Div):
+            # #print(instruction)
+            if instruction._type==AssemblyType.longWord:
+                op = convertOperandToAssembly(instruction.operand)
+            else:
+                op = Convert8BYTEoperand(instruction.operand)
             # print('idiv',instruction)
             # exit()
             # self.emit_line(f'   movl {op}, %eax')  # Move operand to %eax
             # self.emit_line('   cdq')  # Sign-extend into %edx:%eax
-            self.emit_line(f'   idiv{convert_type(instruction._type)} {op}')  # Perform division
+            self.emit_line(f'   div{convert_type(instruction._type)} {op}')  # Perform division
             # self.emit_line(f'   movl %eax, {convertOperandToAssembly(instruction.dst)}')  # Store quotient
         elif isinstance(instruction,Cdq):
             if instruction._type==AssemblyType.longWord:
@@ -350,7 +358,17 @@ def convert_code_to_assembly(code:str):
 def convert_static_init(instr,alignment):
     print(instr.value)
     # exit()
-    if isinstance(instr,IntInit):
+    if isinstance(instr,UIntInit):
+        if instr.value==0:
+            return f'.zero 4'
+        else:
+            return f'.long {instr.value}'
+    elif isinstance(instr,ULongInit):
+        if instr.value==0:
+            return f'.zero 8'
+        else:
+            return f'.quad {instr.value}'
+    elif isinstance(instr,IntInit):
         if instr.value==0:
             return f'.zero 4'
         else:

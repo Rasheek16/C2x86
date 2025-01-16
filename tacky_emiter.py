@@ -230,7 +230,7 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
             return result
         dst_name = make_temporary(symbols,expr.target_type)
         print(expr)
-        exit()
+        # exit()
         if size(t)==size(inner_type):
             instructions.append(TackyCopy(result,dst_name))
         elif size(t)<size(inner_type):
@@ -256,12 +256,15 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
             # Handle regular binary operations
             v1 = emit_tacky_expr(expr.left, instructions,symbols)
             v2 = emit_tacky_expr(expr.right, instructions,symbols)
-            print(v1)
+            # print(v1)
+            # exit()
             # Generate a unique temporary variable name to store the result
             # print(expr.get_type())
             dst_var = make_temporary(symbols,expr.get_type())
-            # print(symbols[dst_var.identifier])
-            # exit()
+            # if expr.operator == TackyBinaryOperator.EQUAL:
+                # print(dst_var)
+                # print(symbols[dst_var.identifier])
+                # exit()
             # Convert the AST binary operator to its corresponding Tacky binary operator
             tacky_op = convert_binop(expr.operator)
             # if tacky_op==BinaryOperator.LESS_OR_EQUAL:

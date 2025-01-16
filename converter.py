@@ -51,7 +51,10 @@ class Converter():
     def get_param_type(self,_type):
         if isinstance(_type,Long):
             return AssemblyType.quadWord
-        elif isinstance(type(_type),type(Long())):
+        # elif isinstance(_type,Int) or isinstance(_type,UInt):
+        #     return AssemblyType.longWord
+            
+        elif  isinstance(_type,ULong):
             return AssemblyType.quadWord
             
         return AssemblyType.longWord
@@ -157,9 +160,11 @@ class Converter():
                 # exit()
                 # global func_stack_offset
                 if i < len(PARAMETER_REGISTERS): 
-                    # print(param._type)
+                    print(param._type)
                     self.get_param_type(param._type)
-                    # exit()
+                    print(self.get_param_type(param._type))
+                    # if i==1:
+                    #     # exit()
                     src_reg = PARAMETER_REGISTERS[i]
              
                     
@@ -316,9 +321,22 @@ class Converter():
                 # dest=self.convert_to_assembly_ast(tacky_ast.dst)
                 # print(dest)
                 # exit()
-            
-                if isSigned(type(tacky_ast.src1)):
-                    
+                if isinstance(tacky_ast.src1,TackyVar) :
+                    if type(self.symbols[tacky_ast.src1.identifier]['val_type']) in (Int, Long):
+                        t=Int()  
+                    else:
+                        t=UInt()
+                else:
+                    if isinstance(tacky_ast.src1,TackyConstant) and isinstance(tacky_ast.src1.value,(ConstInt,ConstLong)):
+                        t=Int()
+                    else:
+                        t=UInt()
+                # if tacky_ast.operator == TackyBinaryOperator.DIVIDE:
+                    # print(self.symbols[tacky_ast.src1.identifier])
+                    # print(isSigned(t))
+                if isSigned(t):
+                    # print('here')
+                    # exit()
                     return [
                         # Move the dividend to the AX register
                         Mov(assembly_type=self.get_type(tacky_ast.src1),src=self.convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
@@ -333,6 +351,9 @@ class Converter():
                         Mov(assembly_type=self.get_type(tacky_ast.src1),src=Reg(Registers.AX), dest=self.convert_to_assembly_ast(tacky_ast.dst))
                     ]
                 else:
+                    # exit()
+                    # print('here')
+                    # exit()
                     return [
                         # Move the dividend to the AX register
                         Mov(assembly_type=self.get_type(tacky_ast.src1),src=self.convert_to_assembly_ast(tacky_ast.src1), dest=Reg(Registers.AX)),
@@ -363,7 +384,20 @@ class Converter():
                 
                 This sequence adheres to the x86 assembly convention where the remainder is stored in the DX register after division.
                 """
-                if isSigned(type(tacky_ast.src1)):
+                if isinstance(tacky_ast.src1,TackyVar) :
+                    # print(self.symbols[tacky_ast.src1.identifier])
+                    if type(self.symbols[tacky_ast.src1.identifier]['val_type']) in (Int, Long):
+                        t=Int()  
+                    else:
+                        t=UInt()
+                else:
+                    if isinstance(tacky_ast.src1,TackyConstant) and isinstance(tacky_ast.src1.value,(ConstInt,ConstLong)):
+                        t=Int()
+                    else:
+                        t=UInt()
+              
+                if isSigned(t):
+                # if isSigned(type(tacky_ast.src1)):
                 
                     return [
                         # Move the dividend to the AX register
@@ -446,7 +480,24 @@ class Converter():
                 # print(self.get_type(tacky_ast.src1))
                 # print('src',)
                 # print(tacky_ast.src2)
-                if isSigned(type(tacky_ast.src1)):
+                # if isSigned(type(tacky_ast.src1)):
+                if isinstance(tacky_ast.src1,TackyVar) :                    
+                    if type(self.symbols[tacky_ast.src1.identifier]['val_type']) in (Int, Long):
+                        t=Int()  
+                    else:
+                        t=UInt()
+                else:
+                    if isinstance(tacky_ast.src1,TackyConstant) and isinstance(tacky_ast.src1.value,(ConstInt,ConstLong)):
+                        t=Int()
+                    else:
+                        t=UInt()
+                # if tacky_ast.operator == TackyBinaryOperator.LESS_OR_EQUAL:
+                    # print(self.symbols[tacky_ast.src1.identifier]['val_type'])
+                    # print(isSigned(t))
+                    
+                    # exit()
+             
+                if isSigned(t)==True:
                 # if tacky_ast.operator == TackyBinaryOperator.NOT_EQUAL:
                     # exit()
                     return [Cmp(assembly_type=self.get_type(tacky_ast.src2),operand1=self.convert_to_assembly_ast(tacky_ast.src2),operand2=self.convert_to_assembly_ast(tacky_ast.src1)),
@@ -460,7 +511,19 @@ class Converter():
                             ]
                     
             elif tacky_ast.operator == TackyBinaryOperator.GREATER_THAN:
-                if isSigned(type(tacky_ast.src1)):
+                # print(self.symbols[tacky_ast.src1.identifier])
+                
+                if isinstance(tacky_ast.src1,TackyVar) :
+                    if type(self.symbols[tacky_ast.src1.identifier]['val_type']) in (Int,Long):
+                        t=Int()  
+                    else:
+                        t=UInt()
+                else:
+                    if isinstance(tacky_ast.src1,TackyConstant) and isinstance(tacky_ast.src1.value,(ConstInt,ConstLong)):
+                        t=Int()
+                    else:
+                        t=UInt()
+                if isSigned(t):
                 
                     return [Cmp(assembly_type=self.get_type(tacky_ast.src1),operand1=self.convert_to_assembly_ast(tacky_ast.src2),operand2=self.convert_to_assembly_ast(tacky_ast.src1)),
                             Mov(assembly_type=self.get_type(tacky_ast.dst),src=Imm(0),dest=self.convert_to_assembly_ast(tacky_ast.dst)),
@@ -519,6 +582,10 @@ class Converter():
         elif isinstance(tacky_ast,TackySignExtend):
             return [
                 Movsx(src=self.convert_to_assembly_ast(tacky_ast.src),dest=self.convert_to_assembly_ast(tacky_ast.dst))
+            ]
+        elif isinstance(tacky_ast,TackyZeroExtend):
+            return [
+                MovZeroExtend(src=self.convert_to_assembly_ast(tacky_ast.src),dest=self.convert_to_assembly_ast(tacky_ast.dst))
             ]
         elif isinstance(tacky_ast,TackyTruncate):
             print(tacky_ast)
