@@ -115,13 +115,15 @@ def lex(data):
                         # print(next_char)
                             # print(next_char)
                         if not next_char.isdigit():
-                            print(next_char)
+                            # print(next_char)
                                 # If the next character is a letter and not ';', raise an error
                             if next_char not in allowed_after_constant:
                                 raise ValueError(f"Invalid character '{next_char}' after constant '{token_value}'.")
-                
+                            else:
+                                token_value=token_value[:-1]
+                                break
                 tokens.append((token_type, token_value))
-
+                # print(tokens)
                 # "Consume" the matched substring by slicing
                 data = data[len(token_value):]
 

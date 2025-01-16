@@ -41,6 +41,13 @@ class UInt(Type):
     def __repr__(self):
         return f'UInt()'
 
+class Double(Type):
+    def __init__(self):
+       pass
+       
+    
+    def __repr__(self):
+        return f'Double()'
 
 class FunType(Type):
     
@@ -219,7 +226,16 @@ class ConstUInt(Exp):
     
     def __repr__(self):
         return f'ConstUInt(int={self._int},type={self._type})'
+
+class ConstDouble(Exp):
+    def __init__(self,_int,exp_type=Double()):
+        super().__init__(exp_type)
+        self._int=_int 
+        # self._type = super().get_type()
         
+    
+    def __repr__(self):
+        return f'ConstDouble(int={self._int},type={self._type})'
         
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
     
@@ -239,6 +255,8 @@ class Const():
     constLong=ConstLong 
     constUInt=ConstUInt
     constULong=ConstULong
+    constDouble=ConstDouble
+    
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
     
 
