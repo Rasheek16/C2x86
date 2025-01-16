@@ -1,5 +1,7 @@
 patterns = [
-     ("Constant", r"[0-9]+\b"),
+    ('floating_point_constant',r'(([0-9]*\.[0-9]+|[0-9]+\.?)[Ee][+-]?[0-9]+|[0-9]*\.[0-9]+|[0-9]+\.)[^\w.]'),
+    ('double_keyword',r'\bdouble\b'),
+     ("Constant", r'([0-9]+)[^\w.]'),
      ("int_keyword", r"int\b"),
      ("void_keyword", r"void\b"),
      ("return_keyword", r"return\b"),
@@ -38,11 +40,11 @@ patterns = [
      ('static',r'\bstatic\b'),
      ('extern',r'\bextern\b'),
      ('long_keyword',r'\blong\b'),
-     ('signed_keyword',r'\bigned\b'),
+     ('signed_keyword',r'\bsigned\b'),
      ('unsigned_keyword',r'\bunsigned\b'),
-     ('unsigned_int_constant',r'[0-9]+[uU]\b'),
-     ('long_int_constant',r'[0-9]+[1l]\b'),
-     ('signed_long_constant',r'[0-9]+([lL][uU]|[uU][lL])\b'),
+     ('unsigned_int_constant',r'([0-9]+[uU])[^\w.]'),
+     ('long_int_constant',r'([0-9]+[lL])[^\w.]'),
+     ('signed_long_constant',r'([0-9]+([lL][uU]|[uU][lL]))[^\w.]'),
     ("Identifier",r"[a-zA-Z_]\w*\b"),
      
 ]
