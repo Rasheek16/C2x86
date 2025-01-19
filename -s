@@ -1,19 +1,18 @@
-   .globl foo
+   .globl non_zero
    .text
-foo:
+non_zero:
    pushq   %rbp
    movq    %rsp, %rbp
-   subq $16, %rsp
-   movl $1, -8(%rbp)
-   .globl main
-   .text
-main:
-   pushq   %rbp
-   movq    %rsp, %rbp
-   subq $16, %rsp
-   call foo
-   movl %eax, -8(%rbp)
-   movl $3, %eax
+   subq $32, %rsp
+   movsd %xmm0, -16(%rbp)
+   movsd %xmm0, %r11
+    comisd     -24(%rbp) %r11
+   cmpsd -24(%rbp), %r11
+   movsd $0, -24(%rbp)
+   sete    -24(%rbp)
+   cvttsd2siq   -24(%rbp)   %r11
+   movq %r11, -28(%rbp)
+   movl -28(%rbp), %eax
    movq   %rbp, %rsp
    popq   %rbp
    ret
@@ -21,4 +20,71 @@ main:
    movq   %rbp, %rsp
    popq   %rbp
    ret
+   .globl multiply_by_large_num
+   .text
+multiply_by_large_num:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq $16, %rsp
+   movsd %xmm0, -16(%rbp)
+   movsd -16(%rbp), %r10
+   movsd %r10, -24(%rbp)
+   movsd -24(%rbp), %xmm15
+   imulq const_label.1(%rip), %xmm15
+   movsd -24(%rbp), %rax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .globl main
+   .text
+main:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq $32, %rsp
+   movsd const_label.1, -16(%rbp)
+   movsd -16(%rbp), %xmm0
+   call multiply_by_large_num
+   movsd %xmm0, -24(%rbp)
+   movsd -24(%rbp), %xmm15
+    comisd     const_label.1(%rip) %xmm15
+   cmpsd const_label.1(%rip), %xmm15
+   movl $0, -28(%rbp)
+   setne    -28(%rbp)
+   movl $0, %r10d
+   cmpl %r10d, -28(%rbp)
+   je    .Lfalse_1
+   movl $2, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   jmp  .Lend_1
+.Lfalse_1:
+.Lend_1:
+   movsd -16(%rbp), %xmm0
+   call non_zero
+   movl %eax, -32(%rbp)
+   movl -32(%rbp), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .section .rodata
+   .align 8
+.Lconst_label.1:
+   double 2e+20
+   .section .rodata
+   .align 8
+.Lconst_label.1:
+   double 2.5e-320
+   .section .rodata
+   .align 8
+.Lconst_label.1:
+   double 4.999944335913415e-300
 .section .note.GNU-stack,"",@progbits

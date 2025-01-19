@@ -134,6 +134,79 @@ class TackyZeroExtend(TackyInstruction):
             ")"
         )
 
+
+class TackyDoubleToUInt(TackyInstruction):
+    """
+    instruction = Unary(unary_operator, val src, val dst)
+    """
+    def __init__(self, src, dst):
+ # 'Complement' or 'Negate'
+        self.src = src            # A val
+        self.dst = dst            # Another val
+                                  
+    def __repr__(self):
+        return (
+            "TackyDoubleToUInt(\n"
+            f"  src={repr(self.src)},\n"
+            f"  dst={repr(self.dst)}\n"
+            ")"
+        )
+
+class TackyDoubleToInt(TackyInstruction):
+    """
+    instruction = Unary(unary_operator, val src, val dst)
+    """
+    def __init__(self, src, dst):
+ # 'Complement' or 'Negate'
+        self.src = src            # A val
+        self.dst = dst            # Another val
+                                  
+    def __repr__(self):
+        return (
+            "TackyDoubleToInt(\n"
+            f"  src={repr(self.src)},\n"
+            f"  dst={repr(self.dst)}\n"
+            ")"
+        )
+
+class TackyUIntToDouble(TackyInstruction):
+    """
+    instruction = Unary(unary_operator, val src, val dst)
+    """
+    def __init__(self, src, dst):
+ # 'Complement' or 'Negate'
+        self.src = src            # A val
+        self.dst = dst            # Another val
+                                  
+    def __repr__(self):
+        return (
+            "TackyUIntToDouble(\n"
+            f"  src={repr(self.src)},\n"
+            f"  dst={repr(self.dst)}\n"
+            ")"
+        )
+
+class TackyIntToDouble(TackyInstruction):
+    """
+    instruction = Unary(unary_operator, val src, val dst)
+    """
+    def __init__(self, src, dst):
+ # 'Complement' or 'Negate'
+        self.src = src            # A val
+        self.dst = dst            # Another val
+                                  
+    def __repr__(self):
+        return (
+            "TackyIntToDouble(\n"
+            f"  src={repr(self.src)},\n"
+            f"  dst={repr(self.dst)}\n"
+            ")"
+        )
+
+
+
+
+
 class TackyReturn(TackyInstruction):
     """
     instruction = Return(val)

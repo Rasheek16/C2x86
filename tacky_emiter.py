@@ -10,7 +10,12 @@ temp_false_label = 0
 temp_true_label = 0
 temp_end_label = 0
 temp_e2_label = 0 
-
+temp_const_label=0
+def get_const_label()->str:
+    global temp_const_label 
+    temp_const_label+=1
+    return f"const_label.{temp_const_label}"
+    
 def get_false_label() -> str:
     global temp_false_label
     temp_false_label += 1
@@ -45,6 +50,9 @@ def convert_symbols_to_tacky(symbols:dict):
                     if isinstance(init,IntInit):
                      
                         init = IntInit(init.value.value._int)
+                    elif isinstance(init,DoubleInit):
+                        init=DoubleInit(init.value.value._int)
+                        
                     else:
                         init=LongInit(init.value.value._int)
                         
@@ -156,7 +164,7 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
     """
     if isinstance(expr, Constant):
         # print(expr)
-        if not isinstance(expr.value,(ConstInt,ConstLong,ConstUInt,ConstULong)):
+        if not isinstance(expr.value,(ConstInt,ConstLong,ConstUInt,ConstULong,ConstDouble)):
             return TackyConstant(expr.value._int)
         return TackyConstant(expr.value)
     elif isinstance(expr, Var):
@@ -183,7 +191,8 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         src_val = emit_tacky_expr(expr.expr, instructions,symbols)
         # print(expr)
         # Allocate a new temporary variable for the result
-        
+        print(expr)
+        # exit()
         dst_var = make_temporary(symbols,expr.get_type())
         
         # print(expr.get_type())
@@ -233,10 +242,24 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         # exit()
         if size(t)==size(inner_type):
             instructions.append(TackyCopy(result,dst_name))
+        elif size(t) < size(inner_type) and isinstance(inner_type,Double):
+            if isSigned(t):
+                instructions.append(TackyDoubleToInt(result,dst_name))
+            else:
+                instructions.append(TackyDoubleToUInt(result,dst_name))
+        elif size(t) > size(inner_type) and isinstance(t,Double):
+            
+            if isSigned(t):
+                
+                instructions.append(TackyIntToDouble(result,dst_name))
+                
+            else:
+                instructions.append(TackyUIntToDouble(result,dst_name))
         elif size(t)<size(inner_type):
             instructions.append(TackyTruncate(result,dst_name))
         elif isSigned(inner_type):
             instructions.append(TackySignExtend(result,dst_name))
+        
         else:
             instructions.append(TackyZeroExtend(result,dst_name))
             

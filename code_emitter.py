@@ -22,8 +22,9 @@ class CodeEmitter:
             if isinstance(func, AssemblyFunction):
                 self.emit_function(func)
             elif isinstance(func,AssemblyStaticVariable):
-                    # #print()
                 self.emit_static_var(func)
+            elif isinstance(func,AssemblyStaticConstant):
+                self.emit_static_const(func)
             else:
                 raise ValueError(f"function_definition is not a valid FunctionAst: {type(program.function_definition)}")
         
@@ -33,9 +34,6 @@ class CodeEmitter:
     def emit_static_var(self,instruction):
         try:
             if isinstance(instruction,AssemblyStaticVariable):
-                # if isinstance()
-                print(instruction.init)
-                # exit()
                 if instruction.init.value != 0 :
                     print('here')
                     if instruction._global==True:
@@ -55,6 +53,13 @@ class CodeEmitter:
         except Exception as e:
             raise SyntaxError('Error in static var',e)
       
+    def emit_static_const(self,instruction):
+        self.emit_line('   .section .rodata')
+        self.emit_line(f'   .align {instruction.alignment}')
+        self.emit_line(f'.L{instruction.name}:')
+        self.emit_line(f'   {convert_static_init(instruction.init,instruction.alignment)}')
+        
+        
       
         
     def emit_function(self, function):
@@ -111,16 +116,25 @@ class CodeEmitter:
             self.emit_line(f'   {operator}{convert_type(instruction._type)} {operand}')
         
         elif isinstance(instruction, Binary):
-            operator = convertOperatorToAssembly(instruction.operator)
             if instruction._type==AssemblyType.longWord:
                 src = convertOperandToAssembly(instruction.src1)
                 dest = convertOperandToAssembly(instruction.src2)
             else:
                 src = Convert8BYTEoperand(instruction.src1)
                 dest = Convert8BYTEoperand(instruction.src2)
+            print(instruction)
+            # exit()
+            # if  instruction.operator == BinaryOperator.MULTIPLY:
+                # exit()
+            if instruction._type == AssemblyType.double and instruction.operator == BinaryOperator.XOR:
+                self.emit_line(f'   xorpd {src},   {dest}')
+            elif instruction._type == AssemblyType.double and instruction.operator == BinaryOperator.MULTIPLY:
             # src = convertOperandToAssembly(instruction.src1)
             # dest = convertOperandToAssembly(instruction.src2)
-            self.emit_line(f'   {operator}{convert_type(instruction._type)} {src}, {dest}')
+                self.emit_line(f'   mulsd   {src},   {dest}')
+            else:
+                operator = convertOperatorToAssembly(instruction.operator)
+                self.emit_line(f'   {operator}{convert_type(instruction._type)} {src}, {dest}')
 
         elif isinstance(instruction,Cmp):
             # #print(instruction._type)
@@ -130,8 +144,13 @@ class CodeEmitter:
             else:
                 op1 = Convert8BYTEoperand(instruction.operand1)
                 op2 = Convert8BYTEoperand(instruction.operand2)
-          
-            self.emit_line(f'   cmp{convert_type(instruction._type)} {op1}, {op2}')
+            if instruction._type == AssemblyType.double :
+                self.emit_line(f'   comisd    {op1}, {op2}')
+            else:
+                # print(instruction)
+                # print(convert_type(instruction._type))
+                # exit()
+                self.emit_line(f'   cmp{convert_type(instruction._type)} {op1}, {op2}')
         
         elif isinstance(instruction,Jmp):
             label = convertOperandToAssembly(instruction.identifier)
@@ -149,6 +168,28 @@ class CodeEmitter:
             self.emit_line(f'   set{code}    {label}')
         
         
+        elif isinstance(instruction,Cvtsi2sd):
+            # operator = convertOperatorToAssembly(instruction.)
+            if instruction._type==AssemblyType.longWord:
+                src = convertOperandToAssembly(instruction.src)
+                dest = convertOperandToAssembly(instruction.dst)
+            else:
+                src = Convert8BYTEoperand(instruction.src)
+                dest = Convert8BYTEoperand(instruction.dst)
+            
+            self.emit_line(f'   cvtsi2sd{convert_type(instruction._type)}   {src}   {dest}')
+
+        elif isinstance(instruction,Cvttsd2si):
+            # operator = convertOperatorToAssembly(instruction.)
+            if instruction._type==AssemblyType.longWord:
+                src = convertOperandToAssembly(instruction.src)
+                dest = convertOperandToAssembly(instruction.dst)
+            else:
+                src = Convert8BYTEoperand(instruction.src)
+                dest = Convert8BYTEoperand(instruction.dst)
+            
+            self.emit_line(f'   cvttsd2si{convert_type(instruction._type)}   {src}   {dest}')
+                
         
         elif isinstance(instruction,Label):
             label = convertOperandToAssembly(instruction.identifier)
@@ -218,6 +259,22 @@ def convertOperatorToAssembly(operator: str) -> str:
         return 'sub'
     elif operator == 'Mult':
         return 'imul'
+    elif operator =='Shr':
+        return 'shr'
+    elif operator=='DivDouble':
+        return 'div'
+    elif operator =='And':
+        return 'and'
+    elif operator =='Or':
+        return 'or'
+    elif operator =='Shr':
+        return 'shr'
+    elif operator=='DivDouble':
+        return 'div'
+    elif operator =='And':
+        return 'and'
+    elif operator == 'Or':
+        return 'or'
     else:
         raise ValueError(f'Invalid operator: {operator}')
 
@@ -329,11 +386,30 @@ def Convert8BYTEoperand(operand) -> str:
             return '%r9'
         elif operand == Registers.R10:
             return '%r10'
-            
         elif operand == Registers.R11:
             return '%r11'
         elif operand == Registers.SP:
             return '%rsp'
+        elif operand == Registers.XMM0:
+            return '%xmm0'
+        elif operand == Registers.XMM1:
+            return '%xmm1'
+        elif operand == Registers.XMM2:
+            return '%xmm2'
+        elif operand == Registers.XMM3:
+            return '%xmm3'
+        elif operand == Registers.XMM4:
+            return '%xmm4'
+        elif operand == Registers.XMM5:
+            return '%xmm5'
+        elif operand == Registers.XMM6:
+            return '%xmm6'
+        elif operand == Registers.XMM7:
+            return '%xmm7'
+        elif operand == Registers.XMM14:
+            return '%xmm14'
+        elif operand == Registers.XMM15:
+            return '%xmm15'
         else:
             raise ValueError(f"Unsupported register: {operand}")
     elif isinstance(operand,str):
@@ -358,7 +434,9 @@ def convert_code_to_assembly(code:str):
 def convert_static_init(instr,alignment):
     print(instr.value)
     # exit()
-    if isinstance(instr,UIntInit):
+    if isinstance(instr,DoubleInit):
+        return f'.double {float(instr.value)}'
+    elif isinstance(instr,UIntInit):
         if instr.value==0:
             return f'.zero 4'
         else:
@@ -398,6 +476,8 @@ def convert_type(_type):
         return 'l'
     elif _type ==AssemblyType.quadWord:
         return 'q'
+    elif _type == AssemblyType.double:
+        return 'sd'
     else:
         raise ValueError('Invalid mov type')
 

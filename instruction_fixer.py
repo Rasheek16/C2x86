@@ -126,11 +126,19 @@ def fix_instr(instr,new_instructions:list):
                         dest=instr.dest
                     )
                     new_instructions.append(new_mov)
+                    
+            elif isinstance(instr.src,Imm) and instr._type==AssemblyType.double:
+                Mov1=Mov(assembly_type=instr._type,src=instr.src,dest=Reg(Registers.XMM14))
+                Mov2=Mov(assembly_type=instr._type,src=Reg(Registers.XMM14),dest=instr.dest)
+                new_instructions.extend([Mov1,Mov2])
             elif isinstance(instr.src,Imm) and (int(instr.src.value)>=2147483647  and isinstance(instr.dest,(Stack,Data))):
-                # exit()
                 Mov1=Mov(assembly_type=instr._type,src=instr.src,dest=Reg(Registers.R10))
                 Mov2=Mov(assembly_type=instr._type,src=Reg(Registers.R10),dest=instr.dest)
                 new_instructions.extend([Mov1,Mov2])
+            
+                
+                # mov1=
+            
             else:
                 # Handle stack-to-stack moves
                 if isinstance(instr.src, (Stack, Data)) and isinstance(instr.dest, (Stack, Data)):
@@ -147,78 +155,36 @@ def fix_instr(instr,new_instructions:list):
                     new_instructions.extend([mov_to_reg, mov_to_dest])
                 else:
                     new_instructions.append(instr)
+      
+            
         else:
+            print(instr)
+            # if instr.src =='const_label.1':
+            
+                # exit()
             # For other move operations maintain existing behavior
             if isinstance(instr.src, (Stack, Data)) and isinstance(instr.dest, (Stack, Data)):
+                if instr._type == AssemblyType.double:
+                    dest = Reg(Registers.XMM14)
+                else:
+                    dest=Reg(Registers.R10)
+                    
+                
                 mov_to_reg = Mov(
                     assembly_type=instr._type,
                     src=instr.src,
-                    dest=Reg(Registers.R10)
+                    dest=dest
                 )
                 mov_to_dest = Mov(
                     assembly_type=instr._type,
-                    src=Reg(Registers.R10),
+                    src=dest,
                     dest=instr.dest
                 )
                 new_instructions.extend([mov_to_reg, mov_to_dest])
             else:
                 new_instructions.append(instr)
-    # if isinstance(instr, Mov):
-      
-    #     # print(instr.dest, instr.src)
-    #     # Check if both src and dest are Stack operands
-    #     if isinstance(instr.src, (Stack,Data)) and isinstance(instr.dest, (Stack,Data)):
-    #         """
-    #         Invalid Mov Instruction:
-    #             Both source and destination are Stack operands, which is not allowed in assembly.
-    #             You cannot move data directly from one memory location to another without using a register.
-            
-    #         Fix:
-    #             Introduce a temporary register (R10) to hold the data during the move.
-    #             Steps:
-    #                 a. Move the data from src Stack to R10.
-    #                 b. Move the data from R10 to dest Stack.
-    #         """
-    #         # Create a Mov from src Stack to R10 register
-            
-    #         mov_to_reg = Mov(assembly_type=instr._type,src=instr.src, dest=Reg(Registers.R10))
-    #         # Create a Mov from R10 register to dest Stack
-    #         mov_to_dest = Mov(assembly_type=instr._type,src=Reg(Registers.R10), dest=instr.dest)
-            
-    #         # Append the two new Mov instructions to the new_instructions list
-    #         new_instructions.extend([mov_to_reg, mov_to_dest])
-    #     elif isinstance(instr.src,Imm) and( int(instr.src.value)>=2147483647 and instr._type==AssemblyType.longWord):
-    #             print(instr)
-    #             # exit()
-    #             instr.src.value=int(instr.src.value) & 0xFFFFFFFF
-    #             print(instr)    
-    #             # exit()
-    #             instr._type=AssemblyType.longWord
-                
-    #             mov_to_reg = Mov(assembly_type=instr._type,src=instr.src, dest=Reg(Registers.R10))
-    #         # Create a Mov from R10 register to dest Stack
-    #             mov_to_dest = Mov(assembly_type=instr._type,src=Reg(Registers.R10), dest=instr.dest)
-            
-    #         # Append the two new Mov instructions to the new_instructions list
-    #             new_instructions.extend([mov_to_reg, mov_to_dest])
-    #         # else:
-    #             # pass
-    #     elif isinstance(instr.src,Imm) and (int(instr.src.value)>=2147483647 and isinstance(instr.dest,(Stack,Data))):
-    #         # exit()
-    #         Mov1=Mov(assembly_type=AssemblyType.quadWord,src=instr.src,dest=Reg(Registers.R10))
-    #         Mov2=Mov(assembly_type=AssemblyType.quadWord,src=Reg(Registers.R10),dest=instr.dest)
-    #         new_instructions.extend([Mov1,Mov2])
-    
-    #         # Debug Statement: Confirm rewriting of invalid Mov instruction
-    #         # logger.debug(f"Rewrote invalid Mov from {instr.src} to {instr.dest} using {Registers.R10}.")
-    #     else:
-    #         """
-    #         Valid Mov Instruction:
-    #             At least one of src or dest is not a Stack operand.
-    #             No replacement needed; keep the instruction as-is.
-    #         """
-    #         new_instructions.append(instr)
-    
+        
+
     # Handle 'Idiv' instructions which perform integer division
  
     elif isinstance(instr, (Idiv,Div)):
@@ -271,12 +237,27 @@ def fix_instr(instr,new_instructions:list):
         
         # Handle 'Add' and 'Subtract' instructions
         if instr.operator in (BinaryOperator.ADD, BinaryOperator.SUBTRACT):
-            # print('in add',instr)
             
             # Check if src1 (destination) is a Stack operand
-            # print(instr)
-            if isinstance(instr.src1, (Stack,Data))  and isinstance(instr.src2,(Stack,Data)):
             
+            if instr._type==AssemblyType.double and not isinstance(instr.src2,Reg):
+                movl = Mov(
+                        assembly_type=AssemblyType.double,
+                        src=instr.src2, 
+                        dest=Reg(Registers.XMM15),
+                    )
+                op = Binary(
+                assembly_type=AssemblyType.quadWord,
+                operator=instr.operator,
+                src1=instr.src1,
+                src2=Reg(Registers.XMM15)
+                )
+                new_instructions.extend([movl,op])
+                
+                
+            
+            elif isinstance(instr.src1, (Stack,Data))  and isinstance(instr.src2,(Stack,Data)):
+                
                 """
                 Fixing Up 'add' and 'sub' Instructions with Stack Destination:
                     The 'add' and 'sub' instructions cannot have a memory address as both source and destination.
@@ -327,8 +308,32 @@ def fix_instr(instr,new_instructions:list):
                 # Check if src1 (destination) is a Stack operand
                 # Create a Mov from src1 Stack operand to R11 register
                 # Create a new Binary operation (imul) using R11 as the source
+                if instr._type==AssemblyType.double :
+                    print(instr)
+                    # exit()
+                    
+                    if not isinstance(instr.src2,Reg): 
+                        movl = Mov(
+                                assembly_type=AssemblyType.double,
+                                src=instr.src2, 
+                                dest=Reg(Registers.XMM15),
+                            )
+                        op = Binary(
+                        assembly_type=AssemblyType.double,
+                        operator=instr.operator,
+                        src1=instr.src1,
+                        src2=Reg(Registers.XMM15)
+                        )
+                        mov_back = Mov(assembly_type=AssemblyType.double,src=Reg(Registers.XMM15), dest=instr.src2)
+                        
+                        new_instructions.extend([movl,op,mov_back])
+                    else:
+                        new_instructions.extend(instr)
+                        
+                        
+                    
                 
-                if isinstance(instr.src1,Imm) and int(instr.src1.value) >=2147483647 :
+                elif isinstance(instr.src1,Imm) and int(instr.src1.value) >=2147483647 :
                     mov_to_reg = Mov(assembly_type=AssemblyType.quadWord,src=instr.src2, dest=Reg(Registers.R11))
                     movl = Mov(
                         assembly_type=AssemblyType.quadWord,
@@ -360,8 +365,25 @@ def fix_instr(instr,new_instructions:list):
                     
                     # Append the transformed instructions to the new_instructions list
                     new_instructions.extend([mov_to_reg, imul_op, mov_back])
-    
-    
+        elif instr.operator == BinaryOperator.DIVDOUBLE :
+            if instr._type==AssemblyType.double and not isinstance(instr.src2,Reg):
+                movl = Mov(
+                        assembly_type=AssemblyType.double,
+                        src=instr.src2, 
+                        dest=Reg(Registers.XMM15),
+                    )
+                op = Binary(
+                assembly_type=AssemblyType.quadWord,
+                operator=instr.operator,
+                src1=instr.src1,
+                src2=Reg(Registers.XMM15)
+                )
+                new_instructions.extend([movl,op])
+            else:
+                new_instructions.append(instr)
+        else:
+                new_instructions.append(instr)
+
     # Handle 'Unary' instructions which perform operations on a single operand
     elif isinstance(instr, Unary):
         # Check if the operand is a Stack operand
@@ -419,15 +441,29 @@ def fix_instr(instr,new_instructions:list):
         print('in allocate')
         
     elif isinstance(instr, Cmp):
-        # print(instr)
-        
+   
         """
         AllocateStack Instruction:
             Typically used to reserve space on the stack for local variables or temporaries.
             Since AllocateStack does not contain operands, no replacement is needed.
         """
-        if isinstance(instr.operand1,(Stack,Data)) and isinstance(instr.operand2,(Data,Stack)):
-
+    
+        if instr._type == AssemblyType.double and not isinstance(instr.operand2,Reg):
+            mov = Mov(
+                assembly_type=instr._type,
+                src=instr.operand2, 
+                dest=Reg(Registers.XMM15),
+            )
+            compl = Cmp(
+                assembly_type=instr._type,
+                operand1=instr.operand1,
+                operand2=Reg(Registers.XMM15),
+                )
+            new_instructions.extend([mov,compl])
+            
+        elif isinstance(instr.operand1,(Stack,Data)) and isinstance(instr.operand2,(Data,Stack)):
+            
+           
             mov = Mov(
                 assembly_type=instr._type,
                 src=instr.operand1, 
@@ -451,10 +487,10 @@ def fix_instr(instr,new_instructions:list):
                 new_instructions.extend([mov,mov2,compl2])
     
             else:
+                print('Skipped')
+                # exit()
+                
                 new_instructions.extend([mov,compl])
-        
-  
-            
         
         elif isinstance(instr.operand1,Imm):
         
@@ -483,16 +519,23 @@ def fix_instr(instr,new_instructions:list):
                     new_instructions.extend([movl,compl])
             
         elif not isinstance(instr.operand2,(Stack,Data)):
+
+                if instr._type == AssemblyType.double:
+                    dest = Reg(Registers.XMM1)
+                else:
+                    dest=Reg(Registers.R11),
+                    
                 movl = Mov(
                     assembly_type=instr._type,
                     src=instr.operand2, 
-                    dest=Reg(Registers.R11),
+                    dest=dest,
                 )
     
                 compl = Cmp(
                     assembly_type=instr._type,
                     operand1=instr.operand1,
-                    operand2=Reg(Registers.R11))
+                    operand2=dest
+                    )
             
                 new_instructions.extend([movl,compl])
         else:
@@ -521,7 +564,6 @@ def fix_instr(instr,new_instructions:list):
         else:
             
             new_instructions.append(instr)
-        
     # Handle 'Cdq' (Convert Quadword to Doubleword) instructions
     elif isinstance(instr, (Cdq,JmpCC,Jmp,Label,SetCC,Call,DeallocateStack,Imm)):
         """
@@ -531,7 +573,6 @@ def fix_instr(instr,new_instructions:list):
             No operand replacement needed as it operates on fixed registers.
         """
         new_instructions.append(instr)
-     
     elif isinstance(instr,MovZeroExtend):
         if isinstance(instr.dest,Reg):
             return new_instructions.append(
@@ -597,7 +638,71 @@ def fix_instr(instr,new_instructions:list):
             new_instructions.extend([movsx,mov2])
         else:
             new_instructions.append(instr)
+    elif isinstance(instr,Cvttsd2si):
+        if not isinstance(instr.dst,Reg):
+            c_1=Cvttsd2si(
+                dst_type=AssemblyType.quadWord,
+                src=instr.src,
+                dst=Reg(Registers.R11)
+                
+            )
+            m_1= Mov(
+                assembly_type=AssemblyType.quadWord,
+                src=Reg(Registers.R11),
+                dest=instr.dst
+            )
+            new_instructions.extend([c_1,m_1])
+        else:
+            new_instructions.append(instr)
+    elif isinstance(instr,Cvtsi2sd):
+        if isinstance(instr.src,Imm) and not isinstance(instr.dst,Reg):
+            m_0= Mov(
+                assembly_type=instr._type,
+                src=instr.src,
+                dest=Reg(Registers.R10)
+            )
+            c_1=Cvtsi2sd(
+                src_type=instr._type,
+                src=Reg(Registers.R11),
+                dst=Reg(Registers.XMM15),
+                
+            )
+            m_1= Mov(
+                assembly_type=AssemblyType.double,
+                src=Reg(Registers.XMM15),
+                dest=instr.dst
+            )
+            new_instructions.extend([m_0,c_1,m_1])
             
+        elif isinstance(instr.src,Imm):
+            m_0= Mov(
+                assembly_type=instr._type,
+                src=instr.src,
+                dest=Reg(Registers.R10)
+            )
+            c_1=Cvtsi2sd(
+                src_type=instr._type,
+                src=Reg(Registers.R11),
+                dst=instr.dst,
+                
+            )
+            new_instructions.extend([m_0,c_1])
+        elif not isinstance(instr.dst,Reg):
+            c_1=Cvtsi2sd(
+                src_type=instr._type,
+                src=instr.src,
+                dst=Reg(Registers.XMM15),
+                
+            )
+            m_1= Mov(
+                assembly_type=AssemblyType.double,
+                src=Reg(Registers.XMM15),
+                dest=instr.dst
+            )
+            
+            new_instructions.extend([c_1,m_1])
+        else:
+            new_instructions.append(instr)
     # Handle any unsupported instruction types
     else:
         """

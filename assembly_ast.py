@@ -30,6 +30,7 @@ from typing import List,Optional
 class AssemblyType:
     longWord='LongWord'
     quadWord='QuadWord' 
+    double='Double'
     
     
 
@@ -84,8 +85,8 @@ class Reg(Operand):
     """
     def __init__(self, value):
         # We check against the valid enumerations in 'Registers'
-        if value not in (Registers.AX, Registers.R10,Registers.DX,Registers.R11,Registers.R8,Registers.R9,Registers.CX,Registers.DI,Registers.SI,Registers.SP):
-            raise TypeError(f"Invalid register value: {value}")
+        # if value not in (Registers.AX, Registers.R10,Registers.DX,Registers.R11,Registers.R8,Registers.R9,Registers.CX,Registers.DI,Registers.SI,Registers.SP):
+        #     raise TypeError(f"Invalid register value: {value}")
         self.value = value
 
     def __repr__(self):
@@ -390,6 +391,27 @@ class Call(Instruction):
         return f'Call(Indentifier={self.identifier})'
 
 
+class Cvttsd2si(Instruction):
+    def __init__(self, dst_type, src , dst):
+        # super().__init__(assembly_type)
+        self._type=dst_type
+        self.src=src
+        self.dst=dst
+    def get_type(self):
+        return self._type
+    def __repr__(self):
+        return f'Cvttsd2si(Operand1={self.src},assemby_type={self._type},Operand2 ={self.dst})'
+class Cvtsi2sd(Instruction):
+    def __init__(self, src_type, src , dst):
+        # super().__init__(assembly_type)
+        self._type=src_type
+        self.src=src
+        self.dst=dst
+    def get_type(self):
+        return self._type
+    def __repr__(self):
+        return f'Cvttsd2si(Operand1={self.src},assemby_type={self._type},Operand2 ={self.dst})'
+
 # ------------------
 # Operator Constants
 # ------------------
@@ -408,6 +430,7 @@ class UnaryOperator():
 
     NEG = "Neg"  # Represents unary negation, e.g., -x
     NOT = "Not"  # Represents bitwise NOT, e.g., ~x (or logical NOT in some Instruction Set Architectures)
+    SHR='Shr'
 
     # Additional unary operators can be added here as needed
     # For example:
@@ -429,7 +452,10 @@ class BinaryOperator():
     ADD = 'Add'        # Represents the addition operation, e.g., x + y
     SUBTRACT = 'Sub'   # Represents the subtraction operation, e.g., x - y
     MULTIPLY = 'Mult'  # Represents the multiplication operation, e.g., x * y
-
+    DIVDOUBLE='DivDouble' 
+    AND='And'
+    OR='Or'
+    XOR='Xor'
     # Additional binary operators can be defined here as needed.
     # For example:
     # DIVIDE = 'Divide'      # Represents the division operation, e.g., x / y
@@ -459,6 +485,16 @@ class Registers:
     R10 = "R10" # General-Purpose Register: available for various operations
     R11 = "R11" # General-Purpose Register: available for various operations
     SP='SP'
+    XMM0 ='XMM0'
+    XMM1 ='XMM1'
+    XMM2 ='XMM2'
+    XMM3  ='XMM3'
+    XMM4 ='XMM4'
+    XMM5 ='XMM5'
+    XMM6 ='XMM6'
+    XMM7  ='XMM7'
+    XMM14 ='XMM14'
+    XMM15='XMM15'
 
     # Additional registers can be defined here based on the target architecture
     # For example:
@@ -500,6 +536,15 @@ class AssemblyFunction:
 
 
 
+class AssemblyStaticConstant:
+    def __init__(self,identifier,alignment,init):
+        self.name = identifier
+        # self._global =_global
+        self.alignment=alignment
+        self.init = init
+    
+    def __repr__(self):
+        return f'StaticConstant(name={self.name},,alignment={self.alignment},init={self.init})'
 
 class AssemblyStaticVariable:
     def __init__(self,identifier,_global,alignment,init):
@@ -515,6 +560,7 @@ class AssemblyStaticVariable:
 class TopLevel:
     assembly_func=AssemblyFunction
     static_var = AssemblyStaticVariable
+    static_const = AssemblyStaticConstant
 
 class AssemblyProgram:
     """

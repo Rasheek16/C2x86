@@ -76,10 +76,7 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
                                 pseudo_map[name] = current_offset
                                 operand = Stack(current_offset)
                             else:
-                                # print('code didn work')
-                                # exit()
-                                # exit()
-                                #print(f"'{name}' is a dynamic variable. Assigning Stack offset {current_offset}.")
+    
         #                       
                                 current_offset -= 8  # Adjust offset for next allocation
                                 current_offset = align_offset(current_offset, 8)
@@ -94,42 +91,7 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
                 #print(f"Replaced Operand: {operand}")
             return operand 
         
-        # def replace_pseudo_with_operand(operand):
-        #     nonlocal current_offset
-
-        #     def align_offset(offset, alignment):
-        #         """Ensure the offset is aligned to the specified byte boundary."""
-        #         return offset - (offset % alignment) if offset % alignment != 0 else offset
-
-        #     if isinstance(operand, Pseudo):
-        #         name = operand.identifier
-        #         if name not in pseudo_map:
-        #             if name in symbols:
-        #                 symbol_info = backend_Symbol_table[name]
-        #                 if symbol_info.is_static:
-        #                     operand = Data(name)
-        #                 else:
-        #                     assembly_type = symbol_info.assembly_type
-        #                     if assembly_type == AssemblyType.quadWord:
-        #                         current_offset = align_offset(current_offset, 8)
-        #                         pseudo_map[name] = current_offset
-        #                         operand = Stack(current_offset)
-        #                         current_offset -= 8
-        #                     elif assembly_type == AssemblyType.longWord:
-        #                         pseudo_map[name] = current_offset
-        #                         operand = Stack(current_offset)
-        #                         current_offset -= 4
-        #                     else:
-        #                         raise ValueError(f"Unknown assembly type for '{name}': {assembly_type}")
-        #             else:
-        #                 raise ValueError(f"Pseudoregister '{name}' not found in backend symbol table.")
-        #         else:
-        #             assigned_offset = pseudo_map[name]
-        #             operand = Stack(assigned_offset)
-
-        #     return operand
-
-
+     
         # Function to process instructions based on their type
         def process_instruction(instr: Instruction) -> Optional[Instruction]:
             if isinstance(instr, Mov):
@@ -157,12 +119,19 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
                 instr.src = replace_pseudo_with_operand(instr.src)
             elif isinstance(instr, Div):
                 instr.operand = replace_pseudo_with_operand(instr.operand)
+            elif isinstance(instr,Cvtsi2sd):
+                instr.src=replace_pseudo_with_operand(instr.src)
+                instr.dst=replace_pseudo_with_operand(instr.dst)
+            elif isinstance(instr,Cvttsd2si):
+                instr.src=replace_pseudo_with_operand(instr.src)
+                instr.dst=replace_pseudo_with_operand(instr.dst)
+                
             elif isinstance(instr, (AllocateStack, Ret, Cdq, JmpCC, Jmp, Label, Call, DeallocateStack, Imm)):
                 # These instructions do not contain Pseudo operands; no action needed
                 pass
             else:
                 # Unsupported instruction type encountered
-                #print(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_func.name}'.", file=sys.stderr)
+                print(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_func.name}'.", file=sys.stderr)
                 sys.exit(1)
             
             # After processing, add the instruction to new_instructions
@@ -176,7 +145,7 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
                 process_instruction(instr)
         
         # Process instructions for AssemblyStaticVariable
-        elif isinstance(assembly_func, AssemblyStaticVariable):
+        elif isinstance(assembly_func, (AssemblyStaticVariable,AssemblyStaticConstant)):
             pass 
             #print(f"Processing AssemblyStaticVariable: {assembly_func.name}")
             # instr = assembly_func.init

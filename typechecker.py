@@ -13,17 +13,24 @@ def size(_type):
         return 4
     elif type(_type)==type(ULong()):
         return 8
+    elif type(_type)==type(Double()):
+        return 16
+    
 
 def isSigned(_type):
-    if type(_type)==type(Int()) or type(_type)==type(Long()):
+    if type(_type)==type(Int()) or type(_type)==type(Long()) or type(_type)==type(Double()):
         return True
     return False
     
 
 
 def get_common_type(type1, type2):
+    print(type2,type1)
     if type(type1) == type(type2):
         return type1
+    if isinstance(type1,Double) or isinstance(type2,Double):
+        print('Returning double')
+        return Double()
     if size(type1) == size(type2):
         if isSigned(type1):
             return type2 
@@ -72,6 +79,8 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
             new_init = Initial(Constant(StaticInit.ULongInit(decl.init.value)))
         else:
             new_init = Initial(Constant(StaticInit.UIntInit(decl.init.value)))
+    elif isinstance(decl.init,Constant) and isinstance(decl.init.value,ConstDouble):
+        new_init = Initial(Constant(StaticInit.DouleInit(decl.init.value)))
     elif isinstance(decl.init, Null):
         if isinstance(decl.storage_class, Extern):
             new_init = NoInitializer()
@@ -156,6 +165,7 @@ def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
                     'ret': decl.var_type,
                 }
             return decl
+        # TODO CHECK THIS CONDITION
         elif isinstance(decl.storage_class, Static):
             if isinstance(decl.init, Constant):
                 # #decl.init)
@@ -286,20 +296,10 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
             stmts=[]
             for stmt in decl.body:
                 if not isinstance(stmt, Return):
-                    # #decl.fun_type)
-                    typecheck_statement(decl.body, symbols, decl.fun_type)
-                    # stmts.extend(stmt)
-                    # if decl.name.name=='truncate_on_assignment':
-                            # print('here')
-                            # print(stmts)
-                        # print(e)
-                            # exit()
-            
-                    # #stmt)
-                    # convert_to(stmt, decl.fun_type)
+                    print('Type checking statement',stmt)
                     
-                    # #'here')
-                    # exit()
+                    typecheck_statement(stmt, symbols, decl.fun_type)
+                  
                 else:
                     if stmt.exp is not None and not isinstance(stmt.exp, Null):
                         typed_return = typecheck_exp(stmt.exp, symbols, decl.fun_type)
@@ -375,9 +375,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         if not isinstance(var_type, Int):
             raise SyntaxError(f"Identifier '{var_name}' does not have type Int.")
         e.set_type(var_entry['val_type'])
-        #'type set of variable')
-        # #e)
-        # exit()
+       
         return e
 
     elif isinstance(e, Return):
@@ -386,14 +384,9 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         if e.exp is not None and not isinstance(e.exp, Null):
             if func_type is not None:
                 e.exp=typecheck_exp(e.exp, symbols, func_type)    
-                # #func_type)
-                #'e',e)
-                #func_type)
-              
+            
                 e.exp=convert_to(e.exp, func_type)
-                #'expr',e)
-                # exit()
-                # exit()
+           
                 return e
         return e
 
@@ -411,13 +404,16 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
             e.set_type(ULong())
             return e
         elif isinstance(e.value, ConstUInt):
-            # e.set_type(Long())
             e.set_type(UInt())
+            return e 
+        elif isinstance(e.value,ConstDouble):
+            e.set_type(Double())
             return e
         else:
             raise SyntaxError('Invalid value const')
 
     elif isinstance(e, Cast):
+        print('Inside cast')
         # #'inside cast')
         typed_inner = typecheck_exp(e.exp, symbols)
         e.exp = typed_inner
@@ -448,22 +444,31 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
 
     elif isinstance(e, Binary):
+        print('Inside binary')
         typed_e1 = typecheck_exp(e.left, symbols)
         typed_e2 = typecheck_exp(e.right, symbols)
+        # print(typed_e2)
 
         if e.operator in (BinaryOperator.AND, BinaryOperator.OR):
             e.left = typed_e1
             e.right = typed_e2
             e.set_type(Int())
             return e
+            
         #typed_e1)
         # exit()
         t1 = typed_e1.get_type()
         t2 = typed_e2.get_type()
-        # #type(typed_e1))
+        if e.operator==BinaryOperator.REMAINDER :
+            if isinstance(t1,Double) or isinstance(t2,Double):
+                raise ValueError('Cannot apply modulo to a double')
+        print(t1)
+        print(typed_e2)
+        
         #t1)
+        print('Binary')
         common_type = get_common_type(t1, t2)
-
+        print(common_type)
         converted_e1 = convert_to(typed_e1, common_type)
         converted_e2 = convert_to(typed_e2, common_type)
         e.left = converted_e1
@@ -472,10 +477,9 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         if e.operator in (BinaryOperator.ADD, BinaryOperator.DIVIDE,
                           BinaryOperator.MULTIPLY, BinaryOperator.SUBTRACT,
                           BinaryOperator.REMAINDER):
-            #'commone_type',common_type)
+    
             e.set_type(common_type)
-            #e)
-            # exit()
+         
             return e 
         else:
             e.set_type(Int())
@@ -487,6 +491,15 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         e.expr = inner
         if e.operator == UnaryOperator.NOT:
             e.set_type(Int())
+            print(e)
+            return e
+            # exit()
+        if e.operator==UnaryOperator.COMPLEMENT :
+            if isinstance(e.expr.get_type(),Double):
+                print(e.expr)
+                # exit()
+                raise SyntaxError('Cannot complement of double')
+            e.set_type(inner.get_type())
         else:
             e.set_type(inner.get_type())
             # #e.expr.get_type())
@@ -641,6 +654,7 @@ def typecheck_program(program: Program):
             # exit()
             typecheck_file_scope_variable_declaration(stmt, symbols)
         elif isinstance(stmt, FunDecl):
+            print('Fun decl')
             typecheck_function_declaration(stmt, symbols, False)
         else:
             typecheck_statement(stmt, symbols)
