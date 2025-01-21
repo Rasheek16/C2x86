@@ -45,12 +45,12 @@ def convert_symbols_to_tacky(symbols:dict):
                 # exit()
                 if isinstance(entry['attrs'].init,Initial):
                     init=entry['attrs'].init.value
-                    # print('init',init)
+                    # print('init',init.value)
                     # exit()
-                    if isinstance(init,IntInit):
+                    if isinstance(init.value,IntInit):
                      
                         init = IntInit(init.value.value._int)
-                    elif isinstance(init,DoubleInit):
+                    elif isinstance(init.value,DoubleInit):
                         init=DoubleInit(init.value.value._int)
                         
                     else:
@@ -632,7 +632,7 @@ def emit_tacky_program(ast_program: Program,symbols) -> TackyProgram:
     #     i.init=emit_tacky_expr(i.init,instructions,symbols)
     #     tacky_symbols.append(i)
     
-    # print(symbols)
+    print(symbols)
     # exit(0)
     # output=emit_tacky_expr(s,instructions)
     # tack_symbols.extend(output)

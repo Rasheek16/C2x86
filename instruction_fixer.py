@@ -247,7 +247,7 @@ def fix_instr(instr,new_instructions:list):
                         dest=Reg(Registers.XMM15),
                     )
                 op = Binary(
-                assembly_type=AssemblyType.quadWord,
+                assembly_type=AssemblyType.double,
                 operator=instr.operator,
                 src1=instr.src1,
                 src2=Reg(Registers.XMM15)
@@ -641,13 +641,13 @@ def fix_instr(instr,new_instructions:list):
     elif isinstance(instr,Cvttsd2si):
         if not isinstance(instr.dst,Reg):
             c_1=Cvttsd2si(
-                dst_type=AssemblyType.quadWord,
+                dst_type=instr._type,
                 src=instr.src,
                 dst=Reg(Registers.R11)
                 
             )
             m_1= Mov(
-                assembly_type=AssemblyType.quadWord,
+                assembly_type=instr._type,
                 src=Reg(Registers.R11),
                 dest=instr.dst
             )
