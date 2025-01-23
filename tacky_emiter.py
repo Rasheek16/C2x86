@@ -42,20 +42,14 @@ def convert_symbols_to_tacky(symbols:dict):
     for name,entry in symbols.items():
         if entry['attrs']!=None:
             if isinstance(entry['attrs'],StaticAttr):
-                # exit()
                 if isinstance(entry['attrs'].init,Initial):
                     init=entry['attrs'].init.value
-                    # print('init',init.value)
-                    # exit()
-                    if isinstance(init.value,IntInit):
-                     
+                    if isinstance(init.value,(IntInit,UIntInit)):
                         init = IntInit(init.value.value._int)
                     elif isinstance(init.value,DoubleInit):
                         init=DoubleInit(init.value.value._int)
-                        
                     else:
                         init=LongInit(init.value.value._int)
-                        
                     tacks_defs.append(TackyStaticVariable(identifier=name,_global =entry['attrs'].global_scope,_type=entry['val_type'],init=init))
                     # print(init)
                     # exit()

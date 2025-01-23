@@ -54,42 +54,72 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
                 """Ensure the offset is aligned to the specified byte boundary."""
                 return offset - (offset % alignment) if offset % alignment != 0 else offset
         def replace_pseudo_with_operand(operand):
-            nonlocal current_offset
+            nonlocal current_offset  # or 'global current_offset' if it's truly global
+            
             if isinstance(operand, Pseudo):
                 name = operand.identifier
-                #print(f"Processing Pseudo Operand: {name}")
+                
                 if name not in pseudo_map:
-                    #print(f"'{name}' not in pseudo_map. Determining replacement type.")
+                    # Check if it's defined in the backend symbol table
                     if name in backend_Symbol_table:
+                        # If the symbol is static, replace with a Data operand
                         if backend_Symbol_table[name].is_static:
-                            #print(f"'{name}' is a static variable. Replacing with Data operand.")
                             operand = Data(name)
                         else:
-                            # print((symbols[name])['val_type'])
-                            # exit()
-                            if backend_Symbol_table[name].assembly_type==AssemblyType.longWord:
-                                print(operand)
-                                print(pseudo_map)
-                                
-                                current_offset -= 4  # Adjust offset for next allocation
-                                #print(f"'{name}' is a dynamic variable. Assigning Stack offset {current_offset}.")
+                            # Dynamic variable (on stack)
+                            if backend_Symbol_table[name].assembly_type == AssemblyType.longWord:
+                                # Allocate 4 bytes
+                                current_offset -= 4
                                 pseudo_map[name] = current_offset
                                 operand = Stack(current_offset)
                             else:
-    
-        #                       
-                                current_offset -= 8  # Adjust offset for next allocation
+                                # Allocate 8 bytes, then align
+                                current_offset -= 8
                                 current_offset = align_offset(current_offset, 8)
                                 pseudo_map[name] = current_offset
+                    
+                    
                                 operand = Stack(current_offset)
-                                    
+                    else:
+                        print('Unknown var',name)
+                        exit()
+                       
                 else:
-                    # Replace with existing Stack operand
-                    #print(f"'{name}' already in pseudo_map with offset {pseudo_map[name]}. Replacing with Stack operand.")
+                    # Already mapped, just replace with existing stack offset
                     operand = Stack(pseudo_map[name])
+            
+            return operand
+
+        # def replace_pseudo_with_operand(operand):
+            # nonlocal current_offset
+            # if isinstance(operand, Pseudo):
+            #     name = operand.identifier
+            #     #print(f"Processing Pseudo Operand: {name}")
+            #     if name not in pseudo_map:
+            #         if name in backend_Symbol_table:
+            #             if backend_Symbol_table[name].is_static:
+                            
+            #                 operand = Data(name)
+            #             else:
+            #                 if backend_Symbol_table[name].assembly_type==AssemblyType.longWord:
+            #                     print(operand)
+            #                     print(pseudo_map)
+                                
+            #                     current_offset -= 4  # Adjust offset for next allocation
+            #                     pseudo_map[name] = current_offset
+            #                     operand = Stack(current_offset)
+            #                 else:
+            #                     current_offset -= 8  # Adjust offset for next allocation
+            #                     current_offset = align_offset(current_offset, 8)
+            #                     pseudo_map[name] = current_offset
+            #                     operand = Stack(current_offset)
+                                    
+            #     else:
+            #         # Replace with existing Stack operand
+                   
+            #         operand = Stack(pseudo_map[name])
                 
-                #print(f"Replaced Operand: {operand}")
-            return operand 
+            # return operand 
         
      
         # Function to process instructions based on their type

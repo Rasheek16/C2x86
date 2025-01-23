@@ -100,8 +100,7 @@ class Converter():
                 if isinstance(self.symbols[name]['attrs'],StaticAttr):
                     static=True
                 backend_symbol_table[name] = ObjEntry(assembly_type=self.get_param_type(self.symbols[name]['val_type']),is_static=static,is_constant =True)
-            else:
-                print(name)
+        
                 
         return backend_symbol_table
     
@@ -226,11 +225,13 @@ class Converter():
                         alignment = 8
 
                     static_var = TopLevel.static_var(identifier=defn.name,_global = defn._global,alignment=alignment,init=defn.init)
+                    
                   
                     assembly_functions.append(static_var)
                     
             # for i in self.static_const:
-            # print(self.static_const)
+            print(self.static_const)
+          
             assembly_functions.extend(self.static_const)
             
             backend_Symbol_table=self.convert_symbol_table()
@@ -440,8 +441,7 @@ class Converter():
                 if tacky_ast.operator == TackyUnaryOperator.NEGATE  and self.get_type(tacky_ast.src)==AssemblyType.double:
                     
                     #* Create temporary label
-                        const_label = get_const_label()
-                        
+                        const_label=''
                         #* Set value
                         if isinstance(tacky_ast.src,TackyConstant):
                             value = tacky_ast.src.value._int
@@ -454,8 +454,8 @@ class Converter():
                             #* Check for existing static const with same alignment and value in table
                             for i in self.temp:
                                 if self.temp[i]['alignment'] == 8 and (float(self.temp[i]['value']) - float(value)==0):
-                                    print('Exist')
-                                    exit()
+                                    # print(value)
+                                    # exit()
                                     const_label = self.temp[i]['identifier']
                                     value = self.temp[i]['value']
                                     found=True 
@@ -464,10 +464,11 @@ class Converter():
                             
                             #* Check condition based oh flag , if not found , insert a static character in symbol table and temp table
                             if not found:
+                                const_label = get_const_label()
                                 self.static_const.append(TopLevel.static_const(
                                     identifier=const_label,
                                     alignment=8,
-                                    init=value,
+                                    init=DoubleInit(value),
                                 ))
                                 self.temp[const_label] = {
                                     'identifier':const_label,
@@ -482,7 +483,7 @@ class Converter():
                             Mov(assembly_type=AssemblyType.double,src=self.convert_to_assembly_ast(tacky_ast.src),dest=self.convert_to_assembly_ast(tacky_ast.dst)),
                             
                             #* Binary instruction
-                            Binary(assembly_type=AssemblyType.double,operator=BinaryOperator.XOR,src1=Data(const_label),src2=Pseudo(tacky_ast.dst)),
+                            Binary(assembly_type=AssemblyType.double,operator=BinaryOperator.XOR,src1=Data(const_label),src2=self.convert_to_assembly_ast(tacky_ast.dst)),
                             
                             
                         ]
@@ -751,27 +752,30 @@ class Converter():
             if isinstance(tacky_ast.value,(ConstInt,ConstLong,ConstUInt,ConstULong)):
                 return Imm(tacky_ast.value._int)
             elif isinstance(tacky_ast.value,ConstDouble):
-                const_label = get_const_label()
+                const_label=''
                 value = tacky_ast.value._int
                 found =False
                 for i in self.temp:
                     
                     if self.temp[i]['alignment'] == 8 and (float(self.temp[i]['value']) - float(value)==0):
-                        print('Exist')
-                        exit()
+                       
                         const_label = self.temp[i]['identifier']
                         value = self.temp[i]['value']
                         found=True 
                     else:
+                        
                         continue 
                 
                 if not found:
+                    const_label=get_const_label()
                     self.static_const.append(TopLevel.static_const(
                     identifier=const_label,
                     alignment=8 ,
                     init=DoubleInit(tacky_ast.value._int))
                     
                         )
+                    # print(self.temp)
+                    # exit()
                     self.temp[const_label] = {
                         'identifier':const_label,
                         'alignment':8,
@@ -820,25 +824,29 @@ class Converter():
             
         elif isinstance(tacky_ast,TackyCopy):
             if isinstance(tacky_ast.src,TackyConstant) and isinstance(tacky_ast.src.value,ConstDouble):
-                const_label = get_const_label()
+                # const_label = get_const_label()
+                const_label=''
                 value = tacky_ast.src.value._int
-                found =False
+                found = False
                 for i in self.temp:
                     if self.temp[i]['alignment'] == 8 and (float(self.temp[i]['value']) - float(value)==0):
-                        print('Exist')
-                        exit()
+                        print('Exist')   
                         const_label = self.temp[i]['identifier']
                         value = self.temp[i]['value']
                         found=True 
-                    else:
-                        continue 
-                
+                 
+                        
+                 
+                 
                 if not found:
+                    const_label = get_const_label()
+                    
                     self.static_const.append( TopLevel.static_const(
                     identifier=const_label,
                     alignment=8 ,
                     init=DoubleInit(tacky_ast.src.value._int))
                     )
+                    # print(init)
                     self.temp[const_label] = {
                         'identifier':const_label,
                         'alignment':8,
@@ -897,7 +905,7 @@ class Converter():
             if isinstance(tacky_ast.src,TackyVar):
                 _type =self.symbols[tacky_ast.src.identifier]['val_type']
                 print(_type)
-                if _type ==UInt():
+                if _type ==UInt:
                     return [
                         MovZeroExtend(
                             src=self.convert_to_assembly_ast(tacky_ast.src),

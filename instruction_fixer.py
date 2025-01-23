@@ -208,11 +208,13 @@ def fix_instr(instr,new_instructions:list):
                     idivl %r10d
             """
             # Create a Mov from the constant operand to R10 register
-            mov_to_reg = Mov(assembly_type=instr._type,src=instr.operand, dest=Reg(Registers.R10))
-            if isinstance(instr,Div):
-                idiv_op = Div(assembly_type=instr._type,operand=Reg(Registers.R10))
+            if isinstance(instr,Idiv):
+                mov_to_reg = Mov(assembly_type=instr._type,src=instr.operand, dest=Reg(Registers.XMM15))
+        
+                idiv_op = Div(assembly_type=instr._type,operand=Reg(Registers.XMM15))
             else:
             # Create a new Idiv instruction using R10 register as the operand
+                mov_to_reg = Mov(assembly_type=instr._type,src=instr.operand, dest=Reg(Registers.R10))
                 idiv_op = Idiv(assembly_type=instr._type,operand=Reg(Registers.R10))
             
             # Append the transformed instructions to the new_instructions list
@@ -235,8 +237,29 @@ def fix_instr(instr,new_instructions:list):
         
         # print('in bin',instr)
         
+        if instr.operator == BinaryOperator.XOR and not isinstance(instr.src2,Reg):
+            mov = Mov(
+                assembly_type=AssemblyType.double,
+                src = instr.src2,
+                dest= Reg(Registers.XMM15)
+            )
+            
+            binary_op = Binary(
+                assembly_type=AssemblyType.double,
+                operator=BinaryOperator.XOR,
+                src1=instr.src1,
+                src2=Reg(Registers.XMM15)
+            )
+            mov_back = Mov(
+                assembly_type=AssemblyType.double,
+                src= Reg(Registers.XMM15),
+                dest = instr.src2
+            )
+            new_instructions.extend([mov,binary_op, mov_back])
+            
+        
         # Handle 'Add' and 'Subtract' instructions
-        if instr.operator in (BinaryOperator.ADD, BinaryOperator.SUBTRACT):
+        elif instr.operator in (BinaryOperator.ADD, BinaryOperator.SUBTRACT):
             
             # Check if src1 (destination) is a Stack operand
             
@@ -373,7 +396,7 @@ def fix_instr(instr,new_instructions:list):
                         dest=Reg(Registers.XMM15),
                     )
                 op = Binary(
-                assembly_type=AssemblyType.quadWord,
+                assembly_type=AssemblyType.double,
                 operator=instr.operator,
                 src1=instr.src1,
                 src2=Reg(Registers.XMM15)
@@ -463,7 +486,8 @@ def fix_instr(instr,new_instructions:list):
             
         elif isinstance(instr.operand1,(Stack,Data)) and isinstance(instr.operand2,(Data,Stack)):
             
-           
+            print(instr)
+            # exit()
             mov = Mov(
                 assembly_type=instr._type,
                 src=instr.operand1, 
@@ -472,23 +496,26 @@ def fix_instr(instr,new_instructions:list):
             compl = Cmp(
                 assembly_type=instr._type,
                 operand1=Reg(Registers.R10),
-                operand2=instr.operand2)
+                operand2=instr.operand2
+                )
             if not isinstance(compl.operand2,Stack):
                 mov2 = Mov(
                     assembly_type=instr._type,
                     src=instr.operand2,
-                    dest=Reg(Registers.R11),
+                    dest=Reg(Registers.R11)
             )
                 compl2 = Cmp(
                     assembly_type=instr._type,
                     operand1=Reg(Registers.R10),
-                    operand2=Reg(Registers.R11))
+                    operand2=Reg(Registers.R11)
+                    )
             
                 new_instructions.extend([mov,mov2,compl2])
     
             else:
-                print('Skipped')
-                # exit()
+                # print('Skipped')
+                # print(instr)
+                # exit()/
                 
                 new_instructions.extend([mov,compl])
         
@@ -523,7 +550,7 @@ def fix_instr(instr,new_instructions:list):
                 if instr._type == AssemblyType.double:
                     dest = Reg(Registers.XMM1)
                 else:
-                    dest=Reg(Registers.R11),
+                    dest=Reg(Registers.R11)
                     
                 movl = Mov(
                     assembly_type=instr._type,
@@ -586,7 +613,7 @@ def fix_instr(instr,new_instructions:list):
             mov = Mov(
                 assembly_type=AssemblyType.longWord,
                 src=instr.src,
-                dest=Reg(Registers.R11),
+                dest=Reg(Registers.R11)
             )
             mov2=Mov(
                 assembly_type=AssemblyType.quadWord,
@@ -691,7 +718,7 @@ def fix_instr(instr,new_instructions:list):
             c_1=Cvtsi2sd(
                 src_type=instr._type,
                 src=instr.src,
-                dst=Reg(Registers.XMM15),
+                dst=Reg(Registers.XMM15)
                 
             )
             m_1= Mov(

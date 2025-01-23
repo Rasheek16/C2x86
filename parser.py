@@ -1062,8 +1062,10 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
         #(match)
         if match:
             #('Inside double')
-            number = float(match.group(0))  # Convert to float
+            number = match.group(1)  # Convert to float
             # #( Constant(Const.constDouble(number)), tokens)
+            print(number)
+            # exit()
             return Constant(Const.constDouble(number)), tokens
 
         # If none of the patterns match, raise a SyntaxError

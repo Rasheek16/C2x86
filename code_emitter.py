@@ -34,8 +34,8 @@ class CodeEmitter:
     def emit_static_var(self,instruction):
         try:
             if isinstance(instruction,AssemblyStaticVariable):
-                if instruction.init.value != 0 :
-                    print('here')
+                if instruction.init.value != 0 or isinstance(instruction.init,DoubleInit):
+                   
                     if instruction._global==True:
                         self.emit_line(f'   .globl {instruction.name}')
                     self.emit_line('   .data')
@@ -56,7 +56,7 @@ class CodeEmitter:
     def emit_static_const(self,instruction):
         self.emit_line('   .section .rodata')
         self.emit_line(f'   .align {instruction.alignment}')
-        self.emit_line(f'.L{instruction.name}:')
+        self.emit_line(f'{instruction.name}:')
         self.emit_line(f'   {convert_static_init(instruction.init,instruction.alignment)}')
         
         
@@ -424,7 +424,7 @@ def Convert8BYTEoperand(operand) -> str:
         # Immediate values
         return f'${operand.value}'
     elif isinstance(operand,Data):
-        return f'.L{operand.identifier}(%rip)'
+        return f'{operand.identifier}(%rip)'
     else:
         print(operand)
         raise ValueError(f"Invalid operand type: {type(operand).__name__}")
@@ -433,11 +433,15 @@ def convert_code_to_assembly(code:str):
 
 def convert_static_init(instr,alignment):
     print(instr.value)
+    print(type(instr))
     # exit()
     if isinstance(instr,DoubleInit):
-        print(instr.value)
+        
         # exit()
-        return f'.double {float(instr.value)}'
+        val=f'.double {instr.value}'
+        # print('error')
+        return val 
+        # return 'ERror here '
     elif isinstance(instr,UIntInit):
         if instr.value==0:
             return f'.zero 4'
@@ -458,16 +462,6 @@ def convert_static_init(instr,alignment):
             return f'.zero 8'
         else:
             return f'.quad {instr.value}'
-    # elif alignment==4:
-    #     if instr.value.value==0:
-    #         return f'.zero 4'
-    #     else:
-    #         return f'.long {instr.value}'
-    # elif alignment==8:
-    #     if instr.value.value==0:
-    #         return f'.zero 8'
-    #     else:
-    #         return f'.quad {instr.value}'
     else:
         ValueError('Invalid value',instr)
     

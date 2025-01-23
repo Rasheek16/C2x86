@@ -66,21 +66,33 @@ def convert_to(e: Exp, t: any):
 def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
     print(decl)
     if not isinstance(decl.init, Null):
-        print('here')
+        # print('here')
         typecheck_exp(decl.init, symbols)
 
-    if isinstance(decl.init, Constant) and isinstance(decl.init.value, (ConstInt, ConstLong)):
-        if isinstance(decl.init.get_type(), Long):
-            new_init = Initial(Constant(StaticInit.LongInit(decl.init.value)))
-        else:
-            new_init = Initial(Constant(StaticInit.IntInit(decl.init.value)))
-    elif isinstance(decl.init, Constant) and isinstance(decl.init.value, (ConstUInt, ConstULong)):
-        if isinstance(decl.init.get_type(), ULong):
-            new_init = Initial(Constant(StaticInit.ULongInit(decl.init.value)))
-        else:
-            new_init = Initial(Constant(StaticInit.UIntInit(decl.init.value)))
-    elif isinstance(decl.init,Constant) and isinstance(decl.init.value,ConstDouble):
-        new_init = Initial(Constant(StaticInit.DouleInit(decl.init.value)))
+    if isinstance(decl.init,Constant):
+        # exit()
+        if isinstance(decl.var_type,Int):
+            new_init = Initial(Constant(StaticInit.IntInit(Const.constInt(int(decl.init.value._int)))))
+        elif isinstance(decl.var_type,Long):
+            new_init = Initial(Constant(StaticInit.LongInit(Const.constLong(int(decl.init.value._int)))))
+        elif isinstance(decl.var_type,Double):
+            new_init = Initial(Constant(StaticInit.DouleInit(Const.constDouble(float(decl.init.value._int)))))
+        elif isinstance(decl.var_type,UInt):
+            new_init = Initial(Constant(StaticInit.UIntInit(Const.constUInt(int(decl.init.value._int)))))
+        elif isinstance(decl.var_type,ULong):
+            new_init = Initial(Constant(StaticInit.ULongInit(Const.constULong(int(decl.init.value._int)))))
+    # if isinstance(decl.init, Constant) and isinstance(decl.init.value, (ConstInt, ConstLong)):
+    #     if isinstance(decl.init.get_type(), Long):
+    #         new_init = Initial(Constant(StaticInit.LongInit(decl.init.value)))
+    #     else:
+    #         new_init = Initial(Constant(StaticInit.IntInit(decl.init.value)))
+    # elif isinstance(decl.init, Constant) and isinstance(decl.init.value, (ConstUInt, ConstULong)):
+    #     if isinstance(decl.init.get_type(), ULong):
+    #         new_init = Initial(Constant(StaticInit.ULongInit(decl.init.value)))
+    #     else:
+    #         new_init = Initial(Constant(StaticInit.UIntInit(decl.init.value)))
+    # elif isinstance(decl.init,Constant) and isinstance(decl.init.value,ConstDouble):
+    #     new_init = Initial(Constant(StaticInit.DouleInit(decl.init.value)))
     elif isinstance(decl.init, Null):
         if isinstance(decl.storage_class, Extern):
             new_init = NoInitializer()
