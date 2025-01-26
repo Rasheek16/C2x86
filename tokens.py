@@ -1,6 +1,6 @@
 patterns = [
     ('floating_point_constant',r'(([0-9]*\.[0-9]+|[0-9]+\.?)[Ee][+-]?[0-9]+|[0-9]*\.[0-9]+|[0-9]+\.)[^\w.]'),
-    ('Ampersand',r'\b&'),
+    ('Ampersand',r'&\s*(\*+\s*)?\w+|\&\([^)]*\)'),
     ('double_keyword',r'\bdouble\b'),
      ("Constant", r'([0-9]+)[^\w.]'),
      ("int_keyword", r"int\b"),
