@@ -48,88 +48,94 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
         
         # List to hold the new set of instructions after replacement
         new_instructions: List[Instruction] = []
-        print(backend_Symbol_table)
+        # print(backend_Symbol_table)
         # exit()
         def align_offset(offset, alignment):
                 """Ensure the offset is aligned to the specified byte boundary."""
                 return offset - (offset % alignment) if offset % alignment != 0 else offset
         def replace_pseudo_with_operand(operand):
-            nonlocal current_offset
+            nonlocal current_offset  # or 'global current_offset' if it's truly global
+            
             if isinstance(operand, Pseudo):
                 name = operand.identifier
-                #print(f"Processing Pseudo Operand: {name}")
+                
                 if name not in pseudo_map:
-                    #print(f"'{name}' not in pseudo_map. Determining replacement type.")
+                    # Check if it's defined in the backend symbol table
                     if name in backend_Symbol_table:
+                        # If the symbol is static, replace with a Data operand
                         if backend_Symbol_table[name].is_static:
-                            #print(f"'{name}' is a static variable. Replacing with Data operand.")
                             operand = Data(name)
+                            return operand
                         else:
-                            # print((symbols[name])['val_type'])
-                            # exit()
+                            print('Name in backend symbol table not static',name)
+                            print(backend_Symbol_table[name].assembly_type)
+                        
                             if backend_Symbol_table[name].assembly_type==AssemblyType.longWord:
-                                print(operand)
-                                print(pseudo_map)
-                                
-                                current_offset -= 4  # Adjust offset for next allocation
-                                #print(f"'{name}' is a dynamic variable. Assigning Stack offset {current_offset}.")
+                                current_offset -= 4  
                                 pseudo_map[name] = current_offset
                                 operand = Stack(current_offset)
+                                return operand
+
                             else:
-                                # print('code didn work')
-                                # exit()
-                                # exit()
-                                #print(f"'{name}' is a dynamic variable. Assigning Stack offset {current_offset}.")
-        #                       
+                                print('Found here')
+                                print(name)
                                 current_offset -= 8  # Adjust offset for next allocation
                                 current_offset = align_offset(current_offset, 8)
                                 pseudo_map[name] = current_offset
+                    
+                    
                                 operand = Stack(current_offset)
-                                    
+                                # exit()
+                                return operand
+                    else:
+                        print(name.identifier)
+                        print(name.identifier in backend_Symbol_table)
+                        print(backend_Symbol_table)
+                        # exit()
+                            # current_offset -= 8  # Adjust offset for next allocation
+                            # current_offset = align_offset(current_offset, 8)
+                            # pseudo_map[name] = current_offset
+                            # operand = Stack(current_offset)
+                            # operand = Stack(current_offset)
+                            # return operand
                 else:
-                    # Replace with existing Stack operand
-                    #print(f"'{name}' already in pseudo_map with offset {pseudo_map[name]}. Replacing with Stack operand.")
+                    # Already mapped, just replace with existing stack offset
                     operand = Stack(pseudo_map[name])
-                
-                #print(f"Replaced Operand: {operand}")
-            return operand 
-        
+            
+            return operand
+
         # def replace_pseudo_with_operand(operand):
-        #     nonlocal current_offset
-
-        #     def align_offset(offset, alignment):
-        #         """Ensure the offset is aligned to the specified byte boundary."""
-        #         return offset - (offset % alignment) if offset % alignment != 0 else offset
-
-        #     if isinstance(operand, Pseudo):
-        #         name = operand.identifier
-        #         if name not in pseudo_map:
-        #             if name in symbols:
-        #                 symbol_info = backend_Symbol_table[name]
-        #                 if symbol_info.is_static:
-        #                     operand = Data(name)
-        #                 else:
-        #                     assembly_type = symbol_info.assembly_type
-        #                     if assembly_type == AssemblyType.quadWord:
-        #                         current_offset = align_offset(current_offset, 8)
-        #                         pseudo_map[name] = current_offset
-        #                         operand = Stack(current_offset)
-        #                         current_offset -= 8
-        #                     elif assembly_type == AssemblyType.longWord:
-        #                         pseudo_map[name] = current_offset
-        #                         operand = Stack(current_offset)
-        #                         current_offset -= 4
-        #                     else:
-        #                         raise ValueError(f"Unknown assembly type for '{name}': {assembly_type}")
-        #             else:
-        #                 raise ValueError(f"Pseudoregister '{name}' not found in backend symbol table.")
-        #         else:
-        #             assigned_offset = pseudo_map[name]
-        #             operand = Stack(assigned_offset)
-
-        #     return operand
-
-
+            # nonlocal current_offset
+            # if isinstance(operand, Pseudo):
+            #     name = operand.identifier
+            #     #print(f"Processing Pseudo Operand: {name}")
+            #     if name not in pseudo_map:
+            #         if name in backend_Symbol_table:
+            #             if backend_Symbol_table[name].is_static:
+                            
+            #                 operand = Data(name)
+            #             else:
+            #                 if backend_Symbol_table[name].assembly_type==AssemblyType.longWord:
+            #                     print(operand)
+            #                     print(pseudo_map)
+                                
+            #                     current_offset -= 4  # Adjust offset for next allocation
+            #                     pseudo_map[name] = current_offset
+            #                     operand = Stack(current_offset)
+            #                 else:
+            #                     current_offset -= 8  # Adjust offset for next allocation
+            #                     current_offset = align_offset(current_offset, 8)
+            #                     pseudo_map[name] = current_offset
+            #                     operand = Stack(current_offset)
+                                    
+            #     else:
+            #         # Replace with existing Stack operand
+                   
+            #         operand = Stack(pseudo_map[name])
+                
+            # return operand 
+        
+     
         # Function to process instructions based on their type
         def process_instruction(instr: Instruction) -> Optional[Instruction]:
             if isinstance(instr, Mov):
@@ -138,6 +144,8 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
             elif isinstance(instr, Unary):
                 instr.operand = replace_pseudo_with_operand(instr.operand)
             elif isinstance(instr, Binary):
+                print(instr)
+                # exit()
                 instr.src1 = replace_pseudo_with_operand(instr.src1)
                 instr.src2 = replace_pseudo_with_operand(instr.src2)
             elif isinstance(instr, Idiv):
@@ -155,14 +163,21 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
             elif isinstance(instr, MovZeroExtend):
                 instr.dest = replace_pseudo_with_operand(instr.dest)
                 instr.src = replace_pseudo_with_operand(instr.src)
-            elif isinstance(instr, Div):
+            elif isinstance(instr,  (Div,Idiv)):
                 instr.operand = replace_pseudo_with_operand(instr.operand)
+            elif isinstance(instr,Cvtsi2sd):
+                instr.src=replace_pseudo_with_operand(instr.src)
+                instr.dst=replace_pseudo_with_operand(instr.dst)
+            elif isinstance(instr,Cvttsd2si):
+                instr.src=replace_pseudo_with_operand(instr.src)
+                instr.dst=replace_pseudo_with_operand(instr.dst)
+                
             elif isinstance(instr, (AllocateStack, Ret, Cdq, JmpCC, Jmp, Label, Call, DeallocateStack, Imm)):
                 # These instructions do not contain Pseudo operands; no action needed
                 pass
             else:
                 # Unsupported instruction type encountered
-                #print(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_func.name}'.", file=sys.stderr)
+                print(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_func.name}'.", file=sys.stderr)
                 sys.exit(1)
             
             # After processing, add the instruction to new_instructions
@@ -176,7 +191,7 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
                 process_instruction(instr)
         
         # Process instructions for AssemblyStaticVariable
-        elif isinstance(assembly_func, AssemblyStaticVariable):
+        elif isinstance(assembly_func, (AssemblyStaticVariable,AssemblyStaticConstant)):
             pass 
             #print(f"Processing AssemblyStaticVariable: {assembly_func.name}")
             # instr = assembly_func.init

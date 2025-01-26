@@ -21,7 +21,7 @@
 #                 | Divide 
 #                 | Remainder
 # ------------------------------------------------------------------
-from typing import List
+from typing import List,Optional
 
 class TackyIdentifier:
     """
@@ -134,6 +134,79 @@ class TackyZeroExtend(TackyInstruction):
             ")"
         )
 
+
+class TackyDoubleToUInt(TackyInstruction):
+    """
+    instruction = Unary(unary_operator, val src, val dst)
+    """
+    def __init__(self, src, dst):
+ # 'Complement' or 'Negate'
+        self.src = src            # A val
+        self.dst = dst            # Another val
+                                  
+    def __repr__(self):
+        return (
+            "TackyDoubleToUInt(\n"
+            f"  src={repr(self.src)},\n"
+            f"  dst={repr(self.dst)}\n"
+            ")"
+        )
+
+class TackyDoubleToInt(TackyInstruction):
+    """
+    instruction = Unary(unary_operator, val src, val dst)
+    """
+    def __init__(self, src, dst):
+ # 'Complement' or 'Negate'
+        self.src = src            # A val
+        self.dst = dst            # Another val
+                                  
+    def __repr__(self):
+        return (
+            "TackyDoubleToInt(\n"
+            f"  src={repr(self.src)},\n"
+            f"  dst={repr(self.dst)}\n"
+            ")"
+        )
+
+class TackyUIntToDouble(TackyInstruction):
+    """
+    instruction = Unary(unary_operator, val src, val dst)
+    """
+    def __init__(self, src, dst):
+ # 'Complement' or 'Negate'
+        self.src = src            # A val
+        self.dst = dst            # Another val
+                                  
+    def __repr__(self):
+        return (
+            "TackyUIntToDouble(\n"
+            f"  src={repr(self.src)},\n"
+            f"  dst={repr(self.dst)}\n"
+            ")"
+        )
+
+class TackyIntToDouble(TackyInstruction):
+    """
+    instruction = Unary(unary_operator, val src, val dst)
+    """
+    def __init__(self, src, dst):
+ # 'Complement' or 'Negate'
+        self.src = src            # A val
+        self.dst = dst            # Another val
+                                  
+    def __repr__(self):
+        return (
+            "TackyIntToDouble(\n"
+            f"  src={repr(self.src)},\n"
+            f"  dst={repr(self.dst)}\n"
+            ")"
+        )
+
+
+
+
+
 class TackyReturn(TackyInstruction):
     """
     instruction = Return(val)
@@ -169,14 +242,15 @@ class TackyBinary(TackyInstruction):
     """
     Represents a binary operation in the AST.
     """
-    def __init__(self, operator: str, src1, src2 ,dst):
+    def __init__(self, operator: str, src1, src2 ,dst,rel_type=Optional):
         self.operator = operator  # e.g., '+', '-', '*', '/', '%'
         self.src1 = src1          # Left operand (expression)
         self.src2 = src2        # Right operand (expression)
         self.dst = dst            # temporary dest variable
+        self.rel_type = rel_type
 
     def __repr__(self):
-        return f"TackyBinary(operator='{self.operator}', left={self.src1}, right={self.src2}, dst={self.dst})"
+        return f"TackyBinary(operator='{self.operator}', left={self.src1}, right={self.src2}, dst={self.dst},rel_type={self.rel_type})"
 
 class TackyCopy(TackyInstruction):
     """
@@ -204,23 +278,25 @@ class TackyJumpIfZero(TackyInstruction):
     """
     Represents a binary operation in the AST.
     """
-    def __init__(self, condition,target):
+    def __init__(self, condition,target,_type=Optional):
         self.condition = condition
         self.target = target          # temporary dest variable
+        self._type = _type
 
     def __repr__(self):
-        return f"TackyJumpIfZero(condition={self.condition},target={self.target})"
+        return f"TackyJumpIfZero(condition={self.condition},target={self.target},_type={self._type})"
 
 class TackyJumpIfNotZero(TackyInstruction):
     """
     Represents a binary operation in the AST.
     """
-    def __init__(self, condition,target):
+    def __init__(self, condition,target,_type=Optional):
         self.condition = condition
         self.target = target          # temporary dest variable
+        self._type = _type 
 
     def __repr__(self):
-        return f"TackyJumpIfNotZero(condition={self.condition},identifier={self.target})"
+        return f"TackyJumpIfNotZero(condition={self.condition},identifier={self.target},type={self._type})"
 
 
 class TackyLabel(TackyInstruction):

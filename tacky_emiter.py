@@ -10,7 +10,12 @@ temp_false_label = 0
 temp_true_label = 0
 temp_end_label = 0
 temp_e2_label = 0 
-
+temp_const_label=0
+def get_const_label()->str:
+    global temp_const_label 
+    temp_const_label+=1
+    return f"const_label.{temp_const_label}"
+    
 def get_false_label() -> str:
     global temp_false_label
     temp_false_label += 1
@@ -40,11 +45,10 @@ def convert_symbols_to_tacky(symbols:dict):
                 # exit()
                 if isinstance(entry['attrs'].init,Initial):
                     init=entry['attrs'].init.value
-                    # print('init',init)
-                    # exit()
-                    if isinstance(init,IntInit):
-                     
+                    if isinstance(init.value,(IntInit,UIntInit)):
                         init = IntInit(init.value.value._int)
+                    elif isinstance(init.value,DoubleInit):
+                        init=DoubleInit(init.value.value._int)
                     else:
                         init=LongInit(init.value.value._int)
                         
@@ -72,7 +76,7 @@ def convert_symbols_to_tacky(symbols:dict):
                 
             
         
-    
+x=0
 
 
 # A global counter for generating unique temporary names
@@ -93,7 +97,7 @@ def make_temporary_var() -> Var:
 
 
 
-def make_temporary(symbols,var_type) -> TackyVar:
+def make_temporary(symbols,var_type,isDouble=None) -> TackyVar:
     """
     Generate a fresh temporary variable name each time we call it,
     e.g., "tmp.0", "tmp.1", etc.
@@ -105,6 +109,7 @@ def make_temporary(symbols,var_type) -> TackyVar:
         'val_type':var_type,
         'attrs':LocalAttr(),
         'ret': var_type,
+        'Double':isDouble
         
         
     }
@@ -156,7 +161,7 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
     """
     if isinstance(expr, Constant):
         # print(expr)
-        if not isinstance(expr.value,(ConstInt,ConstLong,ConstUInt,ConstULong)):
+        if not isinstance(expr.value,(ConstInt,ConstLong,ConstUInt,ConstULong,ConstDouble)):
             return TackyConstant(expr.value._int)
         return TackyConstant(expr.value)
     elif isinstance(expr, Var):
@@ -183,7 +188,8 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         src_val = emit_tacky_expr(expr.expr, instructions,symbols)
         # print(expr)
         # Allocate a new temporary variable for the result
-        
+        print(expr)
+        # exit()
         dst_var = make_temporary(symbols,expr.get_type())
         
         # print(expr.get_type())
@@ -209,6 +215,7 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
 
         # True branch
         e1_var = emit_tacky_expr(expr.exp2, instructions,symbols)
+      
         tmp_result = make_temporary(symbols,expr.get_type())
         
         instructions.append(TackyCopy(source=e1_var, destination=tmp_result))
@@ -229,15 +236,34 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         if t==inner_type:
             return result
         dst_name = make_temporary(symbols,expr.target_type)
+        print(expr)
+        # exit()
+        # global x 
+        # x+=1
+        # print(expr)
+        # print(t)
+        # print(inner_type)
         if size(t)==size(inner_type):
             instructions.append(TackyCopy(result,dst_name))
+        elif size(t) < size(inner_type) and isinstance(inner_type,Double):
+            if isSigned(t):
+                instructions.append(TackyDoubleToInt(result,dst_name))
+            else:
+                instructions.append(TackyDoubleToUInt(result,dst_name))
+        elif size(t) > size(inner_type) and isinstance(t,Double):
+            if isSigned(inner_type):
+                instructions.append(TackyIntToDouble(result,dst_name))
+            else:
+                instructions.append(TackyUIntToDouble(result,dst_name))
         elif size(t)<size(inner_type):
             instructions.append(TackyTruncate(result,dst_name))
         elif isSigned(inner_type):
             instructions.append(TackySignExtend(result,dst_name))
         else:
             instructions.append(TackyZeroExtend(result,dst_name))
-            
+        # if x == 3:
+        #     print(instructions)
+        #     exit()
         return dst_name
   
     elif isinstance(expr, Binary):
@@ -254,12 +280,27 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
             # Handle regular binary operations
             v1 = emit_tacky_expr(expr.left, instructions,symbols)
             v2 = emit_tacky_expr(expr.right, instructions,symbols)
-            print(v1)
+            # print(v1)
+            # exit()
             # Generate a unique temporary variable name to store the result
-            # print(expr.get_type())
-            dst_var = make_temporary(symbols,expr.get_type())
+            # global x 
+            # if x==2:
+                # print(expr.rel_flag)
+                # print('expr')
+                # exit()
+            # x+=1global x 
+            # x+=1
+            # exit()
+            # if isinstance()
+            # print(expr)
+            # exit()
+            dst_var = make_temporary(symbols,expr.get_type(),isDouble=expr.rel_flag)
             # print(symbols[dst_var.identifier])
             # exit()
+            # if expr.operator == TackyBinaryOperator.EQUAL:
+                # print(dst_var)
+                # print(symbols[dst_var.identifier])
+                # exit()
             # Convert the AST binary operator to its corresponding Tacky binary operator
             tacky_op = convert_binop(expr.operator)
             # if tacky_op==BinaryOperator.LESS_OR_EQUAL:
@@ -272,7 +313,8 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
             # exit()
             # Create a TackyBinary instruction with the operator, operands, and destination
             instructions.append(TackyBinary(operator=tacky_op, src1=v1, src2=v2, dst=dst_var))
-        
+            print(instructions)
+            # exit()
             # Return the destination variable that holds the result of the binary operation
             
             return dst_var
@@ -301,7 +343,7 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         
         # 4. Return the temporary holding the result
         return dst_var
-    elif isinstance(expr,(IntInit,LongInit)):
+    elif isinstance(expr,(IntInit,LongInit,DoubleInit)):
         # print('iofdszh;g')
         return Constant(expr.value)
         # pass 
@@ -360,7 +402,8 @@ def emit_or_expr(expr: Binary, instructions: list,symbols) -> TackyVar:
 
     # Both operands are zero, result is 0
     result_var = make_temporary(symbols,expr.get_type())
-    
+    # print(result_var)
+    # exit()
     instructions.append(TackyCopy(source=TackyConstant(ConstInt(0)), destination=result_var))
     instructions.append(TackyJump(target=end_label))
 
@@ -441,6 +484,9 @@ def emit_if_statement(stmt: If, instructions: List[TackyInstruction],symbols):
     end_label = get_end_label()
 
     # If condition is zero, jump to else_label
+    # print(stmt.exp)
+    # print(symbols[condition_var.identifier])
+    # exit()
     instructions.append(TackyJumpIfZero(condition=condition_var, target=else_label))
 
     # Then branch
@@ -604,7 +650,7 @@ def emit_tacky_program(ast_program: Program,symbols) -> TackyProgram:
     #     i.init=emit_tacky_expr(i.init,instructions,symbols)
     #     tacky_symbols.append(i)
     
-    # print(symbols)
+    print(symbols)
     # exit(0)
     # output=emit_tacky_expr(s,instructions)
     # tack_symbols.extend(output)

@@ -7,17 +7,20 @@ from _ast5 import *
 return_flag = False
 
 def isKeyword(token):
-    if token in ('int','return','main','void','int','extern','static','signed','unsigned','long','if','else','do','while','for','break','continue'):
+    '''
+    
+    '''
+    if token in ('int','return','main','void','int','extern','static','signed','unsigned','long','if','else','do','while','for','break','continue','double'):
         return True 
     return False
 
 def isSpecifier(token):
-    if token in ('int','extern','static','long','int','unsigned','signed'):
+    if token in ('int','extern','static','long','int','unsigned','signed','double'):
         return True 
     return False
 
 def isType(token):
-    if token in ('int','long','unsigned','signed'):
+    if token in ('int','long','unsigned','signed','double'):
         return True 
     return False
         
@@ -29,6 +32,8 @@ def get_temp_label():
     return f'tmp_label.{temp_label_counter}'
 
 def isIntegerConstant(token: str) -> bool:
+    # #(token)
+    # #(re.match(r'^\d+(\.\d+)?([eE][+-]?\d+)?$',token) )
     """
     Checks if a token is an integer constant.
     
@@ -38,7 +43,8 @@ def isIntegerConstant(token: str) -> bool:
     Returns:
         bool: True if the token is an integer constant, False otherwise.
     """
-    return (re.fullmatch(r"\d+", token) is not None or re.match(r'\b\d+l\b',token) is not None or re.match(r'[0-9]+[1l]\b',token) is not None or re.match(r'[0-9]+[uU]\b',token) is not None or re.match(r'[0-9]+([lL][uU]|[uU][lL])\b',token) is not None)
+    return (re.fullmatch(r"\d+", token) is not None or re.match(r'\b\d+l\b',token) is not None or re.match(r'[0-9]+[1l]\b',token) is not None or re.match(r'[0-9]+[uU]\b',token) is not None or re.match(r'[0-9]+([lL][uU]|[uU][lL])\b',token) is not None 
+            or re.match(r'^(\d+\.\d+|\d+\.|\.\d+|\d+)([eE][+-]?\d+)?$',token) is not None) 
 
 
 def isIdentifier(token: str) -> bool:
@@ -109,9 +115,9 @@ def parse_program(tokens: List[str]) -> Program:
     """
     try:
         # Parse the function definition
-        # print(tokens)
+        # #(tokens)
         body = parse_declarations(tokens)
-        # print(body)
+        # #(body)
         
         # The grammar specifies only one function. If there are remaining tokens, it's an error.
         if tokens:
@@ -120,8 +126,8 @@ def parse_program(tokens: List[str]) -> Program:
         #body)
         return Program(function_definition=body)
     except Exception as e:
-        ##f"Syntax Error: {e}")
-        sys.exit(1)
+        raise SyntaxError(f"Syntax Error: {e}")
+        # sys.exit(1)
 
 
 def parse_param_list(tokens)->Tuple[List[Parameter],str]:
@@ -177,13 +183,14 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
 def parse_args_list(tokens)->Tuple[List[Exp],str]:
     arg_body = []
     if tokens[0]!=')':
-        
         exp,tokens=parse_exp(tokens)
         arg_body.append(exp)
     while tokens and tokens[0] != ")":
         expect(',',tokens)
         block,tokens = parse_exp(tokens)
+        #(tokens)
         arg_body.append(block)
+        #(arg_body)
     
     return arg_body,tokens
     
@@ -197,13 +204,14 @@ def parse_func_decl(tokens,func_name:Identifier,_type,storage_class)->Tuple[FunD
     exp,tokens=parse_param_list(tokens)
     expect(')',tokens)
     next_token  = tokens[0]
+    #('functioon',tokens)
     if next_token==';':
         _,tokens=take_token(tokens)
         exp1=FunDecl(name=func_name,params=exp,fun_type=_type,body=Null(),storage_class=storage_class),tokens
         return exp1
     elif next_token=='{':
         list_block_items,tokens=parse_block(tokens)
-        # func=FunctionDeclaration(name=func_name,init=exp,body=list_block_items)
+        #('After parse block')
       
         return FunDecl(name=func_name,params=exp,fun_type=_type,body=Block(list_block_items),storage_class=storage_class),tokens
  except Exception as e:
@@ -218,14 +226,14 @@ def parse_declarations(tokens):
         while tokens:
         # Expect "{" to start the function body
             # ##tokens)
-            # print(tokens)
+            # #(tokens)
             sub,tokens = parse_declaration(tokens)
-            # print(sub)
+            # #(sub)
             body.append(sub)
         # Return the Function AST node
         return body
     except Exception as e:
-        ##f"Syntax Error in function definition: {e}")
+        raise SyntaxError(f"Syntax Error in function definition: {e}")
         sys.exit(1)
 
 
@@ -233,20 +241,15 @@ def parse_declarations(tokens):
 
 def parse_block(tokens)->Tuple[List[BlockItem],str]:
     expect("{", tokens)
-    # print('block')
+    # #('block')
         # Parse zero or more block-items until "}"
     function_body = []
         #* { <block-item> } Curly braces indicate code repetition
     while tokens and tokens[0] != "}":
         block = parse_block_item(tokens)
-        # ##'block:',block)
+
         if block:  # Append only if valid
             function_body.append(block)
-            # ##block)
-        # function_body.append(block)
-        # Expect "}" to end the function body
-        # print(function_body)
-        # ##'func',function_body)
         
     expect("}", tokens)
     # ##function_body)
@@ -256,19 +259,17 @@ def parse_block(tokens)->Tuple[List[BlockItem],str]:
     
 
 def parse_block_item(tokens):
-    # token,tokens = take_token(tokens)
-    print('Block Item',tokens[0])
-    if tokens[0] in ('int','static','extern','long','unsigned','signed'):
+
+    if tokens[0] in ('int','static','extern','long','unsigned','signed','double'):
         declaration,tokens = parse_declaration(tokens)
         ##'declaration')
         block_item = D(declaration)
        
         return block_item
     else:
-        # ##'parse statement')
-        # It's a statement
+   
         statement = parse_statement(tokens)
-        # ##statement)
+    
         block_item = S(statement)
         return block_item
         
@@ -288,7 +289,7 @@ def parse_variable_declaration(tokens:List[str],var_name:str,_type,storage_class
             # ##tokens)
             # Parse <exp> for the initializer
             # ##tokens)
-            # print(tokens)
+            # #(tokens)
             init, tokens = parse_exp(tokens)
             # ##tokens)
         # Expect ";" to end the declaration
@@ -306,48 +307,58 @@ def parse_specifier(tokens):
         specifer,tokens=take_token(tokens)
         return specifer,tokens
     else:
-        raise SyntaxError('Unknown Specifier',tokens[0])
+        raise  SyntaxError('Unknown Specifier',tokens[0])
     
     
 def parse_types(types):
    try:
-    if len(types)==0:
-        raise SyntaxError('No type specifier')
-    sorted_types=sorted(types)
-    for i in range(len(sorted_types)-1):
-        if sorted_types[i]==sorted_types[i+1]:
-            raise SyntaxError('Duplicate type specifier')
-    if 'signed' in types and 'unsigned' in types:
-        raise SyntaxError('Invalid type specifier combination')
-    if 'unsigned' in types and 'long' in types:
-        return ULong()
-    if 'unsigned' in types:
-        return UInt()
-    if 'long' in types:
-        return Long()
-    else:
-        return Int()
+        i=0
+        
+     
+        if len(types)==0:
+            raise SyntaxError('No type specifier')
+        sorted_types=sorted(types)
+        for i in range(len(sorted_types)-1):
+            if sorted_types[i]==sorted_types[i+1]:
+                raise SyntaxError('Duplicate type specifier')
+        if types == ['double']:
+            #(types)
+            return Double() 
+        if 'double' in types:
+            raise SyntaxError('Invalid type specifier combination')
+        if 'signed' in types and 'unsigned' in types:
+            raise SyntaxError('Invalid type specifier combination')
+        if 'unsigned' in types and 'long' in types:
+            return ULong()
+        if 'unsigned' in types:
+            return UInt()
+        if 'long' in types:
+            return Long()
+        else:
+            return Int()
    except Exception as e:
-       raise SyntaxError('Invalid specifier type combination')
+       raise  SyntaxError('Invalid specifier type combination')
     
 
     
         
 def parse_type_and_storage_class(specifiers:List):
     try:
-        print('Type and Storage Class')
+        #('Type and Storage Class')
         types=[]
         storage_classes:List[str]=[]
         for specifier in specifiers:
-            if specifier in ('int','long','unsigned','signed'):
+            if specifier in ('int','long','unsigned','signed','double'):
                 types.append(specifier)
             else:
                 storage_classes.append(specifier)
-        print('Storage Classes:',storage_classes)
-        print('Types:',types)
+        #('Storage Classes:',storage_classes)
+        #('Types:',types)
         
         _type = parse_types(types)
-        if len(types)==0:
+        # #('_type',_type)
+        # exit()
+        if len(types)==0 or _type==None:
             raise ValueError('Invalid type specifier.')
         if len(storage_classes)>1:
             raise ValueError('Invalid storage classes.')
@@ -365,7 +376,7 @@ def parse_type_and_storage_class(specifiers:List):
         return _type,storage_class
 
     except Exception as e:
-        raise ValueError('Invalid storage types / type')
+        raise ValueError('Invalid storage types / type',e)
 
 def parse_storage_class(storage_class):
     # ##storage_class)
@@ -378,40 +389,35 @@ def parse_storage_class(storage_class):
     
 
 def parse_declaration(tokens: List[str]):
-    print('Declaration')
-    # print(tokens)
-    # Expect "int" keyword
+ 
+
     specifiers=[]
     while isSpecifier(tokens[0]):
-        # ##tokens[0])
         specifier,tokens=parse_specifier(tokens)
         specifiers.append(specifier)
-    print('Specifiers:',specifiers)
     _type,storage_class= parse_type_and_storage_class(specifiers)
-    print('Type:',_type)
-    print('Storage Class:',storage_class)
+ 
+    
     identifier_token, tokens = take_token(tokens)
-    # print(identifier_token)
-    # ##identifier_token)
-    print('Identifier:',identifier_token)
+    #(identifier_token)
     if not isIdentifier(identifier_token):
         raise SyntaxError(f"Invalid identifier in parse declaration: '{identifier_token}'")
     var_name = Identifier(identifier_token)
     func_name = Identifier(identifier_token)
     # func_name =
     next_token= tokens[0]
-    # print(next_token)
+    # #(next_token)
     if next_token =='(':
-        print('func declaration')
-        
-        # ##'here in func decl')
+       
         func_decl,tokens=parse_func_decl(tokens,func_name,_type,storage_class)
+      
         return func_decl,tokens
     elif next_token in ('=',';'):
-        print('variable declaration')
+        #('variable decl')
+        #('variable declaration')
         # ##next_token)
         var_dec,tokens = parse_variable_declaration(tokens,var_name,_type=_type,storage_class=storage_class)
-        # print(var_dec)
+        # #(var_dec)
         # ##var_dec)
         return var_dec,tokens
     else:
@@ -562,14 +568,17 @@ def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
         Tuple[Statement, List[str]]: The initialization statement and the remaining tokens.
     """
   
-    if tokens[0] in ('int','extern','static','long','unsigned','signed'):
+    if tokens[0] in ('int','extern','static','long','unsigned','signed','double'):
         # ##'here')
         # Parse declaration (e.g., int i = 0)
         if tokens[2]=='(':
             raise SyntaxError('Function not permitted in loop headers')
         decl, tokens = parse_declaration(tokens)
-        # #print
+        
+        # ##
         init_decl = InitDecl(declaration=decl)
+        # print(decl)
+        # exit()
         # ##init_decl)
         return init_decl, tokens
     
@@ -602,6 +611,9 @@ def parse_optional_parameter(tokens: List[str]) -> Tuple[Statement, List[str]]:
         return exp, tokens
 
 def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
+    #(
+        # 'Inside parse expression'
+    # )
     """
     Parses an expression using the precedence climbing (Pratt) parsing technique.
     
@@ -617,13 +629,9 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
     """
     try:
         # Parse the left-hand side (lhs) as a factor
-        # ##'exp',tokens[0])
-        # print(tokens)
+    
         lhs, tokens = parse_factor(tokens)
-        print('lhs:',lhs)
-        print('tokens:',tokens)
-        # ##)
-        # ##tokens)
+   
         while True:
             if not tokens:
                 break
@@ -637,12 +645,6 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
             
             if prec < min_prec:
                 break  # Current operator precedence is too low
-            
-            # Consume the operator
-            # operator_token, tokens = take_token(tokens)
-            # ##operator_token)
-            # operator = parse_binop(operator_token)
-            
             # Determine the next minimum precedence based on associativity
             if assoc == 'LEFT':
                 next_min_prec = prec + 1
@@ -789,22 +791,18 @@ def parse_factor(tokens: List[str]):
         raise SyntaxError("Unexpected end of input when parsing factor.")
     
     next_token = tokens[0]
-    # print(next_token)
-    # ##next_token)
-    # ##next_token)
-    # 1. If it's an integer literal, parse_int.
+    # #('Inside fact')
     if isIntegerConstant(next_token):
-        
-            # ##'heresa')
-        # vals=parse_constant
+        #('Found integer')
         val=parse_constant(tokens)
-        print('value',val)
+        #('val',val)
         return val
     
     # 2. If it's one of the unary operators
     elif next_token in ("-", "~", "!"):
         operator_token, tokens = take_token(tokens)
         operator = parse_unop(operator_token)
+        
         # Parse the sub-expression after the unary operator
         expr, tokens = parse_factor(tokens)
         return Unary(operator=operator, expr=expr), tokens
@@ -856,7 +854,7 @@ def parse_factor(tokens: List[str]):
         return expr, tokens
  
     else:
-        # ##tokens)
+        #(tokens)
         # If none of the above matches, it's an error for this grammar
         raise SyntaxError(f"Expected <int>, <identifier>, '(', or unary operator, got '{next_token}'")
 
@@ -878,7 +876,7 @@ def parse_factor(tokens: List[str]):
 #     ##token)
 #     try:
 #         value=token
-#         print('value:',value)
+#         #('value:',value)
 #         ##value)
 #         if re.match(r'[0-9]+([lL][uU]|[uU][lL] [ul][uL] )\b',value) is not None:
 #             return Constant(Const.constULong(value))
@@ -912,7 +910,8 @@ def parse_factor(tokens: List[str]):
 #         # # return Constant(value=value), tokens
 #     except ValueError:
 #         raise SyntaxError(f"Expected an integer, got '{token}'")
-def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
+# def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
+
     """
     Parses a <const> token according to the grammar:
     <const> ::= <int> | <long> | <uint> | <ulong>
@@ -926,20 +925,106 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
     Raises:
         SyntaxError: If the token is not a valid constant.
     """
+    # token, tokens = take_token(tokens)
+    # #('value:', token)
+    # try:
+    #     value_str = token
+
+    #     # Define regex patterns for different constant types
+    #     patterns = {
+    #         'double':re.compile(r'^\d+(\.\d+)?([eE][+-]?\d+)?$'),
+    #         'ulong': re.compile(r'^(\d+)(?:[uU][lL]|[lL][uU])$'),  # e.g., 123UL, 456Lu
+    #         'uint': re.compile(r'^(\d+)[uU]$'),                 # e.g., 789U, 101u
+    #         'long': re.compile(r'^(\d+)[lL]$'),                 # e.g., 1123L, 1314l
+    #         'int': re.compile(r'^(\d+)$'),                      # e.g., 15, 1617
+    #     }
+    #     #(token)
+    #     match = patterns['double'].fullmatch(value_str).match
+    #     #('match',match)
+    #     # #(match.group(0))
+    #     if match:
+    #         number = float(match)
+    #         return Constant(Const.ConstDouble(number)), tokens
+    #     # 1. Check for 'ulong' with 'ul' or 'lu' suffix
+    #     match = patterns['ulong'].fullmatch(value_str)
+    #     if match:
+    #         number = int(match.group(1))
+    #         if number > 2**64 - 1:
+    #             raise ValueError('Constant is too large to represent as ulong')
+    #         return Constant(Const.constULong(number)), tokens
+
+    #     # 2. Check for 'uint' with 'u' or 'U' suffix
+    #     match = patterns['uint'].fullmatch(value_str)
+    #     if match:
+    #         number = int(match.group(1))
+    #         if number <= 2**32 - 1:
+    #             return Constant(Const.constUInt(number)), tokens
+    #         elif number <= 2**64 - 1:
+    #             # If 'u' suffix but value exceeds 'uint', treat as 'ulong'
+    #             return Constant(Const.constULong(number)), tokens
+    #         else:
+    #             raise ValueError('Constant is too large to represent as uint or ulong')
+
+    #     # 3. Check for 'long' with 'l' or 'L' suffix
+    #     match = patterns['long'].fullmatch(value_str)
+    #     if match:
+    #         number = int(match.group(1))
+    #         if number > 2**63 - 1:
+    #             raise ValueError('Constant is too large to represent as long')
+    #         return Constant(Const.constLong(number)), tokens
+
+    #     # 4. Check for 'int' without any suffix
+    #     match = patterns['int'].fullmatch(value_str)
+    #     if match:
+    #         number = int(match.group(1))
+    #         if number <= 2**31 - 1:
+    #             return Constant(Const.constInt(number)), tokens
+    #         elif number <= 2**63 - 1:
+    #             # If no suffix but value exceeds 'int', treat as 'long'
+    #             return Constant(Const.constLong(number)), tokens
+    #         else:
+    #             raise ValueError('Constant is too large to represent as int or long')
+
+    #     # If none of the patterns match, raise a SyntaxError
+    #     raise #(f"Expected a constant (int, long, uint, ulong), got '{token}'")
+
+    # except ValueError as e:
+    #     #('Here')
+    #     #(SyntaxError(str(e)))
+    
+    
+def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
+    """
+    Parses a <const> token according to the grammar:
+    <const> ::= <int> | <long> | <uint> | <ulong> | <double>
+    
+    Args:
+        tokens (List[str]): The list of tokens to parse.
+    
+    Returns:
+        tuple: A tuple containing the parsed Constant AST node and the remaining tokens.
+    
+    Raises:
+        SyntaxError: If the token is not a valid constant.
+    """
     token, tokens = take_token(tokens)
-    print('value:', token)
+
     try:
         value_str = token
 
         # Define regex patterns for different constant types
         patterns = {
-            'ulong': re.compile(r'^(\d+)(?:[uU][lL]|[lL][uU])$'),  # e.g., 123UL, 456Lu
-            'uint': re.compile(r'^(\d+)[uU]$'),                 # e.g., 789U, 101u
-            'long': re.compile(r'^(\d+)[lL]$'),                 # e.g., 1123L, 1314l
-            'int': re.compile(r'^(\d+)$'),                      # e.g., 15, 1617
+            'ulong': re.compile(r'^(\d+)(?:[uU][lL]|[lL][uU])$'),
+            'uint': re.compile(r'^(\d+)[uU]$'),
+            'long': re.compile(r'^(\d+)[lL]$'),
+            'int': re.compile(r'^(\d+)$'),
+            'double': re.compile(r'^(\d+\.\d+|\d+\.|\.\d+|\d+)([eE][+-]?\d+)?$'),
         }
+        # #(token)
 
-        # 1. Check for 'ulong' with 'ul' or 'lu' suffix
+        # 1. Check for 'double'
+
+        # 2. Check for 'ulong' with 'ul' or 'lu' suffix
         match = patterns['ulong'].fullmatch(value_str)
         if match:
             number = int(match.group(1))
@@ -947,7 +1032,7 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
                 raise ValueError('Constant is too large to represent as ulong')
             return Constant(Const.constULong(number)), tokens
 
-        # 2. Check for 'uint' with 'u' or 'U' suffix
+        # 3. Check for 'uint' with 'u' or 'U' suffix
         match = patterns['uint'].fullmatch(value_str)
         if match:
             number = int(match.group(1))
@@ -959,7 +1044,7 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
             else:
                 raise ValueError('Constant is too large to represent as uint or ulong')
 
-        # 3. Check for 'long' with 'l' or 'L' suffix
+        # 4. Check for 'long' with 'l' or 'L' suffix
         match = patterns['long'].fullmatch(value_str)
         if match:
             number = int(match.group(1))
@@ -967,7 +1052,7 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
                 raise ValueError('Constant is too large to represent as long')
             return Constant(Const.constLong(number)), tokens
 
-        # 4. Check for 'int' without any suffix
+        # 5. Check for 'int' without any suffix
         match = patterns['int'].fullmatch(value_str)
         if match:
             number = int(match.group(1))
@@ -978,9 +1063,18 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
                 return Constant(Const.constLong(number)), tokens
             else:
                 raise ValueError('Constant is too large to represent as int or long')
+        match = patterns['double'].fullmatch(value_str)
+        #(match)
+        if match:
+            #('Inside double')
+            number = match.group(0)  # Convert to float
+            # #( Constant(Const.constDouble(number)), tokens)
+            print(number)
+            # exit()
+            return Constant(Const.constDouble(float(number))), tokens
 
         # If none of the patterns match, raise a SyntaxError
-        raise SyntaxError(f"Expected a constant (int, long, uint, ulong), got '{token}'")
+        raise SyntaxError(f"Expected a constant (int, long, uint, ulong, double), got '{token}'")
 
     except ValueError as e:
-        raise SyntaxError(str(e))
+        raise SyntaxError(str(e)) from e

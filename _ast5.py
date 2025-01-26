@@ -41,6 +41,13 @@ class UInt(Type):
     def __repr__(self):
         return f'UInt()'
 
+class Double(Type):
+    def __init__(self):
+       pass
+       
+    
+    def __repr__(self):
+        return f'Double()'
 
 class FunType(Type):
     
@@ -219,7 +226,16 @@ class ConstUInt(Exp):
     
     def __repr__(self):
         return f'ConstUInt(int={self._int},type={self._type})'
+
+class ConstDouble(Exp):
+    def __init__(self,_int,exp_type=Double()):
+        super().__init__(exp_type)
+        self._int=_int 
+        # self._type = super().get_type()
         
+    
+    def __repr__(self):
+        return f'ConstDouble(int={self._int},type={self._type})'
         
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
     
@@ -239,6 +255,8 @@ class Const():
     constLong=ConstLong 
     constUInt=ConstUInt
     constULong=ConstULong
+    constDouble=ConstDouble
+    
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
     
 
@@ -376,7 +394,7 @@ class Binary(Exp):
         left (Exp): The left operand expression.
         right (Exp): The right operand expression.
     """
-    def __init__(self, operator: BinaryOperator, left: Exp, right: Exp,_type=None):
+    def __init__(self, operator: BinaryOperator, left: Exp, right: Exp,_type=None,rel_flag=Optional):
         """
         Initializes a Binary instance.
         
@@ -396,6 +414,7 @@ class Binary(Exp):
         self.operator = operator
         self.left = left
         self.right = right
+        self.rel_flag = rel_flag
         # self.type=_type
 
     def __repr__(self) :
@@ -406,7 +425,8 @@ class Binary(Exp):
             str: The string representation.
         """
         return (f"Binary(operator={self.operator}, "
-                f"left={self.left}, right={self.right},type={self._type}")
+                f"left={self.left}, right={self.right},type={self._type},"
+                f'rel_type={self.rel_flag}')
 
 
 class Assignment(Exp):
