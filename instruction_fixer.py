@@ -189,7 +189,7 @@ def fix_instr(instr,new_instructions:list):
         
 
     # Handle 'Idiv' instructions which perform integer division
-    elif isinstance(instr, Idiv):
+    elif isinstance(instr, (Idiv,Div)):
         # print(instr)
         # exit()
         
