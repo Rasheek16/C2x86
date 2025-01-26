@@ -62,44 +62,41 @@ def convert_to(e: Exp, t: any):
     cast_exp = Cast(target_type=t, exp=e)
     cast_exp.set_type(t)
     return cast_exp
+x=0
 
 def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
-    print(decl)
+    # exit()
+   
     if not isinstance(decl.init, Null):
-        # print('here')
+        # exp=Cast(decl.var_type,decl.init.value)
+        # exp.set_type(decl.var_type)
+        # decl.init.value = exp 
+        # print(decl)
         typecheck_exp(decl.init, symbols)
-
+    
+    
+    # print(exp)
+    # exit()
     if isinstance(decl.init,Constant):
-        # exit()
+        # print(decl.var_type)
         if isinstance(decl.var_type,Int):
             new_init = Initial(Constant(StaticInit.IntInit(Const.constInt(int(decl.init.value._int)))))
-        elif isinstance(decl.var_type,Long):
-            new_init = Initial(Constant(StaticInit.LongInit(Const.constLong(int(decl.init.value._int)))))
-        elif isinstance(decl.var_type,Double):
-            new_init = Initial(Constant(StaticInit.DouleInit(Const.constDouble(float(decl.init.value._int)))))
         elif isinstance(decl.var_type,UInt):
             new_init = Initial(Constant(StaticInit.UIntInit(Const.constUInt(int(decl.init.value._int)))))
+        elif isinstance(decl.var_type,Long):
+            new_init = Initial(Constant(StaticInit.LongInit(Const.constLong(int(decl.init.value._int)))))
         elif isinstance(decl.var_type,ULong):
-            new_init = Initial(Constant(StaticInit.ULongInit(Const.constULong(int(decl.init.value._int)))))
-    # if isinstance(decl.init, Constant) and isinstance(decl.init.value, (ConstInt, ConstLong)):
-    #     if isinstance(decl.init.get_type(), Long):
-    #         new_init = Initial(Constant(StaticInit.LongInit(decl.init.value)))
-    #     else:
-    #         new_init = Initial(Constant(StaticInit.IntInit(decl.init.value)))
-    # elif isinstance(decl.init, Constant) and isinstance(decl.init.value, (ConstUInt, ConstULong)):
-    #     if isinstance(decl.init.get_type(), ULong):
-    #         new_init = Initial(Constant(StaticInit.ULongInit(decl.init.value)))
-    #     else:
-    #         new_init = Initial(Constant(StaticInit.UIntInit(decl.init.value)))
-    # elif isinstance(decl.init,Constant) and isinstance(decl.init.value,ConstDouble):
-    #     new_init = Initial(Constant(StaticInit.DouleInit(decl.init.value)))
+            new_init = Initial(Constant(StaticInit.ULongInit(Const.constLong(int(decl.init.value._int)))))
+        elif isinstance(decl.var_type,Double):
+            new_init = Initial(Constant(StaticInit.DouleInit(Const.constDouble(float(decl.init.value._int)))))
     elif isinstance(decl.init, Null):
         if isinstance(decl.storage_class, Extern):
             new_init = NoInitializer()
         else:
             new_init = Tentative()
     else:
-        raise SyntaxError("Non-constant initializer!", decl.storage_class)
+        raise SyntaxError("Non-constant initializer!", decl.storage_class)    
+    
     global_scope = not isinstance(decl.storage_class, Static)
     var_name = decl.name.name
 
@@ -152,10 +149,18 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
         'type': Int(),
         'val_type': decl.var_type,
         'attrs': attrs,
-        'ret':decl.var_type
+        'ret':decl.var_type,
+        'Double':decl.var_type,
     }
 
+x1:int=0
 def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
+    global x1
+    print(decl)
+    # exit()
+    # if x==6:
+  
+    # x+=1
     try:
         # if isinstance(decl.init,FunctionCall):
             # print(decl)
@@ -175,50 +180,63 @@ def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
                     'val_type': decl.var_type,
                     'attrs': StaticAttr(init=NoInitializer(), global_scope=True),
                     'ret': decl.var_type,
+                    'Double': decl.var_type,
+                    
                 }
             return decl
         # TODO CHECK THIS CONDITION
+        
         elif isinstance(decl.storage_class, Static):
             if isinstance(decl.init, Constant):
-                # #decl.init)
-                initial_value = Initial(IntInit(decl.init))
-                
-                
+                if isinstance(decl.init.value,ConstInt):
+                    initial_value = Initial(Constant(IntInit(decl.init.value)))
+                elif isinstance(decl.init.value,ConstLong):
+                    initial_value = Initial(Constant(LongInit(decl.init.value)))
+                elif isinstance(decl.init.value,ConstDouble):
+                    initial_value = Initial(Constant(DoubleInit(decl.init.value)))
+                    print(initial_value)
+                    # exit()
             elif isinstance(decl.init, Null):
-                initial_value = Initial(IntInit(Constant(ConstInt(0))))
+                initial_value = Initial(Constant(IntInit(ConstInt(0))))
             else:
                 raise SyntaxError('Non-constant Initializer on local static variable', decl.init)
 
+            
+            # exit()
             symbols[decl.name.name] = {
                 'type': Int(),
                 'val_type': decl.var_type,
                 'attrs': StaticAttr(init=initial_value, global_scope=False),
                 'ret': decl.var_type,
+                'Double':decl.var_type
                 
             }
             return decl
         else:
+            global x1
+            # if x1==3:
+                # exit()
+            x1+=1
+            print(decl)
             # exit()
             symbols[decl.name.name] = {
                 'type': Int(),
                 'val_type': decl.var_type,
                 'attrs': LocalAttr(),
                 'ret': decl.var_type,
-                
+                'Double':decl.var_type
             }
             # print('vardeclaration',decl)
             # exit()
             if not isinstance(decl.init, Null):
                 x = typecheck_exp(decl.init, symbols)
                 decl.init=x
-                # if isinstance(decl.init,FunctionCall):
-                    # print('decl',decl)
-                # print(decl)
-                # common_type=get_common_type(decl.var_type,decl.init.get_type())
-                # print('common_type',common_type)
                 decl.init=convert_to(decl.init,decl.var_type)
-                # print('decl',decl)
-                # exit()
+                # if x1 ==1: 
+                #     exit()
+                # x1+=1
+                
+                # print(decl)
             return decl
                 
     except Exception as e:
@@ -304,7 +322,7 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
                 param_name = param.name.name
                 if param_name in symbols:
                     raise SyntaxError(f"Parameter '{param_name}' is already declared.")
-                symbols[param_name] = {'type': Int(), 'val_type':param._type,'ret': decl.fun_type,'attrs':None}
+                symbols[param_name] = {'type': Int(), 'val_type':param._type,'ret': decl.fun_type,'attrs':None,'Double':param._type}
             stmts=[]
             for stmt in decl.body:
                 if not isinstance(stmt, Return):
@@ -465,10 +483,11 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
             e.left = typed_e1
             e.right = typed_e2
             e.set_type(Int())
+            e.rel_flag = Int()
+            
             return e
             
-        #typed_e1)
-        # exit()
+       
         t1 = typed_e1.get_type()
         t2 = typed_e2.get_type()
         if e.operator==BinaryOperator.REMAINDER :
@@ -489,15 +508,21 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         if e.operator in (BinaryOperator.ADD, BinaryOperator.DIVIDE,
                           BinaryOperator.MULTIPLY, BinaryOperator.SUBTRACT,
                           BinaryOperator.REMAINDER):
-    
+            e.rel_flag = common_type
             e.set_type(common_type)
          
             return e 
         else:
-            e.set_type(Int())
+            if isinstance(e.left.get_type(),Double):
+                e.rel_flag =Int()
+                print(e)
+                # exit()
+                e.set_type(Int())
+            else:
+                e.rel_flag = Int()
+                e.set_type(Int())
             return e
       
-
     elif isinstance(e, Unary):
         inner = typecheck_exp(e.expr, symbols)
         e.expr = inner
@@ -581,6 +606,8 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
                             raise SyntaxError('Loop initializer cannot have storage class')
                         else:
                             typecheck_statement(statement.init, symbols, fun_type)
+                            # print(s)
+                            # exit()
             else:
                 typecheck_statement(statement.init, symbols, fun_type)
 

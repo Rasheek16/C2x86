@@ -48,7 +48,7 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
         
         # List to hold the new set of instructions after replacement
         new_instructions: List[Instruction] = []
-        print(backend_Symbol_table)
+        # print(backend_Symbol_table)
         # exit()
         def align_offset(offset, alignment):
                 """Ensure the offset is aligned to the specified byte boundary."""
@@ -65,25 +65,39 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
                         # If the symbol is static, replace with a Data operand
                         if backend_Symbol_table[name].is_static:
                             operand = Data(name)
+                            return operand
                         else:
-                            # Dynamic variable (on stack)
-                            if backend_Symbol_table[name].assembly_type == AssemblyType.longWord:
-                                # Allocate 4 bytes
-                                current_offset -= 4
+                            print('Name in backend symbol table not static',name)
+                            print(backend_Symbol_table[name].assembly_type)
+                        
+                            if backend_Symbol_table[name].assembly_type==AssemblyType.longWord:
+                                current_offset -= 4  
                                 pseudo_map[name] = current_offset
                                 operand = Stack(current_offset)
+                                return operand
+
                             else:
-                                # Allocate 8 bytes, then align
-                                current_offset -= 8
+                                print('Found here')
+                                print(name)
+                                current_offset -= 8  # Adjust offset for next allocation
                                 current_offset = align_offset(current_offset, 8)
                                 pseudo_map[name] = current_offset
                     
                     
                                 operand = Stack(current_offset)
+                                # exit()
+                                return operand
                     else:
-                        print('Unknown var',name)
-                        exit()
-                       
+                        print(name.identifier)
+                        print(name.identifier in backend_Symbol_table)
+                        print(backend_Symbol_table)
+                        # exit()
+                            # current_offset -= 8  # Adjust offset for next allocation
+                            # current_offset = align_offset(current_offset, 8)
+                            # pseudo_map[name] = current_offset
+                            # operand = Stack(current_offset)
+                            # operand = Stack(current_offset)
+                            # return operand
                 else:
                     # Already mapped, just replace with existing stack offset
                     operand = Stack(pseudo_map[name])
@@ -130,6 +144,8 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
             elif isinstance(instr, Unary):
                 instr.operand = replace_pseudo_with_operand(instr.operand)
             elif isinstance(instr, Binary):
+                print(instr)
+                # exit()
                 instr.src1 = replace_pseudo_with_operand(instr.src1)
                 instr.src2 = replace_pseudo_with_operand(instr.src2)
             elif isinstance(instr, Idiv):
@@ -147,7 +163,7 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
             elif isinstance(instr, MovZeroExtend):
                 instr.dest = replace_pseudo_with_operand(instr.dest)
                 instr.src = replace_pseudo_with_operand(instr.src)
-            elif isinstance(instr, Div):
+            elif isinstance(instr,  (Div,Idiv)):
                 instr.operand = replace_pseudo_with_operand(instr.operand)
             elif isinstance(instr,Cvtsi2sd):
                 instr.src=replace_pseudo_with_operand(instr.src)

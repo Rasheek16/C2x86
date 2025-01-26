@@ -203,7 +203,7 @@ class Binary(Instruction):
     """
     Represents a binary operation in the AST.
     """
-    def __init__(self, operator: str,assembly_type,src1, src2):
+    def __init__(self, operator: str,assembly_type,src1, src2,rel_flag=Optional):
         self.operator = operator  # e.g., '+', '-', '*', '/', '%'
         self.src1 = src1          # Left operand (expression)
         self.src2 = src2        # Right operand (expression)
@@ -410,7 +410,7 @@ class Cvtsi2sd(Instruction):
     def get_type(self):
         return self._type
     def __repr__(self):
-        return f'Cvttsd2si(Operand1={self.src},assemby_type={self._type},Operand2 ={self.dst})'
+        return f'Cvtsi2sd(Operand1={self.src},assemby_type={self._type},Operand2 ={self.dst})'
 
 # ------------------
 # Operator Constants
@@ -455,6 +455,7 @@ class BinaryOperator():
     DIVDOUBLE='DivDouble' 
     AND='And'
     OR='Or'
+    SHR='Shr'
     XOR='Xor'
     # Additional binary operators can be defined here as needed.
     # For example:

@@ -95,7 +95,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None, li
         if not output_file:
             output_file = input_path.with_suffix('.s')
         output_s_path = Path(output_file)
-        emitter = CodeEmitter(str(output_s_path), symbols)
+        emitter = CodeEmitter(str(output_s_path),symbols)
         emitter.emit_program(a_ast)
         emitter.save()
 

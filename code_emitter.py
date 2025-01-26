@@ -83,6 +83,7 @@ class CodeEmitter:
     def emit_instruction(self, instruction):
         """Emit an assembly instruction."""
         if isinstance(instruction, Mov):
+            print(instruction)
             print(instruction._type)
             if instruction._type==AssemblyType.longWord:
                 src = convertOperandToAssembly(instruction.src)
@@ -108,30 +109,38 @@ class CodeEmitter:
             
         elif isinstance(instruction, Unary):
             if instruction._type==AssemblyType.longWord:
-
                 operand = convertOperandToAssembly(instruction.operand)
             else:
                 operand = Convert8BYTEoperand(instruction.operand)
-            operator = convertOperatorToAssembly(instruction.operator)
-            self.emit_line(f'   {operator}{convert_type(instruction._type)} {operand}')
-        
+            if instruction.operator in (UnaryOperator.SHR):
+                self.emit_line(f'   {UnaryOperator.SHR}  {operand}')
+            else:
+                operator = convertOperatorToAssembly(instruction.operator)
+                self.emit_line(f'   {operator}{convert_type(instruction._type)} {operand}')
+            
         elif isinstance(instruction, Binary):
+            print(instruction)
             if instruction._type==AssemblyType.longWord:
                 src = convertOperandToAssembly(instruction.src1)
                 dest = convertOperandToAssembly(instruction.src2)
             else:
                 src = Convert8BYTEoperand(instruction.src1)
                 dest = Convert8BYTEoperand(instruction.src2)
-            print(instruction)
+            # print(instruction.operator)
+            # print(BinaryOperator.SUBTRACT)
             # exit()
-            # if  instruction.operator == BinaryOperator.MULTIPLY:
-                # exit()
             if instruction._type == AssemblyType.double and instruction.operator == BinaryOperator.XOR:
                 self.emit_line(f'   xorpd {src},   {dest}')
+                
+                
             elif instruction._type == AssemblyType.double and instruction.operator == BinaryOperator.MULTIPLY:
-            # src = convertOperandToAssembly(instruction.src1)
-            # dest = convertOperandToAssembly(instruction.src2)
+         
                 self.emit_line(f'   mulsd   {src},   {dest}')
+                
+                
+            elif instruction.operator in (BinaryOperator.AND,BinaryOperator.OR,UnaryOperator.SHR,BinaryOperator.XOR):
+                operator = convertOperatorToAssembly(instruction.operator)
+                self.emit_line(f'   {operator} {src}, {dest}')
             else:
                 operator = convertOperatorToAssembly(instruction.operator)
                 self.emit_line(f'   {operator}{convert_type(instruction._type)} {src}, {dest}')
@@ -222,6 +231,8 @@ class CodeEmitter:
                 op = convertOperandToAssembly(instruction.operand)
             else:
                 op = Convert8BYTEoperand(instruction.operand)
+            # print(op)
+            # exit()
             # print('idiv',instruction)
             # exit()
             # self.emit_line(f'   movl {op}, %eax')  # Move operand to %eax
@@ -341,12 +352,12 @@ def convertOperandToAssemblySETCC(operand: Operand) -> str:
             return '%r9b'
         elif operand == Registers.R10:
             return '%r10b'
-            
         elif operand == Registers.R11:
             return '%r11b'
         elif operand == Registers.SP:
             return '%rsp'
-            
+        elif operand == Registers.XMM0:
+            return '%xmm0'
         else:
             raise ValueError(f"Unsupported register: {operand.reg}")
     elif isinstance(operand, Stack):
@@ -436,7 +447,8 @@ def convert_static_init(instr,alignment):
     print(type(instr))
     # exit()
     if isinstance(instr,DoubleInit):
-        
+        if instr.value == float('inf'):
+            return '.double Inf'
         # exit()
         val=f'.double {instr.value}'
         # print('error')
@@ -475,7 +487,8 @@ def convert_type(_type):
     elif _type == AssemblyType.double:
         return 'sd'
     else:
-        raise ValueError('Invalid mov type')
+        # exit()
+        raise ValueError('Invalid operand type',_type)
 
 
 

@@ -7,6 +7,9 @@ from _ast5 import *
 return_flag = False
 
 def isKeyword(token):
+    '''
+    
+    '''
     if token in ('int','return','main','void','int','extern','static','signed','unsigned','long','if','else','do','while','for','break','continue','double'):
         return True 
     return False
@@ -390,7 +393,6 @@ def parse_declaration(tokens: List[str]):
 
     specifiers=[]
     while isSpecifier(tokens[0]):
-       
         specifier,tokens=parse_specifier(tokens)
         specifiers.append(specifier)
     _type,storage_class= parse_type_and_storage_class(specifiers)
@@ -572,8 +574,11 @@ def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
         if tokens[2]=='(':
             raise SyntaxError('Function not permitted in loop headers')
         decl, tokens = parse_declaration(tokens)
+        
         # ##
         init_decl = InitDecl(declaration=decl)
+        # print(decl)
+        # exit()
         # ##init_decl)
         return init_decl, tokens
     
@@ -1062,11 +1067,11 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
         #(match)
         if match:
             #('Inside double')
-            number = match.group(1)  # Convert to float
+            number = match.group(0)  # Convert to float
             # #( Constant(Const.constDouble(number)), tokens)
             print(number)
             # exit()
-            return Constant(Const.constDouble(number)), tokens
+            return Constant(Const.constDouble(float(number))), tokens
 
         # If none of the patterns match, raise a SyntaxError
         raise SyntaxError(f"Expected a constant (int, long, uint, ulong, double), got '{token}'")
