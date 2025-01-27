@@ -57,7 +57,16 @@ class FunType(Type):
         self.ret=ret 
         
     def __repr__(self):
-        return f'FunType(param_count={self.param_count},params={self.params},ret={self.ret})'
+        return f'FunType(param_count={self.param_count},params={'\n'+iter(self.params)},ret={self.ret})'
+    
+class Pointer(Type):
+    def __init__(self,referenced:Type):
+        self.ref = referenced 
+    
+    def __repr__(self):
+        return f'Pointer(referenced={self.ref})'
+    
+    
     
 
 
@@ -471,6 +480,20 @@ class FunctionCall(Exp):
         
     def __repr__(self):
         return f'\nFunctionCall(identifier = {self.identifier},args = {self.args},type={self._type})'
+
+class  Dereference(Exp):
+    def __init__(self,exp:Exp):
+        self.exp = exp 
+    def __repr__(self):
+        return f'Dereference(exp={self.exp})'
+    
+class  AddOf(Exp):
+    def __init__(self,exp:Exp):
+        self.exp = exp 
+    def __repr__(self):
+        return f'AddOf(exp={self.exp})'
+    
+    
 # --------------------------
 # Declaration Class
 # --------------------------
