@@ -118,6 +118,9 @@ class UnaryOperator():
     COMPLEMENT = "Complement"  # e.g., ~x
     NEGATE = "Negate"          # e.g., -x
     NOT = "Not"                # e.g., !x
+    DEREFERENCE='Dereference'
+    AMPERSAND = 'Ampersand'
+    
 
 
 class BinaryOperator():
