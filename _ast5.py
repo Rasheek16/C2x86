@@ -51,13 +51,13 @@ class Double(Type):
 
 class FunType(Type):
     
-    def __init__(self, param_count:int,params,ret:Type):
+    def __init__(self, param_count:int,params,base_type:Type):
         self.param_count = param_count
         self.params = params
-        self.ret=ret 
+        self.retu=base_type
         
     def __repr__(self):
-        return f'FunType(param_count={self.param_count},params={'\n'+iter(self.params)},ret={self.ret})'
+        return f'FunType(param_count={self.param_count},params={self.params},base_type={self.retu})'
     
 class Pointer(Type):
     def __init__(self,referenced:Type):
@@ -68,12 +68,28 @@ class Pointer(Type):
     
     
     
+class AbstractPointer():
+    def __init__(self, abstract_declarator):
+        self.abstract_declarator=abstract_declarator
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+    def __repr__(self):
+        return f'AbstractPointer(abstract_declarator={self.abstract_declarator})'
+    
+    
+    
+class AbstractBase():
+    def __init__(self):
+        pass 
+        
+    def __repr__(self):
+        return f'AbstractBase()'
 
 
+class AbstractDeclarator:
+    AbstractBase=AbstractBase
+    AbstractPointer=AbstractPointer
 
-
-
-
+    
 
 
 
@@ -99,7 +115,43 @@ class StorageClass:
     Static=Static
     Extern=Extern
     
+class Declarator:
+    pass 
+class ParamInfo():
+    def __init__(self,_type,declarator):
+        self._type=_type
+        self.declarator=declarator
+        
+        
+    def __repr__(self):
+        return f'ParamInfo(type={self._type},declarator={self.declarator})'    
+    
+class FunDeclarator(Declarator):
+    def __init__(self,params: List[ParamInfo],declarator):
+        self.params=params
+        self.declarator=declarator
+        
+    def __repr__(self):
+        return f'FunDeclarator(params={self.params},declarator={self.declarator})'
+       
+    
+class PointerDeclarator(Declarator):
+    def __init__(self,declarator):
+        self.declarator=declarator
+        
+    def __repr__(self):
+        return f'PointerDeclarator(declarator={self.declarator})'
 
+class Ident(Declarator):
+    def __init__(self,identifier):
+        self.identifier=identifier
+        
+    def __repr__(self):
+        return f'Ident(identifier={self.identifier})'
+
+    # ident=Idnt(identifier)
+    # pointerDecl=PointerDeclarator(declarator)
+    # funDecl=FunDeclarator(param_info* params, declarator)
 
 
 # --------------------------
@@ -948,11 +1000,12 @@ class Program:
 
 
 class Parameter():
-    def __init__(self, _type,name:Optional[Identifier]=None):
+    def __init__(self, _type,declarator:Optional[Declarator]=[None]):
         self._type=_type
-        self.name = name 
+        # self.name = name
+        self.declarator=declarator 
     def __repr__(self):
-        return f'Parameter(type={self._type},name = {self.name})'
+        return f'Parameter(type={self._type},declarator={self.declarator})'
     
 class Argument():
     def __init__(self, name:Exp):
