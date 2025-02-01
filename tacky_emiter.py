@@ -76,7 +76,7 @@ def convert_symbols_to_tacky(symbols:dict):
                 
             
         
-x=0
+x10=0
 
 
 # A global counter for generating unique temporary names
@@ -251,19 +251,11 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         if t==inner_type:
             return result
         dst_name = make_temporary(symbols,expr.target_type)
-        print(expr)
-        # exit()
-        # global x 
-        # x+=1
-        # print(expr)
-        # print(t)
-        print(inner_type)
+
         if isinstance(t,Pointer):
             t=ULong()
         if isinstance(inner_type,Pointer):
             inner_type=ULong()
-        # print(size(t))
-        # exit()
         if size(t)==size(inner_type):
             instructions.append(TackyCopy(result,dst_name))
         elif size(t) < size(inner_type) and isinstance(inner_type,Double):
@@ -299,28 +291,10 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
             # Handle regular binary operations
             v1 = emit_tacky_expr_and_convert(expr.left, instructions,symbols)
             v2 = emit_tacky_expr_and_convert(expr.right, instructions,symbols)
-            # print(v1)
-            # exit()
-            # Generate a unique temporary variable name to store the result
-            # global x 
-            # if x==2:
-                # print(expr.rel_flag)
-                # print('expr')
-                # exit()
-            # x+=1global x 
-            # x+=1
-            # exit()
-            # if isinstance()
-            # print(expr)
+            # print(expr.get_type())
             # exit()
             dst_var = make_temporary(symbols,expr.get_type(),isDouble=expr.rel_flag)
-            # print(symbols[dst_var.identifier])
-            # exit()
-            # if expr.operator == TackyBinaryOperator.EQUAL:
-                # print(dst_var)
-                # print(symbols[dst_var.identifier])
-                # exit()
-            # Convert the AST binary operator to its corresponding Tacky binary operator
+            
             tacky_op = convert_binop(expr.operator)
             # if tacky_op==BinaryOperator.LESS_OR_EQUAL:
                 # print(v1)
@@ -347,6 +321,8 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         
         # 2. Generate a new temporary to hold the function call's result
         dst_var = make_temporary(symbols,expr.get_type())
+        print(symbols[dst_var.identifier])
+        # exit()
         # print('result of funcall',symbols[dst_var.identifier])
         # print(symbols)
         # exit()
@@ -362,6 +338,9 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         return PlainOperand(dst_var)
     elif isinstance(expr,Dereference):
         result = emit_tacky_expr_and_convert(expr.exp, instructions, symbols)
+        print(symbols[result.identifier])
+        print(result)
+        # exit()
         return DereferencedPointer(result)
     
     elif isinstance(expr,(IntInit,LongInit,DoubleInit)):
@@ -462,7 +441,7 @@ def emit_statement(stmt, instructions: List[TackyInstruction],symbols:Optional[d
         emit_if_statement(stmt, instructions,symbols)
     
     elif isinstance(stmt, Return):
-        ret_val = emit_tacky_expr(stmt.exp, instructions,symbols)
+        ret_val = emit_tacky_expr_and_convert(stmt.exp, instructions,symbols)
         instructions.append(TackyReturn(val=ret_val))
     elif isinstance(stmt, (DoWhile, While, For)):
         #print('In Loop')
@@ -514,6 +493,8 @@ def emit_if_statement(stmt: If, instructions: List[TackyInstruction],symbols):
     condition_var = emit_tacky_expr_and_convert(stmt.exp, instructions,symbols)
     else_label = get_false_label()
     end_label = get_end_label()
+    # print(condition_var)
+    # exit()
 
     # If condition is zero, jump to else_label
     # print(stmt.exp)
@@ -596,7 +577,7 @@ def emit_s_statement(stmt: S, instructions: List[TackyInstruction],symbols):
     elif isinstance(node, If):
         emit_if_statement(node, instructions,symbols)
     elif isinstance(node, Return):
-        ret_val = emit_tacky_expr(node.exp, instructions,symbols)
+        ret_val = emit_tacky_expr_and_convert(node.exp, instructions,symbols)
         instructions.append(TackyReturn(val=ret_val))
     elif isinstance(node, Compound):
         for inner_stmt in node.block:
@@ -641,7 +622,7 @@ def convert_fun_decl_to_tacky(fun_decl: FunDecl,symbols) -> TackyFunction:
     # if not has_return:
     
     # if fun_decl.name.name=='main':
-    instructions.append(TackyReturn(PlainOperand(val=TackyConstant(ConstInt(0,exp_type=Int())))))
+    instructions.append(TackyReturn(val=TackyConstant(ConstInt(0,exp_type=Int()))))
     
     return TopLevel.tack_func(
         identifier=fun_decl.name.name,
@@ -675,7 +656,7 @@ def emit_tacky_program(ast_program: Program,symbols) -> TackyProgram:
     instructions=[]
     tacky_symbols=[]
     symbols_new = convert_symbols_to_tacky(symbols)
-    # print(symbols_new)
+    print(symbols)
     # exit()
     # for i in symbols_new:
     #     #print(i.init)
