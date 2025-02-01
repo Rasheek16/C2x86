@@ -5,7 +5,7 @@ from _ast5 import (
     DoWhile, Break, Continue, If, Return, 
     Compound, Parameter, BlockItem, Program, 
     InitDecl, InitExp, Expression, 
-    D, S, Statement, Block,Extern,Cast
+    D, S, Statement, Block,Extern,Cast,UnaryOperator,BinaryOperator,AbstractDeclarator,AddOf,Dereference
 )
 # from tacky_emiter import , convert_binop, convert_unop
 from typing import List, Dict, Any, Optional
@@ -114,9 +114,12 @@ def resolve_exp(expression, identifier_map: dict):
     to their unique names. Preserves names for items with has_linkage=True.
     """
     if isinstance(expression, Assignment):
-        if not isinstance(expression.left, Var):
+        if not isinstance(expression.left,(Var,Dereference)):
             raise ValueError(f"Invalid lvalue in assignment: {expression.left}")
-        resolved_left = resolve_exp(expression.left, identifier_map)
+        if isinstance(expression.left,Unary):
+            resolved_left = resolve_exp(expression.left.expr,identifier_map)
+        else:
+            resolved_left = resolve_exp(expression.left, identifier_map)
         resolved_right = resolve_exp(expression.right, identifier_map)
         return Assignment(left=resolved_left, right=resolved_right)
     elif isinstance(expression,Cast):
@@ -142,10 +145,32 @@ def resolve_exp(expression, identifier_map: dict):
             raise ValueError(f"Undeclared variable usage: '{original_identifier}'")
 
     elif isinstance(expression, Unary):
+        if expression.operator == UnaryOperator.DEREFERENCE and isinstance(expression.expr,Constant):
+            raise SyntaxError("Invalid dereference of a constant")
+            
+            
         resolved_expr = resolve_exp(expression.expr, identifier_map)
         return Unary(operator=expression.operator, expr=resolved_expr)
 
     elif isinstance(expression, Binary):
+        # if expression.operator in (BinaryOperator.MULTIPLY,BinaryOperator.DIVIDE):
+            
+            # TODO: Check for pointer arithmetic again
+            # if isinstance(expression.left,Dereference) and isinstance(expression.right,Dereference):
+                # raise SyntaxError("Invalid binary operation on pointers")
+        
+        # if expression.operator in (BinaryOperator.EQUAL,BinaryOperator.GREATER_OR_EQUAL,
+        #                            BinaryOperator.GREATER_THAN,
+        #                            BinaryOperator.LESS_OR_EQUAL,
+        #                            BinaryOperator.LESS_THAN,BinaryOperator.NOT_EQUAL):
+        #     # print(expression)
+            # exit()
+            # if (isinstance(expression.left,AddOf) and not isinstance(expression.right,AddOf)) or (
+            #     not isinstance(expression.left,AddOf) and isinstance(expression.right,AddOf)):
+            #     raise SyntaxError("Invalid binary operation on pointers")
+            
+            
+            
         resolved_left = resolve_exp(expression.left, identifier_map)
         resolved_right = resolve_exp(expression.right, identifier_map)
         return Binary(operator=expression.operator, left=resolved_left, right=resolved_right)
@@ -164,7 +189,13 @@ def resolve_exp(expression, identifier_map: dict):
 
     elif isinstance(expression, (Constant, Null)):
         return expression
-
+    elif isinstance(expression, AddOf):
+        resolved_expr = resolve_exp(expression.exp, identifier_map)
+        return AddOf(resolved_expr)
+    elif isinstance(expression, Dereference):
+        resolved_expr = resolve_exp(expression.exp, identifier_map)
+        return Dereference(resolved_expr)
+    
     else:
         raise SyntaxError(f"Unknown expression type: {type(expression)}")
 
@@ -359,7 +390,7 @@ def label_statement(statement: Statement, current_label: Optional[str] = None) -
     elif isinstance(statement, (Return, Var, Constant)):
         pass  # no label needed
 
-    elif isinstance(statement, (Expression, Assignment, Binary, Unary,Cast)):
+    elif isinstance(statement, (Expression, Assignment, Binary, Unary,Cast,AddOf,Dereference)):
         pass  # no label needed
 
     elif isinstance(statement, Null):
@@ -453,6 +484,8 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict) -> FunDecl
     # Resolve parameters
     new_params = []
     for param in decl.params:
+        # print(decl)
+        # exit()
         new_params.append(resolve_param(param, inner_map))
     # Resolve the function body (if it's a Block) => block_items
     if isinstance(decl.body, Block):
@@ -468,6 +501,8 @@ def resolve_param(param: Parameter, identifier_map: dict) -> Parameter:
     """
     Resolves a function parameter. Generates a unique name for it (local variable).
     """
+    # print(param)
+    # exit()
     if not isinstance(param.name, Identifier):
         raise TypeError(f"Parameter name must be an Identifier, got {type(param.name)}")
 
@@ -514,7 +549,7 @@ def variable_resolution_pass(program: Program) :
         resolved_funcs.append(new)
 
     new_program = Program(function_definition=resolved_funcs)
-    labeled_program ,symbols=typecheck_program(label_program(new_program))
+    labeled_program , symbols = typecheck_program(label_program(new_program))
   
     return labeled_program ,symbols
 
