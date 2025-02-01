@@ -144,7 +144,7 @@ def fix_instr(instr,new_instructions:list):
             
             else:
                 # Handle stack-to-stack moves
-                if isinstance(instr.src, (Stack, Data)) and isinstance(instr.dest, (Stack, Data)):
+                if isinstance(instr.src, (Stack, Data,Memory)) and isinstance(instr.dest, (Stack, Data,Memory)):
                     mov_to_reg = Mov(
                         assembly_type=instr._type,
                         src=instr.src,
@@ -166,7 +166,7 @@ def fix_instr(instr,new_instructions:list):
             
                 # exit()
             # For other move operations maintain existing behavior
-            if isinstance(instr.src, (Stack, Data)) and isinstance(instr.dest, (Stack, Data)):
+            if isinstance(instr.src, (Stack, Data,Memory)) and isinstance(instr.dest, (Stack, Data,Memory)):
                 if instr._type == AssemblyType.double:
                     dest = Reg(Registers.XMM14)
                 else:
@@ -483,6 +483,7 @@ def fix_instr(instr,new_instructions:list):
         print('in allocate')
         
         # global count
+   
     elif isinstance(instr, Cmp):
        
    
@@ -535,7 +536,7 @@ def fix_instr(instr,new_instructions:list):
                 new_instructions.extend([mov,mov2,compl2])
     
             else:
-                print('Skipped')
+                # print('Skipped')
                 # exit()
                 
                 new_instructions.extend([mov,compl])
@@ -609,7 +610,18 @@ def fix_instr(instr,new_instructions:list):
         """
         
         new_instructions.append(instr)
+ 
     elif isinstance(instr,Push):
+        if instr._type==AssemblyType.double and isinstance(instr.operand,Reg):
+            sub=Binary(operator=BinaryOperator.SUBTRACT,
+                       assembly_type=AssemblyType.double,
+                       src1=Imm(8),
+                       src2=Reg(Registers.SP))
+            mov = Mov(assembly_type=AssemblyType.double,
+                      src=instr.operand,
+                      dest=Reg(Registers.SP))
+            
+            new_instructions.extend([sub,mov])
         
         if isinstance(instr.operand,Imm) and int(instr.operand.value)>=2147483647:
             movl = Mov(
@@ -760,6 +772,26 @@ def fix_instr(instr,new_instructions:list):
             )
             
             new_instructions.extend([c_1,m_1])
+        else:
+            new_instructions.append(instr)
+    elif isinstance(instr,Lea):
+        if not isinstance(instr.dst,Reg):
+            # mov_1= Mov(
+            #     assembly_type=AssemblyType.quadWord,
+            #     src = instr.dst,
+            #     dest=Reg(Registers.R10)
+            # )
+            lea=Lea(
+                dst=Reg(Registers.R10),
+                src=instr.src
+                
+            )
+            mv_back = Mov(
+                assembly_type=AssemblyType.quadWord,
+                dest = instr.dst,
+                src=Reg(Registers.R10)
+            )
+            new_instructions.extend([lea,mv_back])
         else:
             new_instructions.append(instr)
     # Handle any unsupported instruction types
