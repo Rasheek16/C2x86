@@ -1,6 +1,6 @@
 from tacky import *
 from assembly_ast import *
-from _ast5 import Parameter,Double,UInt,ULong,Int,Long ,Parameter,ConstDouble,ConstInt,ConstLong,ConstUInt,ConstULong
+from _ast5 import Parameter,Double,UInt,ULong,Int,Long ,Parameter,ConstDouble,ConstInt,ConstLong,ConstUInt,ConstULong,Pointer
 import sys
 from typing import Union, List ,Dict,Optional
 from type_classes import *
@@ -10,7 +10,7 @@ from typechecker import isSigned
 from tacky_emiter import get_const_label
 # from conv.unary import convert_unary
 current_param_offset={}
-
+t=0
 
 up_temp = 0
 def get_upper_bound():
@@ -64,8 +64,7 @@ class Converter():
         stack_args=[]
         for operand in values:
             type_operand = self.get_param_type(operand._type)
-            # print('Operand',operand)
-            # print('Type of operand',type_operand)
+        
             if type_operand == AssemblyType.double:
                 if len(double_args)<8:
                     double_args.append(operand)
@@ -126,10 +125,11 @@ class Converter():
                 
         return backend_symbol_table
     
+    
     def get_param_type(self,_type):
         if isinstance(_type,Long):
             return AssemblyType.quadWord
-        elif  isinstance(_type,ULong):
+        elif  isinstance(_type,ULong) or isinstance(_type,Pointer):
             return AssemblyType.quadWord
         elif isinstance(_type,Int) or isinstance(_type,UInt):
             return AssemblyType.longWord
@@ -142,7 +142,7 @@ class Converter():
         if isinstance(src, TackyConstant):
             if isinstance(src.value, (ConstInt,ConstUInt)):
                 return AssemblyType.longWord
-            elif isinstance(src.value, (ConstLong,ConstULong)):
+            elif isinstance(src.value,(ConstLong,ConstULong,Pointer)):
                 return AssemblyType.quadWord
             else:
                 return AssemblyType.double
@@ -160,7 +160,7 @@ class Converter():
             if isinstance(val_type,( Int,UInt)) or isinstance(val_type, type(Int)) or isinstance(val_type, type(UInt)):
                
                 return AssemblyType.longWord
-            elif isinstance(val_type, (Long,ULong)):
+            elif isinstance(val_type, (Long,ULong,Pointer)):
                 return AssemblyType.quadWord
             else:
                 return AssemblyType.double
@@ -184,11 +184,10 @@ class Converter():
         regsiters = ['DI','SI','DX','CX','R8','R9']
         
         reg_index= 0
-        # print(reg_params)
-        # exit()
+        
         if len(reg_params)>0:
             for param in reg_params:
-                print('here')
+                
                 r = regsiters[reg_index]
               
                 instr.append(Mov(assembly_type=self.get_param_type(param._type),src=Reg(r), dest=Pseudo(param.name.name)))
@@ -204,9 +203,9 @@ class Converter():
             reg_index += 1
         offset = 16
         for param in stakc_params:
-            # exit()
             
-            instr.append(Mov(self.get_param_type(param._type), Stack(offset), Pseudo(param.name.name)))
+            
+            instr.append(Mov(self.get_param_type(param._type), Memory(Reg(Registers.BP),offset), Pseudo(param.name.name)))
             offset += 8
         
         return instr
@@ -377,23 +376,26 @@ class Converter():
                 instructions.append(DeallocateStack(value=bytes_to_remove))
                 
             assembly_dst = self.convert_to_assembly_ast(tacky_ast.dst)
-    
-            if isinstance(self.symbols[tacky_ast.fun_name]['fun_type'].ret , Double):
+            print(self.symbols[tacky_ast.fun_name]['fun_type'].base_type,)
+            # exit()
+            if isinstance(self.symbols[tacky_ast.fun_name]['fun_type'].base_type, Double):
+                # exit()
                 instructions.append(Mov(assembly_type=AssemblyType.double,src=Reg(Registers.XMM0),dest=assembly_dst))
             else:
-    
                 instructions.append(Mov(assembly_type=self.get_type(tacky_ast.dst),src=Reg(Registers.AX),dest=assembly_dst))
             return instructions
         # Handle Return instruction
         elif isinstance(tacky_ast, TackyReturn):
-    
+            #TODO MOFIFICATION OVER HERE
+            # if isinstance(tacky_ast)
+            tacky_ast.val=tacky_ast.val
             #* Get type of value of a variable        
             if isinstance(tacky_ast.val , TackyVar):
-                _type=self.get_param_type(self.symbols[tacky_ast.val.identifier]['ret'])
+                _type=self.get_type(tacky_ast.val)
             else:
                 #* Type of a constant
                 _type=self.get_type(tacky_ast.val)
-            
+            # print(self.get_param_type(tacky_ast.val))
             # print(_type)
             # exit()
             
@@ -401,7 +403,6 @@ class Converter():
            
             #* CONVERSION OF DOUBLE TYPE TO RETURN 
             if isinstance(tacky_ast.val,TackyConstant) and isinstance(tacky_ast.val.value,ConstDouble):
-                
                     return [
                     Mov(assembly_type=AssemblyType.double,src=self.convert_to_assembly_ast(tacky_ast.val), dest=Reg(Registers.XMM0)),
                     Ret()
@@ -728,13 +729,9 @@ class Converter():
                         t=Int()
                     else:
                         t=UInt()
-              
              
-                # print(t)
-                # exit()
-                # if tacky_ast.operator==TackyBinaryOperator.LESS_THAN:
-                # print(t)
-                # exit()
+                     
+                  
                 if isSigned(t)==True:
                     
                     # exit()
@@ -1030,7 +1027,7 @@ class Converter():
                     
                 ]
                     
-            elif isinstance(_type,  ULong ):
+            elif isinstance(_type,  (ULong,Pointer )):
                 of_label= get_out_of_rng()
                 end_label_1 = get_end_label()
                 # print('returned')
@@ -1060,7 +1057,7 @@ class Converter():
             elif isinstance(tacky_ast.src,TackyConstant):
                 _type = tacky_ast.src.value._type
                 
-            if isinstance(_type,ULong):
+            if isinstance(_type,(ULong,Pointer)):
                 #* Create temporary label
                 const_label = get_upper_bound()
                 
@@ -1115,9 +1112,21 @@ class Converter():
                     Cvttsd2si(dst_type=AssemblyType.quadWord, src=self.convert_to_assembly_ast(tacky_ast.src), dst=Reg(Registers.R10)),
                     Mov(assembly_type=AssemblyType.quadWord,src= Reg(Registers.R10), dest=self.convert_to_assembly_ast(tacky_ast.dst))
                  ]
-
-                    
-          
+        elif isinstance(tacky_ast,TackyLoad):
+            return [
+                Mov(AssemblyType.quadWord, self.convert_to_assembly_ast(tacky_ast.src_ptr), Reg(Registers.AX)),
+                Mov(self.get_type(tacky_ast.dst), Memory(Reg(Registers.AX), 0),self.convert_to_assembly_ast(tacky_ast.dst))
+            ]
+        elif isinstance(tacky_ast,TackyStore):
+            return [
+                Mov(AssemblyType.quadWord, self.convert_to_assembly_ast(tacky_ast.dst_ptr), Reg(Registers.AX)),
+                Mov(self.get_type(tacky_ast.src),self.convert_to_assembly_ast(tacky_ast.src), Memory(Reg(Registers.AX), 0))
+            ]       
+        elif isinstance(tacky_ast,TackyGetAddress):
+            return [
+                Lea(src=self.convert_to_assembly_ast(tacky_ast.src),
+                    dst=self.convert_to_assembly_ast(tacky_ast.dst))
+            ]
         
         else:
             # Print error message for unsupported AST nodes and exit
