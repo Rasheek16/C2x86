@@ -54,10 +54,10 @@ class FunType(Type):
     def __init__(self, param_count:int,params,base_type:Type):
         self.param_count = param_count
         self.params = params
-        self.retu=base_type
+        self.base_type=base_type
         
     def __repr__(self):
-        return f'FunType(param_count={self.param_count},params={self.params},base_type={self.retu})'
+        return f'FunType(param_count={self.param_count},params={self.params},base_type={self.base_type})'
     
 class Pointer(Type):
     def __init__(self,referenced:Type):
@@ -376,7 +376,7 @@ class Constant(Exp):
         Returns:
             str: The string representation.
         """
-        return f"Constant(value={self.value})"
+        return f"Constant(value={self.value},type={self._type})"
 
 
 class Var(Exp):
@@ -537,16 +537,20 @@ class FunctionCall(Exp):
         return f'\nFunctionCall(identifier = {self.identifier},args = {self.args},type={self._type})'
 
 class  Dereference(Exp):
-    def __init__(self,exp:Exp):
+    def __init__(self,exp:Exp,_type=None):
+        super().__init__(_type)
+        
         self.exp = exp 
     def __repr__(self):
-        return f'Dereference(exp={self.exp})'
+        return f'Dereference(exp={self.exp},type={self._type})'
     
 class  AddOf(Exp):
-    def __init__(self,exp:Exp):
+    def __init__(self,exp:Exp,_type=None):
+        super().__init__(_type)
+        
         self.exp = exp 
     def __repr__(self):
-        return f'AddOf(exp={self.exp})'
+        return f'AddOf(exp={self.exp},type={self._type})'
     
     
 # --------------------------
@@ -1000,12 +1004,12 @@ class Program:
 
 
 class Parameter():
-    def __init__(self, _type,declarator:Optional[Declarator]=[None]):
+    def __init__(self, _type,name,declarator:Optional[Declarator]=[None]):
         self._type=_type
-        # self.name = name
+        self.name = name
         self.declarator=declarator 
     def __repr__(self):
-        return f'Parameter(type={self._type},declarator={self.declarator})'
+        return f'Parameter(type={self._type},declarator={self.declarator},name={self.name})'
     
 class Argument():
     def __init__(self, name:Exp):
