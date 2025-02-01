@@ -132,46 +132,38 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
         declarator, tokens = parse_declarator(tokens)
         next_token=tokens[0]
         print(declarator)
-        list_params.append(Parameter(_type,declarator))
+        list_params.append(Parameter(_type=_type,name=Identifier(next_token),declarator=declarator))
+        print(list_params)
+        # print(tokens)
+        # exit()
         if tokens[0] == ")":
                 return list_params,tokens
-        # print('Here')
         print(tokens)
-    #    if  isIdentifier(next_token) and not isKeyword(next_token):
-    #         token,tokens =take_token(tokens)
-    #         list_params.append(Parameter(_type,Identifier(token)),declarator)
-    #         if tokens[0] == ")":
-    #             return list_params,tokens
-    #     else:
-    #         raise SyntaxError('In parse param list Expected identifier , got',next_token)
+        
         while tokens:
             expect(',',tokens)
             next_token=tokens[0]
             # ##next_token)
             if isSpecifier(next_token):
                 specifiers=[]
-              
                 while tokens and isSpecifier(tokens[0]):
                     specifiers.append(tokens[0])     
                     token,tokens=take_token(tokens)
                 _type,storage_class=parse_type_and_storage_class(specifiers)
                 next_token=tokens[0]
-                # exit()
+              
                 declarator, tokens = parse_declarator(tokens)
                 next_token=tokens[0]
                 
-                # if isIdentifier(next_token) and not isKeyword(next_token):
-                #     token,tokens =take_token(tokens)
-                list_params.append(Parameter(_type,declarator))
+                list_params.append(Parameter(_type=_type,name=Identifier(next_token),declarator=declarator))
+            
                 if tokens[0] == ")":
                     return list_params,tokens
                 else: 
                     pass 
             else:
                 raise SyntaxError('In parse param Expected identifier , got in loop ',next_token)
-            # {else:
-            #     r}aise SyntaxError('Unexpected end of input expected an identifier got ',token)
-           
+          
                 
 def parse_args_list(tokens)->Tuple[List[Exp],str]:
     arg_body = []
@@ -281,9 +273,10 @@ def process_declarator(declarator: Declarator, base_type: Type) -> Tuple[Identif
             param_name, param_type, _ = process_declarator(param_info.declarator, param_info._type)
             if isinstance(param_type, FunType):
                 raise SyntaxError("Function pointers in parameters aren't supported")
-            param_names.append(param_name)
+            param_names.append(Parameter(_type=param_type,declarator=declarator.declarator,name=param_name))
             param_types.append(param_type)
         derived_type = FunType(param_count=len(param_names),params=param_types,base_type=base_type)
+        print(derived_type)
         print('Exist process declarator')
         
         return declarator.declarator.identifier, derived_type, param_names
@@ -378,25 +371,23 @@ def process_abstract_declarator(abstract_declarator: AbstractDeclarator, base_ty
 
 
 
-def parse_func_decl(tokens,func_name:Identifier,_type,storage_class)->Tuple[FunDecl,str]:
- try:
-    exp=Null()
-    expect('(',tokens)
-    exp,tokens=parse_param_list(tokens)
-    expect(')',tokens)
-    next_token  = tokens[0]
-    #('functioon',tokens)
-    if next_token==';':
-        _,tokens=take_token(tokens)
-        exp1=FunDecl(name=func_name,params=exp,fun_type=_type,body=Null(),storage_class=storage_class),tokens
-        return exp1
-    elif next_token=='{':
-        list_block_items,tokens=parse_block(tokens)
-        #('After parse block')
-      
-        return FunDecl(name=func_name,params=exp,fun_type=_type,body=Block(list_block_items),storage_class=storage_class),tokens
- except Exception as e:
-    raise SyntaxError('Error in parse_func_decl',e)
+# def parse_func_decl(tokens,func_name:Identifier,_type,storage_class)->Tuple[FunDecl,str]:
+#  try:
+#     exp=Null()
+#     expect('(',tokens)
+#     exp,tokens=parse_param_list(tokens)
+#     expect(')',tokens)
+#     next_token  = tokens[0]
+#     #('functioon',tokens)
+#     if next_token==';':
+#         _,tokens=take_token(tokens)
+#         exp1=FunDecl(name=func_name,params=exp,fun_type=_type,body=Null(),storage_class=storage_class),tokens
+#         return exp1
+#     elif next_token=='{':
+#         list_block_items,tokens=parse_block(tokens)
+#         return FunDecl(name=func_name,params=exp,fun_type=_type,body=Block(list_block_items),storage_class=storage_class),tokens
+#  except Exception as e:
+#     raise SyntaxError('Error in parse_func_decl',e)
         
     
     
@@ -580,6 +571,8 @@ def parse_declaration(tokens: List[str]):
             return FunDecl(name=identifier, params=params, fun_type=decl_type, body=Null(), storage_class=storage_class), tokens
         elif tokens and tokens[0] == '{':#checks if token exists and if it is {
             print('Found function body')
+            print(params)
+            # exit()
             list_block_items, tokens = parse_block(tokens)
             return FunDecl(name=identifier, params=params, fun_type=decl_type, body=Block(list_block_items), storage_class=storage_class), tokens
         else:
@@ -611,6 +604,8 @@ def parse_func_decl(tokens, func_name: Identifier, _type, storage_class) -> Tupl
             return FunDecl(name=func_name, params=params, fun_type=_type, body=Null(), storage_class=storage_class), tokens  # Function prototype
 
         elif next_token == '{':
+            print(params)
+            # exit()
             body, tokens = parse_block(tokens)
             return FunDecl(name=func_name, params=params, fun_type=_type, body=body, storage_class=storage_class), tokens  # Function definition
 
@@ -1022,13 +1017,15 @@ def parse_factor(tokens: List[str]):
         # 2. If it's one of the unary operators
         elif next_token in ("-", "~", "!",'*','&') or next_token.startswith('&') or next_token.startswith('*'):
             print('Found unary operator',tokens[0])
-            # exit()
             
             operator_token, tokens = take_token(tokens)
             operator = parse_unop(operator_token)
             # Parse the sub-expression after the unary operator
             expr, tokens = parse_factor(tokens)
-            # print(expr)
+            if operator == UnaryOperator.AMPERSAND:
+                return AddOf(expr), tokens
+            elif operator == UnaryOperator.DEREFERENCE:
+                return Dereference(expr), tokens
             return Unary(operator=operator, expr=expr), tokens
         elif isIdentifier(next_token) and  not isKeyword(next_token) and tokens[1]=='(':
             # ##'inside func')
