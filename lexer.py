@@ -87,7 +87,7 @@ def lex(data):
     }
     allowed_after_constant = {
         ';', ' ', '\t', '\n', '(', ')', '{', '}', '+', '-', '*', '/', '%',
-        '=', '<', '>', '!', '&', '|', '~', ',', ':', '?','e','E','.','u','L','l','U'
+        '=', '<', '>', '!', '&', '|', '~', ',', ':', '?','e','E','.','u','L','l','U',']','[',
     }
     while data:
         # 1) Skip leading whitespace
@@ -107,7 +107,6 @@ def lex(data):
                 # Optional: Check for invalid identifier (digit start)
                 if token_type == "Identifier" and token_value and token_value[0].isdigit():
                     raise ValueError(f"Invalid identifier: '{token_value}' cannot start with a digit.")
-
                 # Save the token
                 if token_type in constant_token_types:
                     for i in range(0,len(token_value)):
