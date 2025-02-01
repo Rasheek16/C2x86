@@ -102,6 +102,17 @@ class Data(Operand):
     def __repr__(self):
         return f"Data(identifier={self.identifier})"
 
+class Memory(Operand):
+    """
+    A pseudo identifier (Grammar: Pseudo(identifier)).
+    """
+    def __init__(self, reg,_int):
+        self.reg = reg
+        self._int = _int 
+        
+
+    def __repr__(self):
+        return f"Memory(reg={self.reg},_int={self._int})"
 
 # Optional: If you want a named 'Register' class:
 # class Register(Operand):
@@ -411,6 +422,15 @@ class Cvtsi2sd(Instruction):
         return self._type
     def __repr__(self):
         return f'Cvtsi2sd(Operand1={self.src},assemby_type={self._type},Operand2 ={self.dst})'
+class Lea(Instruction):
+    def __init__(self, src , dst):
+        # super().__init__(assembly_type)
+        # self._type=src_type
+        self.src=src
+        self.dst=dst
+
+    def __repr__(self):
+        return f'Lea(src={self.src},dst ={self.dst})'
 
 # ------------------
 # Operator Constants
@@ -486,6 +506,7 @@ class Registers:
     R10 = "R10" # General-Purpose Register: available for various operations
     R11 = "R11" # General-Purpose Register: available for various operations
     SP='SP'
+    BP='BP'
     XMM0 ='XMM0'
     XMM1 ='XMM1'
     XMM2 ='XMM2'
