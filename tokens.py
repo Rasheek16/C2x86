@@ -5,6 +5,8 @@ patterns = [
      ("int_keyword", r"int\b"),
      ("void_keyword", r"void\b"),
      ("return_keyword", r"return\b"),
+     ('Open_bracket',r'\['),
+     ('Close_bracket',r'\]'),
      ("Open_parenthesis", r"\("),
      ("Close_parenthesis", r"\)"),
      ("Open_brace", r"{"),
