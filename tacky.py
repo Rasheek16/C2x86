@@ -335,6 +335,54 @@ class TackyTruncate(TackyInstruction):
     def __repr__(self):
         return f"TackyTruncate(src={self.src}, dst={self.dst})"
 
+class TackyGetAddress(TackyInstruction):
+    def __init__(self,src,dst):
+        self.src = src
+        self.dst = dst
+         
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+        
+    def __repr__(self):
+        return f'TackyGetAddress(source={self.src} , destination = {self.dst})'
+        
+class TackyLoad(TackyInstruction):
+    def __init__(self,src_ptr,dst):
+        self.src_ptr = src_ptr
+        self.dst = dst
+         
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+        
+    def __repr__(self):
+        return f'TackyLoad(source={self.src_ptr} , destination = {self.dst})'
+
+
+class TackyStore(TackyInstruction):
+    def __init__(self,src,dst_ptr):
+        self.src = src
+        self.dst_ptr = dst_ptr
+         
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+        
+    def __repr__(self):
+        return f'TackyStore(source={self.src} , destination = {self.dst_ptr})'
+    
+    
+class PlainOperand():
+    def __init__(self, val):
+        self.val=val
+    def __repr__(self):
+        return f'PlainOperand(val={self.val})'
+        super(CLASS_NAME, self).__init__(*args, **kwargs)
+
+class DereferencedPointer():
+    def __init__(self, val):
+        self.val=val
+    def __repr__(self):
+        return f'DereferencedPointer(val={self.val})'
+
+class TackyExpResult():
+    PlainOperand=PlainOperand
+    DereferencedOperand=DereferencedPointer
 
 # ------------------
 # Val = Constant(int) | Var(identifier)
