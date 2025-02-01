@@ -102,6 +102,8 @@ def make_temporary(symbols,var_type,isDouble=None) -> TackyVar:
     Generate a fresh temporary variable name each time we call it,
     e.g., "tmp.0", "tmp.1", etc.
     """
+    print('Making temp var')
+    
     global temp_counter
     name = f"tmp.{temp_counter}"
     temp_counter += 1
@@ -113,6 +115,7 @@ def make_temporary(symbols,var_type,isDouble=None) -> TackyVar:
         
         
     }
+    print('Returning temp var')
     return TackyVar(name)
 
 def convert_unop(op: str) -> str:
@@ -153,6 +156,18 @@ def convert_binop(operator_token: str) -> str:
     else:
         raise ValueError(f"Unknown binary operator: {operator_token}")
 
+def emit_tacky_expr_and_convert(e, instructions, symbols):
+ 
+    result = emit_tacky_expr(e, instructions,symbols)
+    if isinstance(result,PlainOperand):
+        return result.val
+    elif isinstance(result,DereferencedPointer):
+        dst = make_temporary(symbols,e.get_type())
+        instructions.append(TackyLoad(result.val, dst))
+        return dst
+    else:
+        raise ValueError('Invalid operand',result)
+
 def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[TackyConstant, TackyVar]:
     """
     Generate Tacky IR instructions for a single expression node.
@@ -162,30 +177,30 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
     if isinstance(expr, Constant):
         # print(expr)
         if not isinstance(expr.value,(ConstInt,ConstLong,ConstUInt,ConstULong,ConstDouble)):
-            return TackyConstant(expr.value._int)
-        return TackyConstant(expr.value)
+            return PlainOperand(TackyConstant(expr.value._int))
+        return PlainOperand(TackyConstant(expr.value))
     elif isinstance(expr, Var):
         # print(expr)
         # exit()
-        return TackyVar(expr.identifier.name)
+        return PlainOperand(TackyVar(expr.identifier.name))
     elif isinstance(expr, Assignment):
-        #print(symbols)
-        #print('in assignment',expr)
-        #print('RHS IN ASSIGNMENT',expr.right)
         
-        # Process the right-hand side expression
-        rhs = emit_tacky_expr(expr.right, instructions,symbols)
-        #print('rhs')
-        # Ensure the left-hand side is a variable
-        if isinstance(expr.left, Var):
-            lhs = TackyVar(expr.left.identifier.name)
-            instructions.append(TackyCopy(source=rhs, destination=lhs))
-            return lhs  # Return the assigned variable
+        rval = emit_tacky_expr_and_convert(expr.right, instructions,symbols)
+        
+        lval=emit_tacky_expr(expr.left,instructions,symbols)
+        if isinstance(lval,PlainOperand):
+            
+            instructions.append(TackyCopy(rval, lval.val))
+            return lval
+        elif isinstance(lval,DereferencedPointer): 
+            instructions.append(TackyStore(rval, lval.val))
+            return PlainOperand(rval)
         else:
+            # print('Here')
             raise TypeError(f"Unsupported assignment target: {type(expr.left)}")
     elif isinstance(expr, Unary):
         # Handle the Unary case recursively
-        src_val = emit_tacky_expr(expr.expr, instructions,symbols)
+        src_val = emit_tacky_expr_and_convert(expr.expr, instructions,symbols)
         # print(expr)
         # Allocate a new temporary variable for the result
         print(expr)
@@ -201,20 +216,20 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         # Append the TackyUnary instruction to the instructions list
         instructions.append(TackyUnary(operator=tacky_op, src=src_val, dst=dst_var))
 
-        return dst_var
+        return PlainOperand(dst_var)
     elif isinstance(expr, If):
         # The 'If' expression is handled in emit_statement
         raise NotImplementedError("If expressions should be handled in emit_statement.")
     elif isinstance(expr, Conditional):
         # Handle the conditional (ternary) operator
-        condition_var = emit_tacky_expr(expr.condition, instructions,symbols)
+        condition_var = emit_tacky_expr_and_convert(expr.condition, instructions,symbols)
         e2_label = get_e2_label()
         end_label = get_end_label()
 
         instructions.append(TackyJumpIfZero(condition=condition_var, target=e2_label))
 
         # True branch
-        e1_var = emit_tacky_expr(expr.exp2, instructions,symbols)
+        e1_var = emit_tacky_expr_and_convert(expr.exp2, instructions,symbols)
       
         tmp_result = make_temporary(symbols,expr.get_type())
         
@@ -224,13 +239,13 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         instructions.append(TackyLabel(e2_label))
 
         # False branch
-        e2_var = emit_tacky_expr(expr.exp3, instructions,symbols)
+        e2_var = emit_tacky_expr_and_convert(expr.exp3, instructions,symbols)
         instructions.append(TackyCopy(source=e2_var, destination=tmp_result))
 
         instructions.append(TackyLabel(end_label))
-        return tmp_result
+        return PlainOperand(tmp_result)
     elif isinstance(expr,Cast):      
-        result  = emit_tacky_expr(expr.exp,instructions,symbols=symbols)
+        result  = emit_tacky_expr_and_convert(expr.exp,instructions,symbols=symbols)
         inner_type = expr.exp._type
         t = expr.target_type
         if t==inner_type:
@@ -242,7 +257,13 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
         # x+=1
         # print(expr)
         # print(t)
-        # print(inner_type)
+        print(inner_type)
+        if isinstance(t,Pointer):
+            t=ULong()
+        if isinstance(inner_type,Pointer):
+            inner_type=ULong()
+        # print(size(t))
+        # exit()
         if size(t)==size(inner_type):
             instructions.append(TackyCopy(result,dst_name))
         elif size(t) < size(inner_type) and isinstance(inner_type,Double):
@@ -261,10 +282,8 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
             instructions.append(TackySignExtend(result,dst_name))
         else:
             instructions.append(TackyZeroExtend(result,dst_name))
-        # if x == 3:
-        #     print(instructions)
-        #     exit()
-        return dst_name
+      
+        return PlainOperand(dst_name)
   
     elif isinstance(expr, Binary):
         if expr.operator in ('And', 'Or'):
@@ -278,8 +297,8 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
             # exit()
             
             # Handle regular binary operations
-            v1 = emit_tacky_expr(expr.left, instructions,symbols)
-            v2 = emit_tacky_expr(expr.right, instructions,symbols)
+            v1 = emit_tacky_expr_and_convert(expr.left, instructions,symbols)
+            v2 = emit_tacky_expr_and_convert(expr.right, instructions,symbols)
             # print(v1)
             # exit()
             # Generate a unique temporary variable name to store the result
@@ -317,22 +336,19 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
             # exit()
             # Return the destination variable that holds the result of the binary operation
             
-            return dst_var
-        
-        
-
+            return PlainOperand(dst_var)
     elif isinstance(expr, FunctionCall):
         # Handle function calls
         # 1. Evaluate each argument
         arg_vals = []
         for arg in expr.args:
-            arg_val = emit_tacky_expr(arg, instructions,symbols)
+            arg_val = emit_tacky_expr_and_convert(arg, instructions,symbols)
             arg_vals.append(arg_val)
         
         # 2. Generate a new temporary to hold the function call's result
         dst_var = make_temporary(symbols,expr.get_type())
-        print('result of funcall',symbols[dst_var.identifier])
-        print(symbols)
+        # print('result of funcall',symbols[dst_var.identifier])
+        # print(symbols)
         # exit()
         # 3. Emit the TackyFunCall instruction
         instructions.append(TackyFunCall(
@@ -341,12 +357,28 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict]) -> Union[Ta
             dst=dst_var
         ))
         
+        # print('Here')
         # 4. Return the temporary holding the result
-        return dst_var
+        return PlainOperand(dst_var)
+    elif isinstance(expr,Dereference):
+        result = emit_tacky_expr_and_convert(expr.exp, instructions, symbols)
+        return DereferencedPointer(result)
+    
     elif isinstance(expr,(IntInit,LongInit,DoubleInit)):
         # print('iofdszh;g')
         return Constant(expr.value)
         # pass 
+    elif isinstance(expr,AddOf):
+        v = emit_tacky_expr(expr.exp, instructions, symbols)
+        if isinstance(v,PlainOperand):
+            print('here')
+            print(expr.get_type())
+            dst = make_temporary(symbols,expr.get_type())
+            print('DST')
+            instructions.append(TackyGetAddress(v.val, dst))
+            return PlainOperand(dst)
+        elif isinstance(v,DereferencedPointer):
+            return PlainOperand(v.val)
     else: 
         #print(expr)
         raise TypeError(f"Unsupported expression type: {type(expr)}")
@@ -355,7 +387,7 @@ def emit_and_expr(expr: Binary, instructions: list,symbols) -> TackyVar:
     """
     Emits Tacky instructions for logical 'And' expressions with short-circuit evaluation.
     """
-    v1 = emit_tacky_expr(expr.left, instructions,symbols)
+    v1 = emit_tacky_expr_and_convert(expr.left, instructions,symbols)
     false_label = get_false_label()
     end_label = get_end_label()
 
@@ -363,7 +395,7 @@ def emit_and_expr(expr: Binary, instructions: list,symbols) -> TackyVar:
     instructions.append(TackyJumpIfZero(condition=v1, target=false_label))
 
     # Evaluate the second operand
-    v2 = emit_tacky_expr(expr.right, instructions,symbols)
+    v2 = emit_tacky_expr_and_convert(expr.right, instructions,symbols)
 
     # If v2 is zero, jump to false_label
     instructions.append(TackyJumpIfZero(condition=v2, target=false_label))
@@ -381,13 +413,13 @@ def emit_and_expr(expr: Binary, instructions: list,symbols) -> TackyVar:
     # End label
     instructions.append(TackyLabel(end_label))
 
-    return result_var
+    return PlainOperand(result_var)
 
 def emit_or_expr(expr: Binary, instructions: list,symbols) -> TackyVar:
     """
     Emits Tacky instructions for logical 'Or' expressions with short-circuit evaluation.
     """
-    v1 = emit_tacky_expr(expr.left, instructions,symbols)
+    v1 = emit_tacky_expr_and_convert(expr.left, instructions,symbols)
     true_label = get_true_label()
     end_label = get_end_label()
 
@@ -395,7 +427,7 @@ def emit_or_expr(expr: Binary, instructions: list,symbols) -> TackyVar:
     instructions.append(TackyJumpIfNotZero(condition=v1, target=true_label))
 
     # Evaluate the second operand
-    v2 = emit_tacky_expr(expr.right, instructions,symbols)
+    v2 = emit_tacky_expr_and_convert(expr.right, instructions,symbols)
 
     # If v2 is non-zero, jump to true_label
     instructions.append(TackyJumpIfNotZero(condition=v2, target=true_label))
@@ -414,7 +446,7 @@ def emit_or_expr(expr: Binary, instructions: list,symbols) -> TackyVar:
     # End label
     instructions.append(TackyLabel(end_label))
 
-    return result_var
+    return PlainOperand(result_var)
 
 def emit_statement(stmt, instructions: List[TackyInstruction],symbols:Optional[dict]):
     # #print(stmt)
@@ -479,7 +511,7 @@ def emit_if_statement(stmt: If, instructions: List[TackyInstruction],symbols):
     """
     Emits Tacky instructions for an If statement.
     """
-    condition_var = emit_tacky_expr(stmt.exp, instructions,symbols)
+    condition_var = emit_tacky_expr_and_convert(stmt.exp, instructions,symbols)
     else_label = get_false_label()
     end_label = get_end_label()
 
@@ -515,13 +547,13 @@ def emit_loop_statement(stmt, instructions: List[TackyInstruction],symbols:Optio
         instructions.append(TackyLabel(start_label))
         emit_statement(stmt.body, instructions,symbols)
         instructions.append(TackyLabel(continue_label))
-        condition_var = emit_tacky_expr(stmt._condition, instructions,symbols)
+        condition_var = emit_tacky_expr_and_convert(stmt._condition, instructions,symbols)
         instructions.append(TackyJumpIfNotZero(condition=condition_var, target=start_label))
         instructions.append(TackyLabel(break_label))
     elif isinstance(stmt, While):
         # While Loop: Evaluate condition first
         instructions.append(TackyLabel(continue_label))
-        condition_var = emit_tacky_expr(stmt._condition, instructions,symbols)
+        condition_var = emit_tacky_expr_and_convert(stmt._condition, instructions,symbols)
         instructions.append(TackyJumpIfZero(condition=condition_var, target=break_label))
         emit_statement(stmt.body, instructions,symbols)
         instructions.append(TackyJump(target=continue_label))
@@ -538,7 +570,7 @@ def emit_loop_statement(stmt, instructions: List[TackyInstruction],symbols:Optio
         instructions.append(TackyLabel(start_label))
         # print(stmt.condition)
         if stmt.condition and not isinstance(stmt.condition, Null):
-            condition_var = emit_tacky_expr(stmt.condition, instructions,symbols)
+            condition_var = emit_tacky_expr_and_convert(stmt.condition, instructions,symbols)
             # print('cv',condition_var)
             # exit()
             instructions.append(TackyJumpIfZero(condition=condition_var, target=break_label))
@@ -609,7 +641,7 @@ def convert_fun_decl_to_tacky(fun_decl: FunDecl,symbols) -> TackyFunction:
     # if not has_return:
     
     # if fun_decl.name.name=='main':
-    instructions.append(TackyReturn(val=TackyConstant(ConstInt(0,exp_type=Int()))))
+    instructions.append(TackyReturn(PlainOperand(val=TackyConstant(ConstInt(0,exp_type=Int())))))
     
     return TopLevel.tack_func(
         identifier=fun_decl.name.name,
@@ -650,7 +682,7 @@ def emit_tacky_program(ast_program: Program,symbols) -> TackyProgram:
     #     i.init=emit_tacky_expr(i.init,instructions,symbols)
     #     tacky_symbols.append(i)
     
-    print(symbols)
+    # print(symbols)
     # exit(0)
     # output=emit_tacky_expr(s,instructions)
     # tack_symbols.extend(output)
