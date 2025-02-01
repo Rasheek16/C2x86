@@ -3,6 +3,7 @@ from typing import Optional, List
 from type_classes import *
 import sys
 
+x=0
 
 def size(_type):
     if type(_type)==type(Int()):
@@ -108,16 +109,16 @@ def convert_to(e: Exp, t: any):
 def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
    
     if not isinstance(decl.init, Null):
-
         typecheck_exp(decl.init, symbols)
     
     # print(decl.init)
     if isinstance(decl.var_type,Pointer):
         if (not isinstance(decl.init,Null) and not isinstance(decl.init,AddOf)) and isinstance(decl.storage_class,Static):
             raise ValueError('Static pointer initialized with non pointer value.')
-        elif isinstance(decl.init,Null) or isinstance(decl.init,Constant):
-            new_init = Initial(Constant(StaticInit.ULongInit(Const.constLong(int(0)))))
-    elif isinstance(decl.init,Constant):
+        elif isinstance(decl.init,Constant) and decl.init.value._int==0:
+            new_init = Initial(Constant(StaticInit.ULongInit(Const.constULong(int(0)))))
+        
+    if isinstance(decl.init,Constant):
         if isinstance(decl.var_type,Int):
             new_init = Initial(Constant(StaticInit.IntInit(Const.constInt(int(decl.init.value._int)))))
         elif isinstance(decl.var_type,UInt):
@@ -125,10 +126,11 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
         elif isinstance(decl.var_type,Long):
             new_init = Initial(Constant(StaticInit.LongInit(Const.constLong(int(decl.init.value._int)))))
         elif isinstance(decl.var_type,ULong):
-            new_init = Initial(Constant(StaticInit.ULongInit(Const.constLong(int(decl.init.value._int)))))
+            new_init = Initial(Constant(StaticInit.ULongInit(Const.constULong(int(decl.init.value._int)))))
         elif isinstance(decl.var_type,Double):
             new_init = Initial(Constant(StaticInit.DouleInit(Const.constDouble(float(decl.init.value._int)))))
     elif isinstance(decl.init, Null):
+        # print('Pointer')
         if isinstance(decl.storage_class, Extern):
             new_init = NoInitializer()
         else:
@@ -367,15 +369,16 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
             stmts=[]
             for stmt in decl.body:
                 if not isinstance(stmt, Return):
-                    print('Type checking statement',stmt,decl.fun_type.base_type)  
-                    # exit()
+                    print('\nType checking statement',stmt,decl.fun_type.base_type)  
                     typecheck_statement(stmt, symbols, decl.fun_type.base_type)
+                    print('\nType checking statement end',stmt,decl.fun_type.base_type)  
+                    # exit()
                   
                 else:
                     print('Found return')
                     # exit()
                     if stmt.exp is not None and not isinstance(stmt.exp, Null):
-                        typed_return = typecheck_exp(stmt.exp, symbols, decl.fun_type)
+                        typed_return = typecheck_exp(stmt.exp, symbols, decl.fun_type.base_type)
                         cast=convert_to(typed_return, decl.fun_type)
                         stmts.append(cast)
                         
@@ -445,15 +448,21 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
 
     elif isinstance(e, Return):
-        print('Return Expression')
-        exit()
+        global x
+        if x==1:
+            print('\nReturn Expression',e,func_type)
+            # exit()
+        # x+=1
         if e.exp is not None and not isinstance(e.exp, Null):
             if func_type is not None:
-                print(func_type)
-                # exit()
                 e.exp=typecheck_exp(e.exp, symbols, func_type)    
                 e.exp=convert_by_assignment(e.exp, func_type)
+                if x==1:            
+                    print(e)
+                    # exit()
+                x+=1
                 return e
+        x+=1
         return e
 
     elif isinstance(e, Constant):
@@ -527,12 +536,16 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
                 common_type = get_common_type(t1, t2)
             converted_e1 = convert_to(typed_e1, common_type)
             converted_e2 = convert_to(typed_e2, common_type)
-            if e.operator==BinaryOperator.EQUAL:
-                equality_exp = Binary(BinaryOperator.EQUAL, converted_e1, converted_e2)
-            else: 
-                equality_exp=Binary(BinaryOperator.NOT_EQUAL,converted_e1,converted_e2)
-            equality_exp.set_type(Int())
-            return equality_exp
+            # if e.operator==BinaryOperator.EQUAL:
+            e.left=converted_e1
+            e.right=converted_e2
+                # equality_exp = Binary(BinaryOperator.EQUAL, converted_e1, converted_e2)
+            # else: 
+                # equality_exp=Binary(BinaryOperator.NOT_EQUAL,converted_e1,converted_e2)
+            e.set_type(Int())
+            print(e)
+            # exit()
+            return e
         # elif (isinstance(e.left,Pointer) or isinstance(e.right,Pointer)) and e.operator in (BinaryOperator.DIVIDE,BinaryOperator.MULTIPLY,BinaryOperator.REMAINDER):
         #     raise SyntaxError('Cannot perform arithmetic operations on pointers')
         # elif (isinstance(e.left,Pointer) and not isinstance(e.right,Pointer)
@@ -648,24 +661,25 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         # exit()
         if not isinstance(typed_inner.get_type(), Pointer):
             raise SyntaxError("Dereference operator applied to non-pointer type")
-        deref_exp = Dereference(typed_inner)
-        deref_exp.set_type(typed_inner.get_type().ref)
-        print(deref_exp)
+        e.exp=typed_inner
+        # deref_exp = Dereference(typed_inner)
+        e.set_type(typed_inner.get_type().ref)
+        # print(deref_exp)
         
         # exit()
-        return deref_exp
+        return e
     
     elif isinstance(e, AddOf):
         
         if not isinstance(e.exp, Constant):
             typed_inner = typecheck_exp(e.exp, symbols)
             referenced_t = typed_inner.get_type()
-            addr_exp = AddOf(typed_inner)
-            addr_exp.set_type(Pointer(referenced_t))
+            e.exp= typed_inner
+            e.set_type(Pointer(referenced_t))
             if func_type is not None and isinstance(func_type,Pointer):
-                if type(addr_exp.get_type().ref) != type(func_type.ref):
+                if type(e.get_type().ref) != type(func_type.ref):
                     raise ValueError('Invalid return value')
-            return addr_exp
+            return e
         else:
             raise SyntaxError("Address-of operator applied to non-variable")
 
@@ -760,12 +774,11 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
         typecheck_exp(statement, symbols, fun_type)
 
     elif isinstance(statement, Return):
-            print('Return statement')
+            
+            
 
-            if fun_type is not None:
-                typecheck_exp(statement.exp, symbols, fun_type)
-            else:
-                typecheck_exp(statement.exp, symbols,fun_type)
+           
+            typecheck_exp(statement, symbols,fun_type)
 
     elif isinstance(statement, (Expression, Assignment, Binary, Unary)):
         typecheck_exp(statement, symbols, fun_type)
