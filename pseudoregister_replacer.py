@@ -75,23 +75,20 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
                                 pseudo_map[name] = current_offset
                                 operand = Stack(current_offset)
                                 return operand
-
                             else:
                                 print('Found here')
                                 print(name)
                                 current_offset -= 8  # Adjust offset for next allocation
                                 current_offset = align_offset(current_offset, 8)
                                 pseudo_map[name] = current_offset
-                    
-                    
                                 operand = Stack(current_offset)
-                                # exit()
+                                # e
                                 return operand
                     else:
                         print(name.identifier)
                         print(name.identifier in backend_Symbol_table)
                         print(backend_Symbol_table)
-                        # exit()
+                        exit()
                             # current_offset -= 8  # Adjust offset for next allocation
                             # current_offset = align_offset(current_offset, 8)
                             # pseudo_map[name] = current_offset
@@ -171,6 +168,10 @@ def replace_pseudoregisters(assembly_program: AssemblyProgram, symbols: Dict[str
             elif isinstance(instr,Cvttsd2si):
                 instr.src=replace_pseudo_with_operand(instr.src)
                 instr.dst=replace_pseudo_with_operand(instr.dst)
+            elif isinstance(instr,Lea):
+                instr.src=replace_pseudo_with_operand(instr.src)
+                instr.dst=replace_pseudo_with_operand(instr.dst)
+
                 
             elif isinstance(instr, (AllocateStack, Ret, Cdq, JmpCC, Jmp, Label, Call, DeallocateStack, Imm)):
                 # These instructions do not contain Pseudo operands; no action needed
