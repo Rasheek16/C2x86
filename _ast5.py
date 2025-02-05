@@ -66,6 +66,14 @@ class Pointer(Type):
     def __repr__(self):
         return f'Pointer(referenced={self.ref})'
     
+
+class Array(Type):
+    def __init__(self,_type:Type,_int):
+        self._type = _type
+        self._int = _int 
+    
+    def __repr__(self):
+        return f'Array(type={self._type}, int = {self._int})'
     
     
 class AbstractPointer():
@@ -75,6 +83,14 @@ class AbstractPointer():
     def __repr__(self):
         return f'AbstractPointer(abstract_declarator={self.abstract_declarator})'
     
+
+class AbstractArray():
+    def __init__(self, abstract_declarator,size):
+        self.abstract_declarator=abstract_declarator
+        self.size=size
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+    def __repr__(self):
+        return f'AbstractArray(abstract_declarator={self.abstract_declarator}, size={self.size}'
     
     
 class AbstractBase():
@@ -84,11 +100,42 @@ class AbstractBase():
     def __repr__(self):
         return f'AbstractBase()'
 
+class ArrayDeclarator():
+    def __init__(self,declartor,size):
+        self.declarator=declartor
+        self.size=size
+        
+    def __repr__(self):
+        return f'ArrayDeclarator(declarator={self.declarator},size={self.size})'
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+    
 
 class AbstractDeclarator:
     AbstractBase=AbstractBase
     AbstractPointer=AbstractPointer
 
+
+class Initializer():    
+    def __init__(self):
+        pass
+    
+class SingleInit(Initializer):
+    def __init__(self,exp):
+        self.exp = exp 
+    
+    def __repr__(self):
+        return f'SingleInit(exp={self.exp})'
+        
+        
+class CompoundInit(Initializer):
+    def __init__(self,initialzier:List[Initializer]):
+        self.initializer=initialzier 
+    
+    def __repr__(self):
+        return f'"    body={'[\n          '+ 
+                ",\n        ".join(repr(instr) for instr in self.initializer) +
+                "\n    ]\n"}'
+    
     
 
 
@@ -314,6 +361,18 @@ class ConstULong(Exp):
         return f'ConstULong(Long={self._int},type={self._type})'
         
         
+        
+        
+class Subscript(Exp):
+    def __init__(self,exp1,exp2):
+        self.exp1=exp1
+        self.exp2=exp2 
+    
+    def __repr__(self):
+        return f'Subscript(exp1={self.exp1},exp2={self.exp2})'
+    
+
+
 class Const():
     constInt=ConstInt
     constLong=ConstLong 
@@ -617,7 +676,7 @@ class FunDecl():
 
 class VarDecl():
     
-    def __init__(self,name:Identifier,init:Optional[Exp],var_type:Type,storage_class:Optional[StorageClass]=None):
+    def __init__(self,name:Identifier,init:Optional[Initializer],var_type:Type,storage_class:Optional[StorageClass]=None):
         self.var_type=var_type
         self.name=name
         self.init=init
