@@ -106,10 +106,20 @@ def convert_to(e: Exp, t: any):
     return cast_exp
 
 
+def typecheck_exp_and_convert(e,symbols):
+    typed_e = typecheck_exp_and_convert(e, symbols)
+    
+    if isinstance(typed_e.get_type(),Array):
+        addr_exp = AddOf(typed_e)
+        addr_exp.set_type(Pointer(typed_e._type))
+        return addr_exp
+    
+    return typed_e
+
 def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
    
     if not isinstance(decl.init, Null):
-        typecheck_exp(decl.init, symbols)
+        typecheck_exp_and_convert(decl.init, symbols)
     
     # print(decl.init)
     if isinstance(decl.var_type,Pointer):
@@ -194,7 +204,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
         'Double':decl.var_type,
     }
 
-x1=0
+
 def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
    
     try:
@@ -261,7 +271,7 @@ def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
             }
             
             if not isinstance(decl.init, Null):
-                x = typecheck_exp(decl.init, symbols)
+                x = typecheck_exp_and_convert(decl.init, symbols)
                 if isinstance(decl.var_type,Pointer) and ((isinstance(x,Constant) or isinstance(x,Var)) and not isinstance(x.get_type(),Pointer)):
                     print(decl.var_type)
                     print(isinstance(x.get_type(),Int))
@@ -348,7 +358,7 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
                     
                 else:
                     if stmt.exp is not None and not isinstance(stmt.exp, Null):
-                        typed_return = typecheck_exp(stmt.exp, symbols, fun_type.base_type) 
+                        typed_return = typecheck_exp_and_convert(stmt.exp, symbols, fun_type.base_type) 
                         convert_to(typed_return, decl.fun_type)
     else:
         if is_block_scope:
@@ -378,7 +388,7 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
                     print('Found return')
                     # exit()
                     if stmt.exp is not None and not isinstance(stmt.exp, Null):
-                        typed_return = typecheck_exp(stmt.exp, symbols, decl.fun_type.base_type)
+                        typed_return = typecheck_exp_and_convert(stmt.exp, symbols, decl.fun_type.base_type)
                         cast=convert_to(typed_return, decl.fun_type)
                         stmts.append(cast)
                         
@@ -416,7 +426,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         converted_args = []
         params = [val._type for val in f_type.params]
         for (arg, paramType) in zip(e.args, params):
-            typed_arg = typecheck_exp(arg, symbols)  
+            typed_arg = typecheck_exp_and_convert(arg, symbols)  
             print('Typed arg',typed_arg)
             print('Param type',paramType)
             if isinstance(paramType,Pointer):
@@ -455,7 +465,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         # x+=1
         if e.exp is not None and not isinstance(e.exp, Null):
             if func_type is not None:
-                e.exp=typecheck_exp(e.exp, symbols, func_type)    
+                e.exp=typecheck_exp_and_convert(e.exp, symbols, func_type)    
                 e.exp=convert_by_assignment(e.exp, func_type)
                 if x==1:            
                     print(e)
@@ -489,7 +499,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
 
     elif isinstance(e, Cast):
         print('Inside cast')
-        typed_inner = typecheck_exp(e.exp, symbols)
+        typed_inner = typecheck_exp_and_convert(e.exp, symbols)
         e.exp = typed_inner
         
         if( isinstance(e.target_type,Pointer) and isinstance(typed_inner.get_type(),Double))or ( 
@@ -500,8 +510,11 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
 
     elif isinstance(e, Assignment):
-        type_left = typecheck_exp(e.left, symbols)
-        type_right = typecheck_exp(e.right, symbols)
+        
+        
+        type_left = typecheck_exp_and_convert(e.left, symbols)
+        type_right = typecheck_exp_and_convert(e.right, symbols)
+        
        
         left_type = type_left.get_type()
         print('Type Left',type_left)
@@ -520,9 +533,9 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
     elif isinstance(e, Binary):
         print('Binary',e)
         if e.operator in (BinaryOperator.EQUAL,BinaryOperator.NOT_EQUAL):
-            typed_e1 = typecheck_exp(e.left, symbols)
+            typed_e1 = typecheck_exp_and_convert(e.left, symbols)
     
-            typed_e2 = typecheck_exp(e.right, symbols)
+            typed_e2 = typecheck_exp_and_convert(e.right, symbols)
             t1 = typed_e1.get_type()
             t2 = typed_e2.get_type()
             print('In Binary')
@@ -556,8 +569,8 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         #     raise SyntaxError('Cannot perform comparison between on pointer and non pointer')
         else:
            
-            typed_e1 = typecheck_exp(e.left, symbols)
-            typed_e2 = typecheck_exp(e.right, symbols)
+            typed_e1 = typecheck_exp_and_convert(e.left, symbols)
+            typed_e2 = typecheck_exp_and_convert(e.right, symbols)
         
             if e.operator in (BinaryOperator.MULTIPLY, BinaryOperator.DIVIDE, BinaryOperator.REMAINDER):
                 if isinstance(typed_e1.get_type(),Pointer) or isinstance(typed_e2.get_type(),Pointer):
@@ -610,7 +623,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
                 return e
       
     elif isinstance(e, Unary):
-        inner = typecheck_exp(e.expr, symbols)
+        inner = typecheck_exp_and_convert(e.expr, symbols)
         e.expr = inner
         if e.operator == UnaryOperator.NOT:
             e.set_type(Int())
@@ -631,9 +644,9 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
 
     elif isinstance(e, Conditional):
-        typed_condition = typecheck_exp(e.condition, symbols) if e.condition else None
-        typed_exp2 = typecheck_exp(e.exp2, symbols) if e.exp2 else None
-        typed_exp3 = typecheck_exp(e.exp3, symbols) if e.exp3 else None
+        typed_condition = typecheck_exp_and_convert(e.condition, symbols) if e.condition else None
+        typed_exp2 = typecheck_exp_and_convert(e.exp2, symbols) if e.exp2 else None
+        typed_exp3 = typecheck_exp_and_convert(e.exp3, symbols) if e.exp3 else None
 
         if typed_exp2 is None or typed_exp3 is None:
             raise SyntaxError("Malformed Conditional expression")
@@ -656,7 +669,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
 
     elif isinstance(e,Dereference):
-        typed_inner = typecheck_exp(e.exp, symbols)
+        typed_inner = typecheck_exp_and_convert(e.exp, symbols)
         print(typed_inner)
         # exit()
         if not isinstance(typed_inner.get_type(), Pointer):
@@ -717,11 +730,11 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
         pass
 
     elif isinstance(statement, Expression):
-        typecheck_exp(statement.exp, symbols, fun_type)
+        typecheck_exp_and_convert(statement.exp, symbols, fun_type)
 
     elif isinstance(statement, (While, For, DoWhile)):
         if isinstance(statement, While):
-            typecheck_exp(statement._condition, symbols, fun_type)
+            typecheck_exp_and_convert(statement._condition, symbols, fun_type)
             typecheck_statement(statement.body, symbols, fun_type)
         elif isinstance(statement, For):
             if isinstance(statement.init, InitDecl):
@@ -737,14 +750,14 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
                 typecheck_statement(statement.init, symbols, fun_type)
 
             if statement.condition:
-                typecheck_exp(statement.condition, symbols, fun_type)
+                typecheck_exp_and_convert(statement.condition, symbols, fun_type)
             if statement.post:
-                typecheck_exp(statement.post, symbols, fun_type)
+                typecheck_exp_and_convert(statement.post, symbols, fun_type)
             typecheck_statement(statement.body, symbols, fun_type)
 
         elif isinstance(statement, DoWhile):
             typecheck_statement(statement.body, symbols, fun_type)
-            typecheck_exp(statement._condition, symbols, fun_type)
+            typecheck_exp_and_convert(statement._condition, symbols, fun_type)
 
     elif isinstance(statement, Compound):
         for stmt in statement.block:
@@ -762,35 +775,35 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
             raise TypeError(f"Unsupported declaration type in D: {type(statement.declaration)}")
 
     elif isinstance(statement, Conditional):
-        typecheck_exp(statement, symbols, fun_type)
+        typecheck_exp_and_convert(statement, symbols, fun_type)
 
     elif isinstance(statement, If):
-        typecheck_exp(statement.exp, symbols, fun_type)
+        typecheck_exp_and_convert(statement.exp, symbols, fun_type)
         typecheck_statement(statement.then, symbols, fun_type)
         if statement._else:
             typecheck_statement(statement._else, symbols, fun_type)
 
     elif isinstance(statement, FunctionCall):
-        typecheck_exp(statement, symbols, fun_type)
+        typecheck_exp_and_convert(statement, symbols, fun_type)
 
     elif isinstance(statement, Return):
             
             
 
            
-            typecheck_exp(statement, symbols,fun_type)
+            typecheck_exp_and_convert(statement, symbols,fun_type)
 
     elif isinstance(statement, (Expression, Assignment, Binary, Unary)):
-        typecheck_exp(statement, symbols, fun_type)
+        typecheck_exp_and_convert(statement, symbols, fun_type)
 
     elif isinstance(statement, Cast):
-        typecheck_exp(statement, symbols, fun_type)
+        typecheck_exp_and_convert(statement, symbols, fun_type)
 
     elif isinstance(statement, Var):
-        typecheck_exp(statement, symbols, fun_type)
+        typecheck_exp_and_convert(statement, symbols, fun_type)
 
     elif isinstance(statement, Constant):
-        typecheck_exp(statement, symbols, fun_type)
+        typecheck_exp_and_convert(statement, symbols, fun_type)
 
     elif isinstance(statement, Null):
         pass
