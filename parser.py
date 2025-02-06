@@ -226,7 +226,7 @@ def parse_initializer(tokens,list=None):
     if tokens[0]=='{':
         print('here')
         expect('{',tokens)
-        expr=parse_initializer(tokens,l)
+        expr,tokens=parse_initializer(tokens,l)
         l.append(expr)
         print('Parsed index 0')
         while tokens and (tokens[0]==',' and tokens[1]!='}'):
