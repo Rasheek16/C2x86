@@ -5,7 +5,7 @@ from _ast5 import (
     DoWhile, Break, Continue, If, Return, 
     Compound, Parameter, BlockItem, Program, 
     InitDecl, InitExp, Expression, 
-    D, S, Statement, Block,Extern,Cast,UnaryOperator,BinaryOperator,AbstractDeclarator,AddOf,Dereference
+    D, S, Statement, Block,Extern,Cast,UnaryOperator,BinaryOperator,AbstractDeclarator,AddOf,Dereference,Subscript
 )
 # from tacky_emiter import , convert_binop, convert_unop
 from typing import List, Dict, Any, Optional
@@ -114,7 +114,7 @@ def resolve_exp(expression, identifier_map: dict):
     to their unique names. Preserves names for items with has_linkage=True.
     """
     if isinstance(expression, Assignment):
-        if not isinstance(expression.left,(Var,Dereference)):
+        if not isinstance(expression.left,(Var,Dereference,Subscript)):
             raise ValueError(f"Invalid lvalue in assignment: {expression.left}")
         if isinstance(expression.left,Unary):
             resolved_left = resolve_exp(expression.left.expr,identifier_map)
