@@ -124,7 +124,7 @@ class SingleInit(Initializer):
         self.exp = exp 
     
     def __repr__(self):
-        return f'SingleInit(exp={self.exp})'
+        return f'\n \t\t SingleInit(exp={self.exp})'
         
         
 class CompoundInit(Initializer):
@@ -132,9 +132,7 @@ class CompoundInit(Initializer):
         self.initializer=initialzier 
     
     def __repr__(self):
-        return f'"    body={'[\n          '+ 
-                ",\n        ".join(repr(instr) for instr in self.initializer) +
-                "\n    ]\n"}'
+        return f'\n\t\tCompoundInit(initializer={self.initializer})'
     
     
 
