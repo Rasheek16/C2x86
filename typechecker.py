@@ -296,6 +296,20 @@ def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
         raise e
 
 def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope):
+    if isinstance(decl.fun_type,FunType) and isinstance(decl.fun_type.base_type,Array):
+        raise TypeError('Function type cannot be an array')
+    for param in decl.params:
+        param_name = param.name.name
+        adjusted_params = []
+
+        if isinstance(param._type,Array):
+            adjusted_type = Pointer(param._type._type)
+            
+            adjusted_params.append(Parameter(adjusted_type,name=param_name))
+        else:
+            adjusted_params.append(param)
+    decl.params=adjusted_params
+
     fun_name = decl.name.name
     fun_type = FunType(param_count=len(decl.params), params=decl.params, base_type=decl.fun_type.base_type)
     has_body = decl.body is not None and not isinstance(decl.body, Null)
@@ -348,9 +362,15 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
         if has_body:
             for param in decl.params:
                 param_name = param.name.name
+                if isinstance(param._type,Array):
+                    adjusted_type = Pointer(ref=param._type._int)
+                    adjusted_params.append(Parameter(adjusted_type,name=param_name))
+                else:
+                    adjusted_params.append(param)
                 if param_name in symbols:
                     raise SyntaxError(f"Parameter '{param_name}' is already declared.")
                 symbols[param_name] = {'type': Int(),'val_type':param._type,'ret':fun_type.base_type,'attrs':None}
+            decl.params=adjusted_params
             for stmt in decl.body:
                 if not isinstance(stmt, Return):
                     print(fun_type)
@@ -371,11 +391,22 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
         }
 
         if has_body:
+            
             for param in decl.params:
                 param_name = param.name.name
+                adjusted_params = []
+
+                if isinstance(param._type,Array):
+                    adjusted_type = Pointer(param._type._type)
+                    
+                    adjusted_params.append(Parameter(adjusted_type,name=param_name))
+                else:
+                    adjusted_params.append(param)
+
                 if param_name in symbols:
                     raise SyntaxError(f"Parameter '{param_name}' is already declared.")
                 symbols[param_name] = {'type': Int(), 'val_type':param._type,'ret': decl.fun_type,'attrs':None,'Double':param._type}
+            decl.params=adjusted_params
             stmts=[]
             for stmt in decl.body:
                 if not isinstance(stmt, Return):
@@ -498,7 +529,10 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
             raise SyntaxError('Invalid value const')
 
     elif isinstance(e, Cast):
-        print('Inside cast')
+        # print('Inside cast')
+        if isinstance(e.target_type,Array):
+            raise ValueError('Cant type cast to arry')
+        
         typed_inner = typecheck_exp_and_convert(e.exp, symbols)
         e.exp = typed_inner
         
@@ -531,10 +565,9 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
 
     elif isinstance(e, Binary):
-        print('Binary',e)
+        
         if e.operator in (BinaryOperator.EQUAL,BinaryOperator.NOT_EQUAL):
             typed_e1 = typecheck_exp_and_convert(e.left, symbols)
-    
             typed_e2 = typecheck_exp_and_convert(e.right, symbols)
             t1 = typed_e1.get_type()
             t2 = typed_e2.get_type()
@@ -549,38 +582,35 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
                 common_type = get_common_type(t1, t2)
             converted_e1 = convert_to(typed_e1, common_type)
             converted_e2 = convert_to(typed_e2, common_type)
-            # if e.operator==BinaryOperator.EQUAL:
+
             e.left=converted_e1
             e.right=converted_e2
-                # equality_exp = Binary(BinaryOperator.EQUAL, converted_e1, converted_e2)
-            # else: 
-                # equality_exp=Binary(BinaryOperator.NOT_EQUAL,converted_e1,converted_e2)
+          
             e.set_type(Int())
-            print(e)
-            # exit()
+            
             return e
-        # elif (isinstance(e.left,Pointer) or isinstance(e.right,Pointer)) and e.operator in (BinaryOperator.DIVIDE,BinaryOperator.MULTIPLY,BinaryOperator.REMAINDER):
-        #     raise SyntaxError('Cannot perform arithmetic operations on pointers')
-        # elif (isinstance(e.left,Pointer) and not isinstance(e.right,Pointer)
-        #       or isinstance(e.right,Pointer) and not isinstance(e.left,Pointer)) and e.operator in (BinaryOperator.EQUAL,BinaryOperator.GREATER_OR_EQUAL,
-        #                            BinaryOperator.GREATER_THAN,
-        #                            BinaryOperator.LESS_OR_EQUAL,
-        #                            BinaryOperator.LESS_THAN,BinaryOperator.NOT_EQUAL):
-        #     raise SyntaxError('Cannot perform comparison between on pointer and non pointer')
+      
         else:
            
             typed_e1 = typecheck_exp_and_convert(e.left, symbols)
             typed_e2 = typecheck_exp_and_convert(e.right, symbols)
-        
+            
+            
+            
             if e.operator in (BinaryOperator.MULTIPLY, BinaryOperator.DIVIDE, BinaryOperator.REMAINDER):
                 if isinstance(typed_e1.get_type(),Pointer) or isinstance(typed_e2.get_type(),Pointer):
-                    raise SyntaxError('Cannot perform arithmetic operations on pointers')
+                    raise SyntaxError('Cannot perform mul, divide , modulo arithmetic operations on pointers')
             if e.operator in (BinaryOperator.EQUAL,BinaryOperator.GREATER_OR_EQUAL,
                                    BinaryOperator.GREATER_THAN,
                                    BinaryOperator.LESS_OR_EQUAL,
                                    BinaryOperator.LESS_THAN,BinaryOperator.NOT_EQUAL):
-                if (isinstance(typed_e1.get_type(),Pointer) and not isinstance(typed_e2.get_type(),Pointer)) or (isinstance(typed_e2.get_type(),Pointer) and not isinstance(typed_e1.get_type(),Pointer)):
+                if (isinstance(typed_e1.get_type(),Pointer) and not 
+                    isinstance(typed_e2.get_type(),Pointer)) or (
+                    isinstance(typed_e2.get_type(),Pointer) and 
+                    not isinstance(typed_e1.get_type(),Pointer)):
                     raise SyntaxError('Cannot perform comparison between on pointer and non pointer')
+                
+                
             if e.operator in (BinaryOperator.AND, BinaryOperator.OR):
                 e.left = typed_e1
                 e.right = typed_e2
@@ -592,36 +622,70 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         
             t1 = typed_e1.get_type()
             t2 = typed_e2.get_type()
-            if e.operator==BinaryOperator.REMAINDER :
-                if isinstance(t1,Double) or isinstance(t2,Double):
-                    raise ValueError('Cannot apply modulo to a double')
-      
             
-            common_type = get_common_type(t1, t2)
-            
-            converted_e1 = convert_to(typed_e1, common_type)
-            converted_e2 = convert_to(typed_e2, common_type)
-            e.left = converted_e1
-            e.right = converted_e2
-
-            if e.operator in (BinaryOperator.ADD, BinaryOperator.DIVIDE,
-                            BinaryOperator.MULTIPLY, BinaryOperator.SUBTRACT,
-                            BinaryOperator.REMAINDER):
-                e.rel_flag = common_type
-                e.set_type(common_type)
-            
-                return e 
-            else:
-                if isinstance(e.left.get_type(),Double):
-                    e.rel_flag =Int()
-                    print(e)
-                    
+            if (isinstance(t1,Pointer) and isinstance(t2,Pointer)) and e.operator in (BinaryOperator.GREATER_OR_EQUAL,
+                                                                                       BinaryOperator.GREATER,
+                                                                                       BinaryOperator.LESS_OR_EQUAL,
+                                                                                       BinaryOperator.LESS):
+                if isinstance(t1.ref,type(t2.ref)):
                     e.set_type(Int())
+                    e.rel_flag(Int())
+                    return e 
                 else:
-                    e.rel_flag = Int()
-                    e.set_type(Int())
+                    raise ValueError('Pointer of two different types cannot be used for relational op')
+            
+            
+            if (isinstance(t1,Pointer) and not isinstance(t2,Pointer) and e.operator in (BinaryOperator.ADD,BinaryOperator.SUBTRACT)):
+                converted_e2 = convert_to(typed_e2, Long())
+                e=Binary(e.operator,typed_e1,converted_e2)
+                e.set_type(t1)
+                e.rel_flag(Long())
                 return e
-      
+            elif (not isinstance(t1,Pointer) and  isinstance(t2,Pointer) and e.operator == BinaryOperator.ADD):
+                converted_e1 = convert_to(typed_e1, Long())
+                e=Binary(e.operator,converted_e1,typed_e2)
+                e.rel_flag(Long())
+                e.set_type(t2)
+                return e
+            elif (isinstance(t1,Pointer) and  isinstance(t2.ref,type(t2.ref)) and e.operator == BinaryOperator.SUBTRACT):
+                e=Binary(operator=e.operator,left=typed_e1,right=typed_e2)
+                e.set_type(Long())
+                e.rel_flag(Long())
+                return e           
+            elif not isinstance(t1,Pointer) and not isinstance(t2,Pointer):
+                if e.operator==BinaryOperator.REMAINDER :
+                    if isinstance(t1,Double) or isinstance(t2,Double):
+                        raise ValueError('Cannot apply modulo to a double')
+        
+                
+                common_type = get_common_type(t1, t2)
+                
+                converted_e1 = convert_to(typed_e1, common_type)
+                converted_e2 = convert_to(typed_e2, common_type)
+                e.left = converted_e1
+                e.right = converted_e2
+
+                if e.operator in (BinaryOperator.ADD, BinaryOperator.DIVIDE,
+                                BinaryOperator.MULTIPLY, BinaryOperator.SUBTRACT,
+                                BinaryOperator.REMAINDER):
+                    e.rel_flag = common_type
+                    e.set_type(common_type)
+                
+                    return e 
+                else:
+                    if isinstance(e.left.get_type(),Double):
+                        e.rel_flag =Int()
+                        print(e)
+                        
+                        e.set_type(Int())
+                    else:
+                        e.rel_flag = Int()
+                        e.set_type(Int())
+                    return e
+            else:
+                raise ValueError('Invalid value for operands')
+
+                
     elif isinstance(e, Unary):
         inner = typecheck_exp_and_convert(e.expr, symbols)
         e.expr = inner
@@ -703,6 +767,24 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
     elif isinstance(e, Null):
         return e
 
+    elif isinstance(e,Subscript):
+        typed_e1 = typecheck_exp_and_convert(e.exp1, symbols)
+        typed_e2 = typecheck_exp_and_convert(e.exp2, symbols)
+        t1 = typed_e1.get_type()
+        t2 = typed_e2.get_type()
+        if isinstance(t1,Pointer) and not isinstance(t2,Pointer):
+        # 1 if t1 is a pointer type and t2 is an integer type:
+            ptr_type = t1
+            typed_e2 = convert_to(typed_e2, Long())
+        elif not isinstance(t1,Pointer) and isinstance(t2,Pointer):
+            ptr_type = t2
+            typed_e1 = convert_to(typed_e1, Long())
+        else:
+            raise ValueError("Subscript must have integer and pointer operands")
+        e.exp1 = typed_e1
+        e.exp2=typed_e2
+        e.set_type(ptr_type.ref)
+        return e
     else:
         raise TypeError(f"Unsupported expression type for type checking: {type(e)}")
 
