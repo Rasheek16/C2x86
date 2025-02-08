@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import subprocess
+import time
 from lexer import lex
 from parser import parse_program
 from converter import Converter
@@ -145,7 +146,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None, li
         print('File output:')
         print(f"Executable: {exe_file}\n")
         # Indicate successful compilation
-        sys.exit(0)
+        # sys.exit(0)
 
     except subprocess.CalledProcessError as e:
         # If compilation or linking fails, print error and exit non-zero
@@ -198,6 +199,8 @@ def main():
     if '--help' in sys.argv or len(sys.argv) < 2:
         usage()
 
+    start_time = time.time()
+    
     possible_stages = ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run', '--validate', '-c']
     stage = None
     filenames = []
@@ -234,6 +237,8 @@ def main():
 
     compile_file(str(path_in), output_file=output_file, stage=stage, library_options=library_options)
 
+    end_time = time.time() 
+    print(f"Execution Time: {end_time - start_time:.6f} seconds") 
 
 if __name__ == "__main__":
     main()
