@@ -318,7 +318,7 @@ def process_declarator(declarator: Declarator, base_type: Type) -> Tuple[Identif
             param_name, param_type, _ = process_declarator(param_info.declarator, param_info._type)
             if isinstance(param_type, FunType):
                 raise SyntaxError("Function pointers in parameters aren't supported")
-            param_names.append(Parameter(_type=param_type,declarator=declarator.declarator,name=param_name))
+            param_names.append(Parameter(_type=param_type,declarator=declarator.declarator,name=Identifier(param_name)))
             param_types.append(param_type)
         derived_type = FunType(param_count=len(param_names),params=param_types,base_type=base_type)
         print(derived_type)
@@ -1073,7 +1073,7 @@ def parse_primary_expr(tokens):
     if isIdentifier(next_token) and not isKeyword(next_token):
         print('here')
         token,tokens=take_token(tokens)
-        return Identifier(token),tokens
+        return Var(Identifier(token)),tokens
     
 
 

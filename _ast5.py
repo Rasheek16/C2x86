@@ -116,23 +116,34 @@ class AbstractDeclarator:
 
 
 class Initializer():    
-    def __init__(self):
+    def __init__(self,_type):
+        self._type=_type
         pass
     
+    def set_type(self,_type):
+        self._type = _type  
+    
+    def get_type(self):
+        return self._type
+        
+        
 class SingleInit(Initializer):
-    def __init__(self,exp):
+    def __init__(self,exp,_type=None):
+        super().__init__(_type)
         self.exp = exp 
     
     def __repr__(self):
-        return f'\n \t\t SingleInit(exp={self.exp})'
+        return f'\n \t\t SingleInit(exp={self.exp},_type={self._type})'
         
         
 class CompoundInit(Initializer):
-    def __init__(self,initialzier:List[Initializer]):
+    def __init__(self,initialzier:List[Initializer],_type=None):
+        super().__init__(_type)
+        
         self.initializer=initialzier 
     
     def __repr__(self):
-        return f'\n\t\tCompoundInit(initializer={self.initializer})'
+        return f'\n\t\tCompoundInit(initializer={self.initializer} , _type={self._type})'
     
     
 
@@ -515,7 +526,7 @@ class Binary(Exp):
         left (Exp): The left operand expression.
         right (Exp): The right operand expression.
     """
-    def __init__(self, operator: BinaryOperator, left: Exp, right: Exp,_type=None,rel_flag=Optional):
+    def __init__(self, operator: BinaryOperator, left: Exp, right: Exp,_type=None,rel_flag=None):
         """
         Initializes a Binary instance.
         

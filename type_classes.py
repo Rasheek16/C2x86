@@ -1,3 +1,4 @@
+from typing import List
 class InitialValue:
     """Base class for initial values."""
     pass
@@ -34,6 +35,13 @@ class DoubleInit():
         return f'DoubleInit(value={self.value})'
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
     
+class ZeroInit():
+    def __init__(self, bytes):
+        self.bytes=bytes 
+    def __repr__(self):
+        return f'ZeroInit(bytes={self.bytes})'
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+    
     
 class StaticInit:
     IntInit=IntInit 
@@ -41,6 +49,7 @@ class StaticInit:
     UIntInit=UIntInit 
     ULongInit=ULongInit
     DouleInit=DoubleInit
+    ZeroInit=ZeroInit
 
 class Tentative(InitialValue):
     """Represents a tentative definition without an initializer."""
@@ -56,7 +65,7 @@ class Tentative(InitialValue):
 class Initial(InitialValue):
     """Represents an initialized variable with a specific value."""
     
-    def __init__(self, value:StaticInit):
+    def __init__(self, value:List[StaticInit]):
         self.value = value  # You can adjust the type based on your needs
     
     def __repr__(self):

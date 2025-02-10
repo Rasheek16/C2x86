@@ -1,12 +1,4 @@
-from _ast5 import (
-    VarDecl, FunDecl, Var, FunctionCall, 
-    Identifier, Constant, Null, Unary, Binary, 
-    Assignment, Conditional, For, While, 
-    DoWhile, Break, Continue, If, Return, 
-    Compound, Parameter, BlockItem, Program, 
-    InitDecl, InitExp, Expression, 
-    D, S, Statement, Block,Extern,Cast,UnaryOperator,BinaryOperator,AbstractDeclarator,AddOf,Dereference,Subscript
-)
+from _ast5 import *
 # from tacky_emiter import , convert_binop, convert_unop
 from typing import List, Dict, Any, Optional
 import copy
@@ -58,6 +50,8 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)->
                 raise TypeError(f"Declaration name must be an Identifier, got {type(declaration.name)}")
 
             original_name = declaration.name.name
+            print(original_name)
+            # exit()
             # print()
             # Check for duplicates in the current scope
             if original_name in identifier_map and identifier_map[original_name]['from_current_scope']==True:
@@ -109,6 +103,7 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)->
 # 3) Resolve Expressions
 # -------------------------------------------------------------------------
 def resolve_exp(expression, identifier_map: dict):
+    print(expression)
     """
     Resolves an expression by mapping variable/function identifiers
     to their unique names. Preserves names for items with has_linkage=True.
@@ -131,9 +126,10 @@ def resolve_exp(expression, identifier_map: dict):
         resolved_exp2 = resolve_exp(expression.exp2, identifier_map)
         resolved_exp3 = resolve_exp(expression.exp3, identifier_map)
         return Conditional(condition=resolved_condition, exp2=resolved_exp2, exp3=resolved_exp3)
-
     elif isinstance(expression, Var):
         # A variable usage => check the identifier_map
+        # print(expression)
+        
         if not isinstance(expression.identifier, Identifier):
             raise TypeError(f"Expected Identifier, got {type(expression.identifier)}")
         original_identifier = expression.identifier.name
@@ -143,7 +139,6 @@ def resolve_exp(expression, identifier_map: dict):
             return Var(identifier=Identifier(unique_name))
         else:
             raise ValueError(f"Undeclared variable usage: '{original_identifier}'")
-
     elif isinstance(expression, Unary):
         if expression.operator == UnaryOperator.DEREFERENCE and isinstance(expression.expr,Constant):
             raise SyntaxError("Invalid dereference of a constant")
@@ -170,13 +165,16 @@ def resolve_exp(expression, identifier_map: dict):
             #     raise SyntaxError("Invalid binary operation on pointers")
             
             
-            
+        print('Binary')
         resolved_left = resolve_exp(expression.left, identifier_map)
         resolved_right = resolve_exp(expression.right, identifier_map)
         return Binary(operator=expression.operator, left=resolved_left, right=resolved_right)
 
     elif isinstance(expression, FunctionCall):
         # Resolve function name
+        # print(expression.identifier.name)
+        # print(identifier_map)
+        # exit()
         func_name = expression.identifier.name
         if func_name in identifier_map:
             new_func_name = identifier_map[func_name]['unique_name']
@@ -189,13 +187,35 @@ def resolve_exp(expression, identifier_map: dict):
 
     elif isinstance(expression, (Constant, Null)):
         return expression
+    # elif isinstance(expression,Identifier):
+    #     # print('Here')
+    #     resolved_expr = resolve_exp(expression.name,identifier_map)
+    #     return Identifier(resolved_expr)
     elif isinstance(expression, AddOf):
         resolved_expr = resolve_exp(expression.exp, identifier_map)
         return AddOf(resolved_expr)
     elif isinstance(expression, Dereference):
         resolved_expr = resolve_exp(expression.exp, identifier_map)
         return Dereference(resolved_expr)
-    
+    elif isinstance(expression,CompoundInit):
+        i=0
+        l=[]
+        while (i<len(expression.initializer)):
+            resolved_exp = resolve_exp(expression.initializer[i],identifier_map)
+            l.append(resolved_exp)
+            i+=1
+        return CompoundInit(l)
+    elif isinstance(expression,SingleInit):
+        resolved_exp=resolve_exp(expression.exp,identifier_map)
+        return SingleInit(resolved_exp)
+            
+        
+    elif isinstance(expression,Subscript):
+        print('Subscript')
+        resolved_exp1 = resolve_exp(expression.exp1,identifier_map)
+        resolved_exp2 = resolve_exp(expression.exp2,identifier_map)
+        return Subscript(exp1=resolved_exp1,exp2=resolved_exp2)
+   
     else:
         raise SyntaxError(f"Unknown expression type: {type(expression)}")
 
@@ -390,7 +410,7 @@ def label_statement(statement: Statement, current_label: Optional[str] = None) -
     elif isinstance(statement, (Return, Var, Constant)):
         pass  # no label needed
 
-    elif isinstance(statement, (Expression, Assignment, Binary, Unary,Cast,AddOf,Dereference)):
+    elif isinstance(statement, (Expression, Assignment, Binary, Unary,Cast,AddOf,Dereference,SingleInit,CompoundInit)):
         pass  # no label needed
 
     elif isinstance(statement, Null):
@@ -458,12 +478,21 @@ def label_program(program: Program):
 # 11) Resolve a Function Declaration
 # -------------------------------------------------------------------------
 def resolve_function_declaration(decl: FunDecl, identifier_map: dict) -> FunDecl:
+    # print(decl.name.identifier.name)
+    # exit()
     """
     Resolves a function declaration (parameters + body).
     - We record the function name in identifier_map with has_linkage=True.
     - Then copy the map for parameters, rename them, and resolve the body.
     """
+    
+    # print(func_name)
+    # print(decl.name)
     func_name = decl.name.name
+    # exit()
+    
+
+    # exit()
     # Check for a conflicting local variable
     if func_name in identifier_map:
         prev_entry = identifier_map[func_name]
@@ -484,8 +513,7 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict) -> FunDecl
     # Resolve parameters
     new_params = []
     for param in decl.params:
-        # print(decl)
-        # exit()
+      
         new_params.append(resolve_param(param, inner_map))
     # Resolve the function body (if it's a Block) => block_items
     if isinstance(decl.body, Block):
@@ -501,12 +529,14 @@ def resolve_param(param: Parameter, identifier_map: dict) -> Parameter:
     """
     Resolves a function parameter. Generates a unique name for it (local variable).
     """
-    # print(param)
-    # exit()
+   
     if not isinstance(param.name, Identifier):
         raise TypeError(f"Parameter name must be an Identifier, got {type(param.name)}")
 
-    original_name = param.name.name
+    # print('Here')
+    original_name = param.name.name.name
+    print(original_name)
+    # exit()
     # Check duplicate param in the same scope
     if (original_name in identifier_map 
         and identifier_map[original_name]['from_current_scope']):
@@ -549,7 +579,7 @@ def variable_resolution_pass(program: Program) :
         resolved_funcs.append(new)
 
     new_program = Program(function_definition=resolved_funcs)
-    labeled_program , symbols = typecheck_program(label_program(new_program))
+    labeled_program,symbols = typecheck_program(label_program(new_program))
   
     return labeled_program ,symbols
 
