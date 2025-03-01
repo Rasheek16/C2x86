@@ -512,6 +512,8 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict) -> FunDecl
 
     # Resolve parameters
     new_params = []
+    # print([name.name.name for name in decl.params])
+    # exit()
     for param in decl.params:
       
         new_params.append(resolve_param(param, inner_map))
@@ -534,7 +536,11 @@ def resolve_param(param: Parameter, identifier_map: dict) -> Parameter:
         raise TypeError(f"Parameter name must be an Identifier, got {type(param.name)}")
 
     # print('Here')
+    print(param.name.name.name)
+    # exit()
     original_name = param.name.name.name
+    print(param._type)
+    # exit()
     print(original_name)
     # exit()
     # Check duplicate param in the same scope
