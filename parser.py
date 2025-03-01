@@ -243,34 +243,89 @@ def parse_initializer(tokens,list=None):
         print('exp,',exp)
         return SingleInit(exp),tokens
 
-
-
-def parse_declarator_suffix(tokens,simple_declarator):
-    if tokens[0]=='(':
-        expect('(',tokens)
+def parse_declarator_suffix(tokens, simple_declarator):
+    """
+    Parses the suffix of a declarator, handling function and array declarators.
+    
+    For an array declaration like [5][10], the first bracket (5) becomes nested 
+    (i.e. applied to the simple_declarator), and then the next bracket (10) wraps it.
+    
+    Returns:
+        A tuple (declarator, remaining_tokens)
+    """
+    if tokens and tokens[0] == '(':
+        expect('(', tokens)
         print('Parsing parameter list')
-        params, tokens = parse_param_list(tokens)  
-        print('Param List',params)
+        params, tokens = parse_param_list(tokens)
+        print('Param List:', params)
         expect(')', tokens)
-        print('Exisitng parse direct decl')
+        print('Exiting parse direct decl')
         return FunDeclarator(params, simple_declarator), tokens
-    elif tokens[0]=='[':
-        expect('[',tokens)
-        # print('Here')
-        cont,tokens=parse_constant(tokens)
-        if isinstance(cont.value,ConstDouble):
+
+    elif tokens and tokens[0] == '[':
+        expect('[', tokens)
+        cont, tokens = parse_constant(tokens)
+        if isinstance(cont.value, ConstDouble):
             raise ValueError('Expression must have integral type.')
-        # print(tokens)
-        # print(cont)
-        # exit()
-        # decl=parse_direct_declarator(tokens)
-        expect(']',tokens)
-        if tokens[0]=='[':
-            exp,tokens = parse_declarator_suffix(tokens,simple_declarator)
-            return ArrayDeclarator(exp,cont),tokens 
-        return ArrayDeclarator(simple_declarator,cont),tokens 
+        expect(']', tokens)
+        # Build the current array declarator level:
+        current = ArrayDeclarator(simple_declarator, cont)
+        # If there's another '[' following, recursively process it using the current declarator.
+        if tokens and tokens[0] == '[':
+            return parse_declarator_suffix(tokens, current)
+        else:
+            return current, tokens
+
     else:
-        return simple_declarator,tokens
+        return simple_declarator, tokens
+
+
+
+# def parse_declarator_suffix(tokens,simple_declarator):
+#     if tokens[0]=='(':
+#         expect('(',tokens)
+#         print('Parsing parameter list')
+#         params, tokens = parse_param_list(tokens)  
+#         print('Param List',params)
+#         expect(')', tokens)
+#         print('Exisitng parse direct decl')
+#         return FunDeclarator(params, simple_declarator), tokens
+#     while tokens[0]=='[':
+#         expect('[',tokens)
+#         # print('Here')
+#         cont,tokens=parse_constant(tokens)
+#         if isinstance(cont.value,ConstDouble):
+#             raise ValueError('Expression must have integral type.')
+#         # print(tokens)
+#         # print(cont)
+#         # exit()
+#         # decl=parse_direct_declarator(tokens)
+#         expect(']',tokens)
+#         # if tokens[0]=='[':
+#         #     exp,tokens = parse_declarator_suffix(tokens,simple_declarator)
+#         #     print(exp)
+#         #     exit()
+#         exp,tokens =  ArrayDeclarator(exp,cont),tokens 
+        
+#     elif tokens[0]=='[':
+#         expect('[',tokens)
+#         # print('Here')
+#         cont,tokens=parse_constant(tokens)
+#         if isinstance(cont.value,ConstDouble):
+#             raise ValueError('Expression must have integral type.')
+#         # print(tokens)
+#         # print(cont)
+#         # exit()
+#         # decl=parse_direct_declarator(tokens)
+#         expect(']',tokens)
+#         if tokens[0]=='[':
+#             exp,tokens = parse_declarator_suffix(tokens,simple_declarator)
+#             print(exp)
+#             exit()
+#             return ArrayDeclarator(exp,cont),tokens 
+#         return ArrayDeclarator(simple_declarator,cont),tokens 
+#     else:
+#         return simple_declarator,tokens
             
         
         
@@ -326,7 +381,16 @@ def process_declarator(declarator: Declarator, base_type: Type) -> Tuple[Identif
         
         return declarator.declarator.identifier, derived_type, param_names
     elif isinstance(declarator,ArrayDeclarator):
+        print(declarator)
+        # exit()
+        print('HERE')
+        print('Base type',base_type)
         derived_type = Array(base_type,declarator.size)
+        print('Derived type',derived_type)
+        print('Sub declarator',declarator.declarator)
+        print(process_declarator(declarator.declarator,derived_type))
+        # exit()
+        
         return process_declarator(declarator.declarator,derived_type)
     else:
         print(declarator)
