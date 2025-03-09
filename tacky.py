@@ -116,6 +116,25 @@ class TackyProgram:
 # Instructions
 # ------------------
 
+class TackyAddPtr(TackyInstruction):
+    def __init__(self,ptr,index,scale,dst):
+        self.ptr=ptr
+        self.index=index
+        self.scale=scale
+        self.dst=dst
+    
+    def __repr__(self):
+        return f'TackyAddPtr(ptr={self.ptr},index={self.index},scale={self.scale},dst={self.dst})'
+
+class TackyCopyToOffSet(TackyInstruction):
+    def __init__(self,src,dst,offset):
+        self.src=src
+        self.dst=dst
+        self.offset=offset
+    
+    def __repr__(self):
+        return f'TackyCopyToOffSet(src={self.src},dst={self.dst},offset={self.offset})'
+
 
 class TackyZeroExtend(TackyInstruction):
     """
