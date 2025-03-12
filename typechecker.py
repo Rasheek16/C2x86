@@ -16,6 +16,10 @@ def size(_type):
         return 8
     elif type(_type)==type(Double()):
         return 16
+    elif isinstance(_type,Pointer):
+        return size(_type.ref)
+    elif isinstance(_type,Array):
+        return size(_type._type)
     
 def is_null_pointer_constant(c):
     if isinstance(c,Constant):
@@ -206,11 +210,12 @@ def typecheck_array_init(decl, var_type=None):
     # Base case: SingleInit returns its flattened value.
     if isinstance(decl, SingleInit):
         if isinstance(decl.exp,Cast):
-            return flat_val(decl.exp.exp.value._type, decl.exp.exp.value._int)
-        return flat_val(decl.exp.value._type, decl.exp.value._int)
+            return [flat_val(decl.exp.exp.value._type, decl.exp.exp.value._int)]
+        return [flat_val(decl.exp.value._type, decl.exp.value._int)]
     
     # Recursive case: CompoundInit.
     elif isinstance(decl, CompoundInit):
+       
         result = []
         # expected_length: the number of elements at this array level.
         expected_length = var_type._int.value._int
@@ -228,7 +233,7 @@ def typecheck_array_init(decl, var_type=None):
                 # If we expect nested initializers (i.e. an array of arrays)
                 if expected_inner is not None:
                     # Recursively flatten the row using the sub-type.
-                    flattened = [typecheck_array_init(elem, var_type._type)]
+                    flattened = typecheck_array_init(elem, var_type._type)
                     # If the row has fewer elements than expected, pad with ZeroInit(4) per element.
                     # print('Flattened',flattened)
                     if len(flattened) < expected_inner:
@@ -242,7 +247,7 @@ def typecheck_array_init(decl, var_type=None):
                         flattened = typecheck_array_init(elem, var_type._type)
                         result.extend(flattened)
                     elif isinstance(elem, SingleInit):
-                        result.append(typecheck_array_init(elem, var_type))
+                        result.extend(typecheck_array_init(elem, var_type))
                     else:
                         result.append(ZeroInit(4))
             else:
@@ -282,7 +287,16 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
             # For arrays, perform an array-specific typecheck.
             if not isinstance(decl.init, CompoundInit):
                 raise ValueError("Array initializer must be a CompoundInit")
-            new_init = Initial(typecheck_init(decl.var_type,decl.init,symbols))
+            # new_init = Initial(typecheck_init(decl.var_type,decl.init,symbols))
+            # print(decl.storage_class)
+            # exit()
+            # if isinstance(decl.storage_class,Static):
+            typecheck_init(decl.var_type,decl.init,symbols)
+            new_init = Initial(typecheck_array_init(decl.init,decl.var_type))
+                
+
+                # print(new_init)
+                # exit()
             # print('fuigshdaufygkhasedlf')
             print('New init',new_init)
         elif isinstance(decl.var_type, Pointer):
@@ -390,30 +404,39 @@ def zero_initializer(_type):
             e=CompoundInit(initialzier=[zero_initializer(_type._type._type)])
             e.set_type(_type._type)
             print(e._type)
+            # e.exp.set_type(_type)
+            
             # 
             return e
     if isinstance(_type,Int):
         e= SingleInit(Constant(ConstInt(0),_type=_type))
         e.set_type(_type)
+        e.exp.set_type(_type)
+        
         return SingleInit(Constant(ConstInt(0),_type))
     if isinstance(_type,Long):
         e= SingleInit(Constant(ConstLong(0)))
         e.set_type(_type)
         
+        e.exp.set_type(_type)
+        
         return e
     if isinstance(_type,UInt):
         e= SingleInit(Constant(ConstUInt(0),_type))
         e.set_type(_type)
+        e.exp.set_type(_type)
         
         return e
     if isinstance(_type,ULong):
         e= SingleInit(Constant(ConstULong(0),_type))
         e.set_type(_type)
+        e.exp.set_type(_type)
         
         return e
     if isinstance(_type,Double):
         e= SingleInit(Constant(ConstDouble(0),_type))
         e.set_type(_type)
+        e.exp.set_type(_type)
         
         return e
 
@@ -451,6 +474,7 @@ def typecheck_init(target_type,init,symbols):
       
         cast_exp = convert_by_assignment(typechecked_exp, target_type)
         init.exp=cast_exp
+        init.exp.set_type(target_type)
         init.set_type(target_type)
         print('Exit single init',init)
         return init
@@ -1375,7 +1399,7 @@ def typecheck_program(program: Program):
     for stmt in program.function_definition:
         print('Type checking',stmt)
         if isinstance(stmt, VarDecl):
-          
+            print(stmt)
             typecheck_file_scope_variable_declaration(stmt, symbols)
         elif isinstance(stmt, FunDecl):
             print('Fun decl')
@@ -1383,6 +1407,6 @@ def typecheck_program(program: Program):
             
             typecheck_function_declaration(stmt, symbols, False)
         else:
-           
+            
             typecheck_statement(stmt, symbols)
     return program, symbols
