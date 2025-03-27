@@ -512,7 +512,7 @@ def fix_instr(instr,new_instructions:list):
                 )
             new_instructions.extend([mov,compl])
             
-        elif isinstance(instr.operand1,(Stack,Data)) and isinstance(instr.operand2,(Data,Stack)):
+        elif isinstance(instr.operand1,(Stack,Data,Memory)) and isinstance(instr.operand2,(Data,Stack,Memory)):
             mov = Mov(
                 assembly_type=instr._type,
                 src=instr.operand1, 
@@ -522,7 +522,7 @@ def fix_instr(instr,new_instructions:list):
                 assembly_type=instr._type,
                 operand1=Reg(Registers.R10),
                 operand2=instr.operand2)
-            if not isinstance(compl.operand2,Stack):
+            if not isinstance(compl.operand2,(Stack,Memory)):
                 mov2 = Mov(
                     assembly_type=instr._type,
                     src=instr.operand2,
@@ -561,7 +561,7 @@ def fix_instr(instr,new_instructions:list):
                     operand1=dest,
                     operand2=instr.operand2,
                     )
-                if not isinstance(compl.operand2,(Stack,Data)):
+                if not isinstance(compl.operand2,(Stack,Data,Memory)):
                     mov2 = Mov(
                         assembly_type=instr._type,
                         src=instr.operand2,
@@ -577,7 +577,7 @@ def fix_instr(instr,new_instructions:list):
                 else:
                     new_instructions.extend([movl,compl])
             
-        elif not isinstance(instr.operand2,(Stack,Data)) and instr._type!= AssemblyType.double:
+        elif not isinstance(instr.operand2,(Stack,Data,Memory)) and instr._type!= AssemblyType.double:
 
                 if instr._type == AssemblyType.double:
                     dest = Reg(Registers.XMM15)
@@ -644,6 +644,8 @@ def fix_instr(instr,new_instructions:list):
         """
         new_instructions.append(instr)
     elif isinstance(instr,MovZeroExtend):
+        print(instr)
+        # exit()
         if isinstance(instr.dest,Reg):
             new_instructions.append(
                 Mov(
@@ -652,7 +654,7 @@ def fix_instr(instr,new_instructions:list):
                     dest=instr.dest
                 )
             ) 
-        elif isinstance(instr.dest,Stack):
+        elif isinstance(instr.dest,Stack)  or isinstance(instr.dest,Memory):
             mov = Mov(
                 assembly_type=AssemblyType.longWord,
                 src=instr.src,
@@ -664,8 +666,8 @@ def fix_instr(instr,new_instructions:list):
                 dest=instr.dest
             )
             new_instructions.extend([mov,mov2])
-        else:
-            new_instructions.append(instr)
+        # else:
+        #     new_instructions.append(instr)
     elif isinstance(instr,Movsx):
         if isinstance(instr.dest,Stack) and isinstance(instr.src,Imm):
             mov = Mov(

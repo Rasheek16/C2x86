@@ -37,9 +37,9 @@ class DoubleInit():
     
 class ZeroInit():
     def __init__(self, bytes):
-        self.bytes=bytes 
+        self.value=bytes 
     def __repr__(self):
-        return f'ZeroInit(bytes={self.bytes})'
+        return f'ZeroInit(bytes={self.value})'
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
     
     

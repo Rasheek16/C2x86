@@ -117,7 +117,7 @@ class TackyProgram:
 # ------------------
 
 class TackyAddPtr(TackyInstruction):
-    def __init__(self,ptr,index,scale,dst):
+    def __init__(self,ptr,index,scale,dst=None):
         self.ptr=ptr
         self.index=index
         self.scale=scale

@@ -25,12 +25,22 @@ from typing import List,Optional
 # Operand and subclasses
 # ------------------
 
-
+class ByteArray():
+    def __init__(self,size,alignment):
+        self.size= size 
+        self.alignment = alignment
+        
+    def __repr__(self):
+        return f'ByteArray(size={self.size}, alignment = {self.alignment})'
+    
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
+    
 
 class AssemblyType:
     longWord='LongWord'
     quadWord='QuadWord' 
     double='Double'
+    byteArray=ByteArray
     
     
 
@@ -64,6 +74,32 @@ class Pseudo(Operand):
 
     def __repr__(self):
         return f"Pseudo(identifier={self.identifier})"
+
+class PseudoMem(Operand):
+    """
+    A pseudo identifier (Grammar: Pseudo(identifier)).
+    """
+    def __init__(self, name,size):
+        self.size=size
+        self.identifier = name
+
+    def __repr__(self):
+        return f"PseudoMen(identifier={self.identifier},size={self.size})"
+
+class Indexed(Operand):
+    """
+    A pseudo identifier (Grammar: Pseudo(identifier)).
+    """
+    def __init__(self,base,index,scale):
+        self.base = base 
+        self.index = index 
+        self.scale = scale
+    
+        
+
+    def __repr__(self):
+        return f"Indexed(base = {self.base},index={self.index},scale = {self.scale})"
+
 
 
 class Stack(Operand):
@@ -569,7 +605,7 @@ class AssemblyStaticConstant:
         return f'StaticConstant(name={self.name},,alignment={self.alignment},init={self.init})'
 
 class AssemblyStaticVariable:
-    def __init__(self,identifier,_global,alignment,init):
+    def __init__(self,identifier,_global,alignment,init:List):
         self.name = identifier
         self._global =_global
         self.alignment=alignment

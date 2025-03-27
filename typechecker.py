@@ -5,7 +5,9 @@ import sys
 
 x=0
 
-def size(_type):
+y_=0
+
+def size_compound_init(_type):
     if type(_type)==type(Int()):
         return 4
     elif type(_type)==type(Long()):
@@ -15,11 +17,48 @@ def size(_type):
     elif type(_type)==type(ULong()):
         return 8
     elif type(_type)==type(Double()):
+        return 8
+    elif isinstance(_type,Pointer):
+        return 8
+    elif isinstance(_type,Array):
+        return _type._type
+        
+        
+
+def array_size(array_type):
+    if isinstance(array_type,Pointer):
+        if isinstance(array_type.ref,(Double,Pointer)):
+            return 8
+        return size(array_type.ref)        
+    if isinstance(array_type,Double):
+        return 8
+    else:
+        return size(array_type)
+
+
+
+def size(_type):
+    
+    if isinstance(_type,Int):
+        return 4
+    elif isinstance(_type,Long):
+        return 8
+    elif isinstance(_type,UInt):
+        return 4
+    elif isinstance(_type,ULong):
+        return 8
+    elif isinstance(_type,Double):
         return 16
     elif isinstance(_type,Pointer):
-        return size(_type.ref)
+        return array_size(_type.ref)
     elif isinstance(_type,Array):
-        return size(_type._type)
+        if isinstance(_type._type,Pointer):
+            return 8
+        # print(size(_type._type) * _type._int.value._int)
+        # exit()
+        print(_type._type)
+        # exit()
+        return array_size(_type._type) * _type._int.value._int
     
 def is_null_pointer_constant(c):
     if isinstance(c,Constant):
@@ -63,8 +102,6 @@ def get_ref_type(pointerType):
 
 def get_common_pointer_type(e1, e2):
     # print('Inside get common pointer type.')
-    
-    
 
    
     if hasattr(e1,'exp') and isinstance(e1.exp,Cast):
@@ -164,19 +201,34 @@ def typecheck_exp_and_convert(expression,symbols,_type=None):
     return typed_e
 
 
-def flat_val(decl,val):
+def flat_val(var_type,val):
+    decl = var_type
+    if isinstance(var_type,Array):
+        decl = var_type._type
+    elif isinstance(var_type,Pointer):
+        decl = var_type.ref
+    
     if isinstance(decl,Int):
         new_init = Constant(StaticInit.IntInit(Const.constInt(int(val))))
+        new_init.set_type(var_type)
     elif isinstance(decl,UInt):
         new_init = Constant(StaticInit.UIntInit(Const.constUInt(int(val))))
+        new_init.set_type(var_type)
+        
     elif isinstance(decl,Long):
         new_init = Constant(StaticInit.LongInit(Const.constLong(int(val))))
+        new_init.set_type(var_type)
+        
     elif isinstance(decl,ULong):
         new_init = Constant(StaticInit.ULongInit(Const.constULong(int(val))))
+        new_init.set_type(var_type)
+        
     elif isinstance(decl,Double):
         new_init = Constant(StaticInit.DouleInit(Const.constDouble(float(val))))
+        new_init.set_type(var_type)
+        
     
-    print('Flat val',new_init)
+    # print('Flat val',new_init)
     return new_init
     
 
@@ -199,7 +251,7 @@ def typecheck_array_init(decl, var_type=None):
     
     var_type must be provided.
     """
-    print(decl)
+    # print(decl)
     # exit()
     if var_type is None:
         raise ValueError("var_type must be provided for array initialization")
@@ -209,9 +261,14 @@ def typecheck_array_init(decl, var_type=None):
     #     raise ValueError('Multidim Array initializer must be a compound initializer')
     # Base case: SingleInit returns its flattened value.
     if isinstance(decl, SingleInit):
+       
+            
         if isinstance(decl.exp,Cast):
-            return [flat_val(decl.exp.exp.value._type, decl.exp.exp.value._int)]
-        return [flat_val(decl.exp.value._type, decl.exp.value._int)]
+            decl.exp.exp.set_type(var_type)
+            # decl.exp.set_type(var_type)
+            return [flat_val(var_type, decl.exp.exp.value._int)]
+        decl.exp.set_type(var_type)
+        return [flat_val(var_type, decl.exp.value._int)]
     
     # Recursive case: CompoundInit.
     elif isinstance(decl, CompoundInit):
@@ -273,6 +330,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
     
     # First, determine the initializer based on whether decl.init is null.
     if isinstance(decl.init, Null):
+        
         # For a null initializer, extern variables get NoInitializer,
         # while others get a Tentative initializer.
         if isinstance(decl.storage_class, Extern):
@@ -293,12 +351,18 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
             # if isinstance(decl.storage_class,Static):
             typecheck_init(decl.var_type,decl.init,symbols)
             new_init = Initial(typecheck_array_init(decl.init,decl.var_type))
-                
+            
+            
+            print(new_init)
+            # exit()
+            # print('Declaration var type',decl.var_type)
+            # print(new_init)
+            # exit()
 
                 # print(new_init)
                 # exit()
             # print('fuigshdaufygkhasedlf')
-            print('New init',new_init)
+            # print('New init',new_init)
         elif isinstance(decl.var_type, Pointer):
             # For pointers, static variables must be initialized with a pointer value.
             if (not isinstance(decl.init, Null) and not isinstance(decl.init, AddOf) and 
@@ -317,15 +381,15 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
             # For scalar constant initializers, select the correct static initializer.
             init_val = decl.init.exp.value._int
             if isinstance(decl.var_type, Int):
-                new_init = Initial([Constant(StaticInit.IntInit(Const.constInt(init_val)))])
+                new_init = Initial([Constant(StaticInit.IntInit(Const.constInt(int(init_val))))])
             elif isinstance(decl.var_type, UInt):
-                new_init = Initial([Constant(StaticInit.UIntInit(Const.constUInt(init_val)))])
+                new_init = Initial([Constant(StaticInit.UIntInit(Const.constUInt(int(init_val))))])
             elif isinstance(decl.var_type, Long):
-                new_init = Initial([Constant(StaticInit.LongInit(Const.constLong(init_val)))])
+                new_init = Initial([Constant(StaticInit.LongInit(Const.constLong(int(init_val))))])
             elif isinstance(decl.var_type, ULong):
-                new_init = Initial([Constant(StaticInit.ULongInit(Const.constULong(init_val)))])
+                new_init = Initial([Constant(StaticInit.ULongInit(Const.constULong(int(init_val))))])
             elif isinstance(decl.var_type, Double):
-                new_init = Initial([Constant(StaticInit.DouleInit(Const.constDouble(float(init_val))))])
+                new_init = Initial([Constant(StaticInit.DouleInit(Const.constDouble(abs(float(init_val)))))])
             else:
                 raise SyntaxError("Unsupported type for constant initializer", decl.storage_class)
         else:
@@ -395,19 +459,21 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
 
 
 def zero_initializer(_type):
- 
-    if isinstance(_type,Array):
-        
-        if _type._type and isinstance(_type._type,Array):
-            print(_type._type)
+    if isinstance(_type, Array):
+        # For arrays, create compound initializer with proper number of zero elements
+        zero_inits = []
+        for _ in range(int(_type._int.value._int)):
+            zero_inits.append(zero_initializer(_type._type))
+            e= CompoundInit(zero_inits)
+  
             # 
-            e=CompoundInit(initialzier=[zero_initializer(_type._type._type)])
+            # e=CompoundInit(initialzier=[zero_initializer(_type._type._type)])
             e.set_type(_type._type)
             print(e._type)
             # e.exp.set_type(_type)
             
             # 
-            return e
+        return e
     if isinstance(_type,Int):
         e= SingleInit(Constant(ConstInt(0),_type=_type))
         e.set_type(_type)
@@ -440,7 +506,7 @@ def zero_initializer(_type):
         
         return e
 
-i=0
+
 def typecheck_init(target_type,init,symbols):
     
     if isinstance(target_type,Array) and isinstance(init,CompoundInit):
@@ -464,6 +530,8 @@ def typecheck_init(target_type,init,symbols):
         while len(typechecked_list)<target_type._int.value._int:
             typechecked_list.append(zero_initializer(target_type._type)) 
             init.initializer = typechecked_list
+            print(init)
+            # exit()
         init.set_type(target_type)
         print('Exit compound init',init)
         return init
@@ -512,6 +580,7 @@ def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
         # TODO CHECK THIS CONDITION
         
         elif isinstance(decl.storage_class, Static):
+            # exit()
             print('Static init',decl)
             # 
             # 
@@ -525,15 +594,20 @@ def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
                 print('static var found',decl)
                 
                 typecheck_init(decl.var_type,decl.init,symbols)
-                print('After typecheck init')
-                # print(decl)
+               
                 initial_value=Initial(typecheck_array_init(decl.init,decl.var_type))
                 print('Initial value',initial_value)
                 
                 # print(initial_value)
                 # 
             elif isinstance(decl.init, Null):
-                initial_value = Initial([Constant(IntInit(ConstInt(0)))])
+                if isinstance(decl.var_type,Array):
+                    initial_value = Initial([ZeroInit(decl.var_type._int.value._int * size(decl.var_type._type))])
+                    print(initial_value)
+                    # exit()
+                else:
+                    
+                    initial_value = Initial([Constant(IntInit(ConstInt(0)))])
             elif isinstance(decl.init.exp, Constant):
                 if isinstance(decl.init.exp.value,ConstInt):
                     initial_value = Initial([Constant(IntInit(decl.init.exp.value))])
@@ -601,9 +675,18 @@ def typecheck_local_vairable_declaration(decl: VarDecl, symbols: dict):
                 if isinstance(decl.init,AddOf) and not isinstance(decl.init.exp,Var):
                     raise ValueError('Invalid l value')
                 
-                
+                print('Declaration variable type',decl)
+                # exit()
                 decl.init=x
                 decl.init=convert_to(decl.init,decl.var_type)
+                global y_
+                # if y_==4:
+                #     print('decl',decl.init._type)
+                #     exit()
+                # y_+=1
+                
+                # print('Decl init',decl.init)
+                # exit()
             print('Exit var decl',decl.name)
             
             return decl
@@ -1036,12 +1119,21 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
 
     elif isinstance(e, Binary):
+        print('iN BINARY \n')
+        print(e)
+        # print(symbols[e.left.identifier.name])
+        # print(symbols[e.right.identifier.name])
+        
+        # exit()
         print('Type check binary statement')
         if e.operator in (BinaryOperator.EQUAL,BinaryOperator.NOT_EQUAL):
             typed_e1 = typecheck_exp_and_convert(e.left, symbols)
             typed_e2 = typecheck_exp_and_convert(e.right, symbols)
             t1 = typed_e1.get_type()
             t2 = typed_e2.get_type()
+            print('Typed e1',typed_e1)
+            print('Typed e2',typed_e2)
+            # exit()
             print('In Binary')
             print('Type of exp 1',t1)
             print('Type of exp 2',t2)
@@ -1049,10 +1141,11 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
             global temp
            
             if isinstance(t1,Pointer) or isinstance(t2,Pointer):
-                print(t1)
+                print(e)
                 print(t2)
                 common_type = get_common_pointer_type(typed_e1, typed_e2)
                 print('Common type',common_type)
+                # exit()
                 #  
             else:
                 common_type = get_common_type(t1, t2)
@@ -1233,19 +1326,29 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
     
     elif isinstance(e, AddOf):
+        print('\n')
+        print(e)
+        print('\n')
+        
+        # exit()
         print('Add of expr')
         if not isinstance(e.exp, Constant) and isinstance(e.exp, (Var,Subscript,Dereference)):
            
             typed_inner = typecheck_exp(e.exp, symbols)
             
+            print('\n',typed_inner)
             # print(typed_inner.get_type()._type)
-            # exit()
             referenced_t = typed_inner.get_type()
             # if isinstance(referenced_t,Array):
             #     referenced_t = referenced_t._type
             e.exp= typed_inner
             e.exp.set_type(Pointer(referenced_t))
             e.set_type(Pointer(referenced_t))
+            global y_ 
+            if y_ == 0:
+                print(e)     
+                # exit()
+            y_+=1
             if func_type is not None and isinstance(func_type,Pointer):
                 if type(e.get_type().ref) != type(func_type.ref):
                     raise ValueError('Invalid return value')
@@ -1264,7 +1367,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return typecheck_statement(e.name,symbols)
     
     elif isinstance(e,Subscript):
-        
+       
         typed_e1 = typecheck_exp_and_convert(e.exp1, symbols)
         typed_e2 = typecheck_exp_and_convert(e.exp2, symbols)
         t1 = typed_e1.get_type()
