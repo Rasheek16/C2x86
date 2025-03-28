@@ -323,7 +323,7 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
     
     elif isinstance(expr,Cast):      
         print('Inside cast')
-        # print(expr)
+        print(expr)
         # exit()
         result  = emit_tacky_expr_and_convert(expr.exp,instructions,symbols=symbols)
         inner_type = expr.exp._type
@@ -331,20 +331,19 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         if isinstance(t,type(inner_type)):
             return PlainOperand(result)
         dst_name = make_temporary(symbols,expr.target_type)
-        # #size(Long()))
-        # #'Over here',t) 
-        # if isinstance(expr.target_type, Pointer) and isinstance(expr.exp._type, Pointer):
-        #     dst_name = make_temporary(symbols,expr.target_type)
-        #     instructions.append(TackyCopy(result, dst_name))
-        #     return PlainOperand(dst_name)
+ 
+        if isinstance(expr.target_type, Array) and isinstance(expr.exp._type, Pointer):
+            # if isinstance(expr.target_type._type,type(expr.exp._type.ref)):
+                return DereferencedPointer(result)
+        if isinstance(expr.target_type,Pointer) and isinstance(expr.exp._type, Array):
+            # if isinstance(expr.target_type._type,type(expr.exp._type.ref)):
+                return DereferencedPointer(result)
         if isinstance(t,Pointer):
             t=ULong()
         if isinstance(inner_type,Pointer):
             inner_type=ULong()
         if size(t)==size(inner_type):
-            print(t)
-            print(inner_type)
-            # exit()
+          
             instructions.append(TackyCopy(result,dst_name))
         elif size(t) < size(inner_type) and isinstance(inner_type,Double):
             if isSigned(t):
@@ -367,7 +366,7 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
             # exit()
             instructions.append(TackyZeroExtend(result,dst_name))
         #'Returning from cast')
-        print('exit cast')
+        # print('exit cast')
         return PlainOperand(dst_name)
   
     elif isinstance(expr, Binary):
@@ -465,15 +464,15 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
                     raise Exception("Invalid pointer arithmetic operation.")
                 
 
-            # Fallback: regular binary arithmetic/comparison
-            # print(expr.left)
+           
             v1 = emit_tacky_expr_and_convert(expr.left, instructions, symbols)
-            # print(v1)
-            # exit()
+            
+            
             v2 = emit_tacky_expr_and_convert(expr.right, instructions, symbols)
             dst_var = make_temporary(symbols, expr.get_type(), isDouble=expr.rel_flag)
             tacky_op = convert_binop(expr.operator)
             instructions.append(TackyBinary(operator=tacky_op, src1=v1, src2=v2, dst=dst_var))
+
           
             return PlainOperand(dst_var)
       
@@ -994,21 +993,17 @@ def convert_fun_decl_to_tacky(fun_decl: FunDecl,symbols) -> TackyFunction:
     # Convert the function body into TACKY instructions
     # if isinstance(fun_decl.body, Block):
     #     ##fun_decl.body.block_items)
+    i = 0
     if isinstance(fun_decl.body,Null):
         pass
     else: 
         for stmt in fun_decl.body:
-            print('Statment being processed',stmt)
+            if i==1:
+                print('\nStatment being processed',stmt)
+                # exit()
+            i+=1        
             emit_statement(stmt, instructions,symbols)
-    # else:
-    #     ##'here')
-    #     emit_statement(fun_decl.body, instructions)
 
-    # Ensure the function ends with Return(0) if no return statement is present
-    # has_return = any(isinstance(instr, TackyReturn) for instr in instructions)
-    # if not has_return:
-    
-    # if fun_decl.name.name=='main':
     instructions.append(TackyReturn(val=TackyConstant(ConstInt(0,exp_type=Int()))))
     
     return TopLevel.tack_func(
@@ -1037,28 +1032,11 @@ def emit_tacky_program(ast_program: Program,symbols) -> TackyProgram:
             # Else, discard declarations that have no body
         else:
             pass 
-            # raise TypeError(f"Unsupported top-level node: {type(fun_decl)}")
-    # tacky_funcs.append(TackyReturn(0))
-    
-    instructions=[]
-    tacky_symbols=[]
+
     symbols_new = convert_symbols_to_tacky(symbols)
-    #symbols)
-    # exit()
-    # for i in symbols_new:
-    #     ##i.init)
-    #     i.init=emit_tacky_expr(i.init,instructions,symbols)
-    #     tacky_symbols.append(i)
-    
-    # #symbols)
-    # exit(0)
-    # output=emit_tacky_expr(s,instructions)
-    # tack_symbols.extend(output)
-    # #symbols)
-    # exit()
+
     tacky_funcs.extend(symbols_new)
-    # #'tacky symbols received',symbols)
-    # exit()
+  
     return TackyProgram(function_definition=tacky_funcs)
 
 def emit_tacky(program_ast: Program,symbols) :

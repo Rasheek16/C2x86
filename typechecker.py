@@ -389,7 +389,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
             elif isinstance(decl.var_type, ULong):
                 new_init = Initial([Constant(StaticInit.ULongInit(Const.constULong(int(init_val))))])
             elif isinstance(decl.var_type, Double):
-                new_init = Initial([Constant(StaticInit.DouleInit(Const.constDouble(abs(float(init_val)))))])
+                new_init = Initial([Constant(StaticInit.DouleInit(Const.constDouble(float(init_val))))])
             else:
                 raise SyntaxError("Unsupported type for constant initializer", decl.storage_class)
         else:
@@ -1341,6 +1341,8 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
             referenced_t = typed_inner.get_type()
             # if isinstance(referenced_t,Array):
             #     referenced_t = referenced_t._type
+            # elif isinstance(referenced_t,Pointer):
+            #     referenced_t = referenced_t.ref
             e.exp= typed_inner
             e.exp.set_type(Pointer(referenced_t))
             e.set_type(Pointer(referenced_t))

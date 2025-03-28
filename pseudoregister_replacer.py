@@ -327,6 +327,7 @@ def replace_pseudoregisters(
 
                         # print(symbol.assembly_type.size)
                         base_address = pseudo_map[array_name]
+                        
                         # print(pseudo_map)
                         # print(base_address)
                         # exit()

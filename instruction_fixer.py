@@ -128,13 +128,9 @@ def fix_instr(instr,new_instructions:list):
                     )
                     new_instructions.append(new_mov)
                     
-            # elif isinstance(instr.src,Imm) and instr._type==AssemblyType.double:
-                
-            #     Mov1=Mov(assembly_type=instr._type,src=instr.src,dest=Reg(Registers.XMM14))
-            #     Mov2=Mov(assembly_type=instr._type,src=Reg(Registers.XMM14),dest=instr.dest)
-            #     new_instructions.extend([Mov1,Mov2])
-                
-            elif isinstance(instr.src,Imm) and (int(instr.src.value)>=2147483647  and isinstance(instr.dest,(Stack,Data))):
+         
+            
+            elif isinstance(instr.src,Imm) and (int(instr.src.value)>=2147483647  and isinstance(instr.dest,(Stack,Data,Memory))):
                 Mov1=Mov(assembly_type=instr._type,src=instr.src,dest=Reg(Registers.R10))
                 Mov2=Mov(assembly_type=instr._type,src=Reg(Registers.R10),dest=instr.dest)
                 new_instructions.extend([Mov1,Mov2])
@@ -143,8 +139,10 @@ def fix_instr(instr,new_instructions:list):
                 # mov1=
             
             else:
+                # print(instr)
+                # exit()
                 # Handle stack-to-stack moves
-                if isinstance(instr.src, (Stack, Data,Memory)) and isinstance(instr.dest, (Stack, Data,Memory)):
+                if isinstance(instr.src, (Stack, Data)) and isinstance(instr.dest, (Stack, Data)):
                     mov_to_reg = Mov(
                         assembly_type=instr._type,
                         src=instr.src,
@@ -161,10 +159,7 @@ def fix_instr(instr,new_instructions:list):
       
             
         else:
-            print(instr)
-            # if instr.src =='const_label.1':
-            
-                # exit()
+       
             # For other move operations maintain existing behavior
             if isinstance(instr.src, (Stack, Data,Memory)) and isinstance(instr.dest, (Stack, Data,Memory)):
                 if instr._type == AssemblyType.double:

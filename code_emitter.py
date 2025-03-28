@@ -131,6 +131,22 @@ class CodeEmitter:
                 self.emit_line(
                     f"   mov{convert_type(instruction._type)}  {src} , {dest}"
                 )
+            elif isinstance(instruction.dest, Memory):
+                dest = Convert8BYTEoperand(instruction.dest)
+                if isinstance(instruction._type ,ByteArray):
+                    instruction._type = calculate_type(instruction._type)
+                    
+                if (
+                    instruction._type == AssemblyType.double
+                    or instruction._type == AssemblyType.quadWord
+                ):
+                    src = Convert8BYTEoperand(instruction.src)
+                else:
+                    src = convertOperandToAssembly(instruction.src)
+
+                self.emit_line(
+                    f"   mov{convert_type(instruction._type)}  {src} , {dest}"
+                )
 
             elif instruction._type == AssemblyType.longWord:
                 src = convertOperandToAssembly(instruction.src)
@@ -635,11 +651,12 @@ def get_push_suffix(value):
 def calculate_type(_type):
     if isinstance(_type,ByteArray):
         size =  _type.alignment
-        print(size)
-        # exit()
+      
         if size== 4:
             return AssemblyType.longWord
       
+        # elif size==8 :
+            # return AssemblyType.quadWord
         else :
             return AssemblyType.quadWord
       
