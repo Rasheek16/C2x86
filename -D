@@ -1,551 +1,125 @@
-   .globl integer_types
+   .globl test_reverse_subscript
    .text
-integer_types:
+test_reverse_subscript:
    pushq   %rbp
    movq    %rsp, %rbp
-   subq $128, %rsp
-   movq %rdi, -16(%rbp)
-   movl %esi, -20(%rbp)
-   movl $5, %r10d
+   subq $240, %rsp
+   movl $100, %r10d
    movslq %r10d, %r11
-   movq %r11, -32(%rbp)
-   movq -16(%rbp), %rax
-   movq -32(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -40(%rbp)
-   movq -40(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -44(%rbp)
-   movl -44(%rbp), %r10d
-   movl %r10d, -48(%rbp)
-   movl $5, %r11d
+   movq %r11, -16(%rbp)
+   movq -16(%rbp), %r10
+   movq %r10, -48(%rbp)
+   movl $102, %r10d
+   movslq %r10d, %r11
    movq %r11, -56(%rbp)
-   movq -16(%rbp), %rax
-   movq -56(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -64(%rbp)
-   movq -64(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -68(%rbp)
-   movl -68(%rbp), %r10d
-   movl %r10d, -72(%rbp)
-   movq -16(%rbp), %rax
- leaq 20(%rax),%r10
+   movq -56(%rbp), %r10
+   movq %r10, -40(%rbp)
+   movl $104, %r10d
+   movslq %r10d, %r11
+   movq %r11, -64(%rbp)
+   movq -64(%rbp), %r10
+   movq %r10, -32(%rbp)
+   movl $106, %r10d
+   movslq %r10d, %r11
+   movq %r11, -72(%rbp)
+   movq -72(%rbp), %r10
+   movq %r10, -24(%rbp)
+ leaq -48(%rbp),%r10
    movq %r10, -80(%rbp)
+   movl $3, %r10d
+   movslq %r10d, %r11
+   movq %r11, -88(%rbp)
    movq -80(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -84(%rbp)
-   movl -84(%rbp), %r10d
-   movl %r10d, -88(%rbp)
-   movq $5, -96(%rbp)
-   movq -16(%rbp), %rax
-   movq -96(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
+   movq -88(%rbp), %rdx
+   leaq (%rax,%rdx,8),  %r10
+   movq %r10, -96(%rbp)
+   movq -96(%rbp), %rax
+   movq  0(%rax) , %r10
    movq %r10, -104(%rbp)
-   movq -104(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -108(%rbp)
-   movl -108(%rbp), %r10d
-   movl %r10d, -112(%rbp)
-   movl -20(%rbp), %r10d
-   cmpl %r10d, -48(%rbp)
+   movl $106, %r10d
+   movslq %r10d, %r11
+   movq %r11, -112(%rbp)
+   movq -112(%rbp), %r10
+   cmpq %r10, -104(%rbp)
    movl $0, -116(%rbp)
    setne    -116(%rbp)
    movl $0, %r10d
    cmpl %r10d, -116(%rbp)
+   jne    .Ltrue_1
+   movl $3, %r10d
+   movslq %r10d, %r11
+   movq %r11, -128(%rbp)
+ leaq -48(%rbp),%r10
+   movq %r10, -136(%rbp)
+   movq -128(%rbp), %rax
+   movq -136(%rbp), %rdx
+   leaq (%rax,%rdx,8),  %r10
+   movq %r10, -144(%rbp)
+   movq -144(%rbp), %rax
+   movq  0(%rax) , %r10
+   movq %r10, -152(%rbp)
+   movl $106, %r10d
+   movslq %r10d, %r11
+   movq %r11, -160(%rbp)
+   movq -160(%rbp), %r10
+   cmpq %r10, -152(%rbp)
+   movl $0, -164(%rbp)
+   setne    -164(%rbp)
+   movl $0, %r10d
+   cmpl %r10d, -164(%rbp)
+   jne    .Ltrue_1
+   movl $0, -168(%rbp)
+   jmp  .Lend_1
+.Ltrue_1:
+   movl $1, -168(%rbp)
+.Lend_1:
+   movl $0, %r10d
+   cmpl %r10d, -168(%rbp)
    je    .Lfalse_1
    movl $1, %eax
    movq   %rbp, %rsp
    popq   %rbp
    ret
-   jmp  .Lend_1
-.Lfalse_1:
-.Lend_1:
-   movl -20(%rbp), %r10d
-   cmpl %r10d, -72(%rbp)
-   movl $0, -120(%rbp)
-   setne    -120(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -120(%rbp)
-   je    .Lfalse_2
-   movl $2, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
    jmp  .Lend_2
-.Lfalse_2:
+.Lfalse_1:
 .Lend_2:
-   movl -20(%rbp), %r10d
-   cmpl %r10d, -88(%rbp)
-   movl $0, -124(%rbp)
-   setne    -124(%rbp)
+ leaq -48(%rbp),%r10
+   movq %r10, -176(%rbp)
+   movl $3, %r10d
+   movslq %r10d, %r11
+   movq %r11, -184(%rbp)
+   movq -176(%rbp), %rax
+   movq -184(%rbp), %rdx
+   leaq (%rax,%rdx,8),  %r10
+   movq %r10, -192(%rbp)
+   movl $3, %r10d
+   movslq %r10d, %r11
+   movq %r11, -200(%rbp)
+ leaq -48(%rbp),%r10
+   movq %r10, -208(%rbp)
+   movq -200(%rbp), %rax
+   movq -208(%rbp), %rdx
+   leaq (%rax,%rdx,8),  %r10
+   movq %r10, -216(%rbp)
+   movq -216(%rbp), %rax
+   movq  0(%rax) , %r10
+   movq %r10, -224(%rbp)
+ leaq -224(%rbp),%r10
+   movq %r10, -232(%rbp)
+   movq -232(%rbp), %r10
+   cmpq %r10, -192(%rbp)
+   movl $0, -236(%rbp)
+   setne    -236(%rbp)
    movl $0, %r10d
-   cmpl %r10d, -124(%rbp)
-   je    .Lfalse_3
-   movl $3, %eax
+   cmpl %r10d, -236(%rbp)
+   je    .Lfalse_2
+   movl $1, %eax
    movq   %rbp, %rsp
    popq   %rbp
    ret
    jmp  .Lend_3
-.Lfalse_3:
+.Lfalse_2:
 .Lend_3:
-   movl -20(%rbp), %r10d
-   cmpl %r10d, -112(%rbp)
-   movl $0, -128(%rbp)
-   setne    -128(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -128(%rbp)
-   je    .Lfalse_4
-   movl $4, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_4
-.Lfalse_4:
-.Lend_4:
-   movl $0, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   movl $0, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   .globl reverse_subscript
-   .text
-reverse_subscript:
-   pushq   %rbp
-   movq    %rsp, %rbp
-   subq $144, %rsp
-   movq %rdi, -16(%rbp)
-   movq %rsi, -24(%rbp)
-   movl $3, %r10d
-   movslq %r10d, %r11
-   movq %r11, -32(%rbp)
-   movq -16(%rbp), %rax
-   movq -32(%rbp), %rdx
-   leaq (%rax,%rdx,8),  %r10
-   movq %r10, -40(%rbp)
-   movq -40(%rbp), %rax
-   movq  0(%rax) , %r10
-   movq %r10, -48(%rbp)
-   movq -24(%rbp), %r10
-   cmpq %r10, -48(%rbp)
-   movl $0, -52(%rbp)
-   setne    -52(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -52(%rbp)
-   je    .Lfalse_5
-   movl $5, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_5
-.Lfalse_5:
-.Lend_5:
-   movl $3, %r10d
-   movslq %r10d, %r11
-   movq %r11, -64(%rbp)
-   movq -64(%rbp), %rax
-   movq -16(%rbp), %rdx
-   leaq (%rax,%rdx,8),  %r10
-   movq %r10, -72(%rbp)
-   movq -72(%rbp), %rax
-   movq  0(%rax) , %r10
-   movq %r10, -80(%rbp)
-   movq -24(%rbp), %r10
-   cmpq %r10, -80(%rbp)
-   movl $0, -84(%rbp)
-   setne    -84(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -84(%rbp)
-   je    .Lfalse_6
-   movl $6, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_6
-.Lfalse_6:
-.Lend_6:
-   movl $3, %r10d
-   movslq %r10d, %r11
-   movq %r11, -96(%rbp)
-   movq -96(%rbp), %rax
-   movq -16(%rbp), %rdx
-   leaq (%rax,%rdx,8),  %r10
-   movq %r10, -104(%rbp)
-   movq -104(%rbp), %rax
-   movq  0(%rax) , %r10
-   movq %r10, -112(%rbp)
- leaq -112(%rbp),%r10
-   movq %r10, -120(%rbp)
-   movl $3, %r10d
-   movslq %r10d, %r11
-   movq %r11, -128(%rbp)
-   movq -16(%rbp), %rax
-   movq -128(%rbp), %rdx
-   leaq (%rax,%rdx,8),  %r10
-   movq %r10, -136(%rbp)
-   movq -136(%rbp), %r10
-   cmpq %r10, -120(%rbp)
-   movl $0, -140(%rbp)
-   setne    -140(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -140(%rbp)
-   je    .Lfalse_7
-   movl $7, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_7
-.Lfalse_7:
-.Lend_7:
-   movl $0, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   movl $0, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   .globl subscript_static
-   .text
-subscript_static:
-   pushq   %rbp
-   movq    %rsp, %rbp
-   subq $128, %rsp
- leaq static_array(%rip),%r10
-   movq %r10, -16(%rbp)
-   movl $0, %r10d
-   movslq %r10d, %r11
-   movq %r11, -24(%rbp)
-   movq -16(%rbp), %rax
-   movq -24(%rbp), %rdx
-   leaq (%rax,%rdx,8),  %r10
-   movq %r10, -32(%rbp)
-   movq -32(%rbp), %rax
-   movsd  0(%rax) , %xmm14
-   movsd %xmm14, -40(%rbp)
-   movsd -40(%rbp), %xmm15
-   comisd    const_label.1(%rip), %xmm15
-   movl $0, -44(%rbp)
-   setne    -44(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -44(%rbp)
-   je    .Lfalse_8
-   movl $8, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_8
-.Lfalse_8:
-.Lend_8:
- leaq static_array(%rip),%r10
-   movq %r10, -56(%rbp)
-   movl $1, %r10d
-   movslq %r10d, %r11
-   movq %r11, -64(%rbp)
-   movq -56(%rbp), %rax
-   movq -64(%rbp), %rdx
-   leaq (%rax,%rdx,8),  %r10
-   movq %r10, -72(%rbp)
-   movq -72(%rbp), %rax
-   movsd  0(%rax) , %xmm14
-   movsd %xmm14, -80(%rbp)
-   movsd -80(%rbp), %xmm15
-   comisd    const_label.2(%rip), %xmm15
-   movl $0, -84(%rbp)
-   setne    -84(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -84(%rbp)
-   je    .Lfalse_9
-   movl $9, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_9
-.Lfalse_9:
-.Lend_9:
- leaq static_array(%rip),%r10
-   movq %r10, -96(%rbp)
-   movl $2, %r10d
-   movslq %r10d, %r11
-   movq %r11, -104(%rbp)
-   movq -96(%rbp), %rax
-   movq -104(%rbp), %rdx
-   leaq (%rax,%rdx,8),  %r10
-   movq %r10, -112(%rbp)
-   movq -112(%rbp), %rax
-   movsd  0(%rax) , %xmm14
-   movsd %xmm14, -120(%rbp)
-   movsd -120(%rbp), %xmm15
-   comisd    const_label.3(%rip), %xmm15
-   movl $0, -124(%rbp)
-   setne    -124(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -124(%rbp)
-   je    .Lfalse_10
-   movl $10, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_10
-.Lfalse_10:
-.Lend_10:
-   movl $0, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   movl $0, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   .globl update_element
-   .text
-update_element:
-   pushq   %rbp
-   movq    %rsp, %rbp
-   subq $96, %rsp
-   movq %rdi, -16(%rbp)
-   movl %esi, -20(%rbp)
-   movl $10, %r10d
-   movslq %r10d, %r11
-   movq %r11, -32(%rbp)
-   movq -16(%rbp), %rax
-   movq -32(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -40(%rbp)
-   movq -40(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -44(%rbp)
-   movl -44(%rbp), %r10d
-   movl %r10d, -48(%rbp)
-   movl -48(%rbp), %r11d
-   imull $2, %r11d
-   movl %r11d, -48(%rbp)
-   movl $10, %r10d
-   movslq %r10d, %r11
-   movq %r11, -56(%rbp)
-   movq -16(%rbp), %rax
-   movq -56(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -64(%rbp)
-   movq -64(%rbp), %rax
-   movl -48(%rbp), %r10d
-   movl %r10d, 0(%rax)
-   movl $10, %r10d
-   movslq %r10d, %r11
-   movq %r11, -72(%rbp)
-   movq -16(%rbp), %rax
-   movq -72(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -80(%rbp)
-   movq -80(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -84(%rbp)
-   movl -20(%rbp), %r10d
-   cmpl %r10d, -84(%rbp)
-   movl $0, -88(%rbp)
-   setne    -88(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -88(%rbp)
-   je    .Lfalse_11
-   movl $11, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_11
-.Lfalse_11:
-.Lend_11:
-   movl $0, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   movl $0, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   .globl increment_static_element
-   .text
-increment_static_element:
-   pushq   %rbp
-   movq    %rsp, %rbp
-   subq $80, %rsp
- leaq tmp.10(%rip),%r10
-   movq %r10, -16(%rbp)
-   movl $3, %r10d
-   movslq %r10d, %r11
-   movq %r11, -24(%rbp)
-   movq -16(%rbp), %rax
-   movq -24(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -32(%rbp)
-   movq -32(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -36(%rbp)
-   movl -36(%rbp), %r10d
-   movl %r10d, -40(%rbp)
-   addl $1, -40(%rbp)
- leaq tmp.10(%rip),%r10
-   movq %r10, -48(%rbp)
-   movl $3, %r10d
-   movslq %r10d, %r11
-   movq %r11, -56(%rbp)
-   movq -48(%rbp), %rax
-   movq -56(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -64(%rbp)
-   movq -64(%rbp), %rax
-   movl -40(%rbp), %r10d
-   movl %r10d, 0(%rax)
- leaq tmp.10(%rip),%r10
-   movq %r10, -72(%rbp)
-   movq -72(%rbp), %rax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   movl $0, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   .globl check_increment_static_element
-   .text
-check_increment_static_element:
-   pushq   %rbp
-   movq    %rsp, %rbp
-   subq $176, %rsp
-   call increment_static_element
-   movq %rax, -16(%rbp)
-   movq -16(%rbp), %r10
-   movq %r10, -24(%rbp)
-   movl $3, %r10d
-   movslq %r10d, %r11
-   movq %r11, -32(%rbp)
-   movq -24(%rbp), %rax
-   movq -32(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -40(%rbp)
-   movq -40(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -44(%rbp)
-   movl $1, %r10d
-   cmpl %r10d, -44(%rbp)
-   movl $0, -48(%rbp)
-   setne    -48(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -48(%rbp)
-   je    .Lfalse_12
-   movl $12, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_12
-.Lfalse_12:
-.Lend_12:
-   movl $0, %r10d
-   movslq %r10d, %r11
-   movq %r11, -56(%rbp)
-   movq -24(%rbp), %rax
-   movq -56(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -64(%rbp)
-   movq -64(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -68(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -68(%rbp)
-   jne    .Ltrue_1
-   movl $1, %r10d
-   movslq %r10d, %r11
-   movq %r11, -80(%rbp)
-   movq -24(%rbp), %rax
-   movq -80(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -88(%rbp)
-   movq -88(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -92(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -92(%rbp)
-   jne    .Ltrue_1
-   movl $0, -96(%rbp)
-   jmp  .Lend_13
-.Ltrue_1:
-   movl $1, -96(%rbp)
-.Lend_13:
-   movl $0, %r10d
-   cmpl %r10d, -96(%rbp)
-   jne    .Ltrue_2
-   movl $2, %r10d
-   movslq %r10d, %r11
-   movq %r11, -104(%rbp)
-   movq -24(%rbp), %rax
-   movq -104(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -112(%rbp)
-   movq -112(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -116(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -116(%rbp)
-   jne    .Ltrue_2
-   movl $0, -120(%rbp)
-   jmp  .Lend_14
-.Ltrue_2:
-   movl $1, -120(%rbp)
-.Lend_14:
-   movl $0, %r10d
-   cmpl %r10d, -120(%rbp)
-   je    .Lfalse_13
-   movl $13, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_15
-.Lfalse_13:
-.Lend_15:
-   call increment_static_element
-   movq %rax, -128(%rbp)
-   movq -128(%rbp), %r10
-   movq %r10, -136(%rbp)
-   movq -136(%rbp), %r10
-   cmpq %r10, -24(%rbp)
-   movl $0, -140(%rbp)
-   setne    -140(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -140(%rbp)
-   je    .Lfalse_14
-   movl $14, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_16
-.Lfalse_14:
-.Lend_16:
-   movl $3, %r10d
-   movslq %r10d, %r11
-   movq %r11, -152(%rbp)
-   movq -24(%rbp), %rax
-   movq -152(%rbp), %rdx
-   leaq (%rax,%rdx,4),  %r10
-   movq %r10, -160(%rbp)
-   movq -160(%rbp), %rax
-   movl  0(%rax) , %r10d
-   movl %r10d, -164(%rbp)
-   movl $2, %r10d
-   cmpl %r10d, -164(%rbp)
-   movl $0, -168(%rbp)
-   setne    -168(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -168(%rbp)
-   je    .Lfalse_15
-   movl $15, %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_17
-.Lfalse_15:
-.Lend_17:
    movl $0, %eax
    movq   %rbp, %rsp
    popq   %rbp
@@ -559,140 +133,10 @@ check_increment_static_element:
 main:
    pushq   %rbp
    movq    %rsp, %rbp
-   subq $240, %rsp
-   movl $0, -12(%rbp)
-   movl -12(%rbp), %r10d
-   movl %r10d, -48(%rbp)
-   movl $0, -52(%rbp)
-   movl -52(%rbp), %r10d
-   movl %r10d, -48(%rbp)
-   movl $0, -56(%rbp)
-   movl -56(%rbp), %r10d
-   movl %r10d, -48(%rbp)
-   movl $0, -60(%rbp)
-   movl -60(%rbp), %r10d
-   movl %r10d, -48(%rbp)
-   movl $0, -64(%rbp)
-   movl -64(%rbp), %r10d
-   movl %r10d, -48(%rbp)
-   movl $7, -48(%rbp)
- leaq -48(%rbp),%r10
-   movq %r10, -72(%rbp)
-   movq -72(%rbp), %rdi
-   movl $7, %esi
-   call integer_types
-   movl %eax, -76(%rbp)
-   movl -76(%rbp), %r10d
-   movl %r10d, -80(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -80(%rbp)
-   je    .Lfalse_16
-   movl -80(%rbp), %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_18
-.Lfalse_16:
-.Lend_18:
-   movl $100, %r10d
-   movslq %r10d, %r11
-   movq %r11, -88(%rbp)
-   movq -88(%rbp), %r10
-   movq %r10, -128(%rbp)
-   movl $102, %r10d
-   movslq %r10d, %r11
-   movq %r11, -136(%rbp)
-   movq -136(%rbp), %r10
-   movq %r10, -128(%rbp)
-   movl $104, %r10d
-   movslq %r10d, %r11
-   movq %r11, -144(%rbp)
-   movq -144(%rbp), %r10
-   movq %r10, -128(%rbp)
-   movl $106, %r10d
-   movslq %r10d, %r11
-   movq %r11, -152(%rbp)
-   movq -152(%rbp), %r10
-   movq %r10, -128(%rbp)
- leaq -128(%rbp),%r10
-   movq %r10, -160(%rbp)
-   movl $106, %r10d
-   movslq %r10d, %r11
-   movq %r11, -168(%rbp)
-   movq -160(%rbp), %rdi
-   movq -168(%rbp), %rsi
-   call reverse_subscript
-   movl %eax, -172(%rbp)
-   movl -172(%rbp), %r10d
-   movl %r10d, -80(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -80(%rbp)
-   je    .Lfalse_17
-   movl -80(%rbp), %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_19
-.Lfalse_17:
-.Lend_19:
-   call subscript_static
-   movl %eax, -176(%rbp)
-   movl -176(%rbp), %r10d
-   movl %r10d, -80(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -80(%rbp)
-   je    .Lfalse_18
-   movl -80(%rbp), %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_20
-.Lfalse_18:
-.Lend_20:
-   movl $0, -224(%rbp)
-   movl $0, -224(%rbp)
-   movl $0, -224(%rbp)
-   movl $0, -224(%rbp)
-   movl $0, -224(%rbp)
-   movl $0, -224(%rbp)
-   movl $0, -224(%rbp)
-   movl $0, -224(%rbp)
-   movl $0, -224(%rbp)
-   movl $0, -224(%rbp)
-   movl $15, -224(%rbp)
- leaq -224(%rbp),%r10
-   movq %r10, -232(%rbp)
-   movq -232(%rbp), %rdi
-   movl $30, %esi
-   call update_element
-   movl %eax, -236(%rbp)
-   movl -236(%rbp), %r10d
-   movl %r10d, -80(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -80(%rbp)
-   je    .Lfalse_19
-   movl -80(%rbp), %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_21
-.Lfalse_19:
-.Lend_21:
-   call check_increment_static_element
-   movl %eax, -240(%rbp)
-   movl -240(%rbp), %r10d
-   movl %r10d, -80(%rbp)
-   movl $0, %r10d
-   cmpl %r10d, -80(%rbp)
-   je    .Lfalse_20
-   movl -80(%rbp), %eax
-   movq   %rbp, %rsp
-   popq   %rbp
-   ret
-   jmp  .Lend_22
-.Lfalse_20:
-.Lend_22:
-   movl $0, %eax
+   subq $16, %rsp
+   call test_reverse_subscript
+   movl %eax, -12(%rbp)
+   movl -12(%rbp), %eax
    movq   %rbp, %rsp
    popq   %rbp
    ret
@@ -700,26 +144,4 @@ main:
    movq   %rbp, %rsp
    popq   %rbp
    ret
-   .data
-   .align 8
-static_array:
-   .double 0.1
-   .double 0.2
-   .double 0.3
-   .data
-   .align 8
-tmp.10:
-    .zero 16
-   .section .rodata
-   .align 8
-const_label.1:
-   .double 0.1
-   .section .rodata
-   .align 8
-const_label.2:
-   .double 0.2
-   .section .rodata
-   .align 8
-const_label.3:
-   .double 0.3
 .section .note.GNU-stack,"",@progbits

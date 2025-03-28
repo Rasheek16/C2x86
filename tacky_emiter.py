@@ -362,6 +362,9 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         elif isSigned(inner_type):
             instructions.append(TackySignExtend(result,dst_name))
         else:
+            print(size(t))
+            print(size(inner_type))
+            # exit()
             instructions.append(TackyZeroExtend(result,dst_name))
         #'Returning from cast')
         print('exit cast')
@@ -565,12 +568,42 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         index_val = emit_tacky_expr_and_convert(expr.exp2, instructions, symbols)
 
         # 3. Compute the scale factor based on the size of the element type.
-        scale = array_size(expr.exp1.get_type())  # Get the size of the element type
-        # print(expr._type._int.value._int)
+        print(isinstance(expr.exp1.get_type(),Pointer))
+        print(expr.exp2.get_type())
         # exit()
-        stride = scale
-        print(expr.exp1.get_type())
-        print(stride)
+        if isinstance(expr.exp1.get_type(),(Pointer,Array)):
+            tmp_ptr = make_temporary(symbols, expr.exp1.get_type())
+            stride = array_size(expr.exp1.get_type())  # Get the size of the element type
+            instructions.append(TackyAddPtr(ptr=base_ptr, index=index_val, scale=stride, dst=tmp_ptr))
+            if not isinstance(symbols[base_ptr.identifier]['val_type'],Pointer): 
+            # exit() 
+                # Lvalue conversion: Load the scalar value from the computed pointer
+                tmp_val = make_temporary(symbols,symbols[base_ptr.identifier]['val_type'])
+                instructions.append(TackyLoad(src_ptr=tmp_ptr, dst=tmp_val))
+                return  PlainOperand(tmp_val)  # Return the loaded value
+
+        else:
+            tmp_ptr = make_temporary(symbols, expr.exp2.get_type())
+            stride = array_size(expr.exp2.get_type())  # Get the size of the element type
+            instructions.append(TackyAddPtr(ptr=index_val, index=base_ptr, scale=stride, dst=tmp_ptr))
+            if not isinstance(symbols[index_val.identifier]['val_type'],Pointer): 
+                # exit() 
+                # Lvalue conversion: Load the scalar value from the computed pointer
+                tmp_val = make_temporary(symbols,symbols[index_val.identifier]['val_type'])
+                instructions.append(TackyLoad(src_ptr=tmp_ptr, dst=tmp_val))
+                return  PlainOperand(tmp_val)  # Return the loaded value
+
+            
+        # print(expr._type._int.value._int)
+        print(expr.exp2._type)
+        print(expr.exp1._type)
+        print(expr.get_type())
+        
+        # exit()
+        
+        # stride = scale
+        # print(expr.exp1.get_type())
+        # print(stride)
         # exit()
         # if stride==8:
         #     print(expr.exp1)
@@ -597,20 +630,18 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         # print(stride)
         # exit()
         # 4. Create a temporary variable for the computed pointer.
-        tmp_ptr = make_temporary(symbols, expr.exp1.get_type())
         # exit()
         # 5. Emit the AddPtr instruction to compute the address of arr[index]
-        instructions.append(TackyAddPtr(ptr=base_ptr, index=index_val, scale=stride, dst=tmp_ptr))
 
         # 6. Check if this subscript results in a scalar type.
         # print(symbols[base_ptr.identifier])
         # exit()
-        if not isinstance(symbols[base_ptr.identifier]['val_type'],Pointer): 
-            # exit() 
-            # Lvalue conversion: Load the scalar value from the computed pointer
-            tmp_val = make_temporary(symbols,symbols[base_ptr.identifier]['val_type'])
-            instructions.append(TackyLoad(src_ptr=tmp_ptr, dst=tmp_val))
-            return  PlainOperand(tmp_val)  # Return the loaded value
+        # if not isinstance(symbols[base_ptr.identifier]['val_type'],Pointer): 
+        #     # exit() 
+        #     # Lvalue conversion: Load the scalar value from the computed pointer
+        #     tmp_val = make_temporary(symbols,symbols[base_ptr.identifier]['val_type'])
+        #     instructions.append(TackyLoad(src_ptr=tmp_ptr, dst=tmp_val))
+        #     return  PlainOperand(tmp_val)  # Return the loaded value
 
         # 7. If it's still an array, return the computed pointer directly.
         return DereferencedPointer(tmp_ptr)  # No need to dereference if it's another array

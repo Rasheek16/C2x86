@@ -227,8 +227,8 @@ def flat_val(var_type,val):
         new_init = Constant(StaticInit.DouleInit(Const.constDouble(float(val))))
         new_init.set_type(var_type)
         
-    
-    # print('Flat val',new_init)
+    print(decl)
+    print('Error here')
     return new_init
     
 
@@ -304,7 +304,7 @@ def typecheck_array_init(decl, var_type=None):
                         flattened = typecheck_array_init(elem, var_type._type)
                         result.extend(flattened)
                     elif isinstance(elem, SingleInit):
-                        result.extend(typecheck_array_init(elem, var_type))
+                        result.extend(typecheck_array_init(elem, var_type._type))
                     else:
                         result.append(ZeroInit(4))
             else:
