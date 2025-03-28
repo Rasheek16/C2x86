@@ -185,12 +185,12 @@ def parse_simple_declarator(tokens):
     if isIdentifier(next_token) and not isKeyword(next_token):
         identifier=next_token
         _,tokens=take_token(tokens)
-        return tokens,identifier
+        return identifier,tokens
     elif next_token=='(':
         expect('(',tokens)
-        identifier=parse_declarator(tokens)
+        identifier,tokens=parse_declarator(tokens)
         expect(')',tokens)
-        return tokens,identifier
+        return identifier,tokens
     else:
         raise SyntaxError('Unknown token in simple declarator',next_token)
 
@@ -219,16 +219,72 @@ def parse_direct_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
     simple_declarator, tokens = parse_simple_declarator(tokens)
     print('Simple declaration',simple_declarator)
     print(tokens[0])
-    if tokens[0] == '(':
+    return parse_declarator_suffix(tokens,simple_declarator)
+
+def parse_initializer(tokens,list=None):
+    l=[]
+    if tokens[0]=='{':
+        print('here')
+        expect('{',tokens)
+        expr,tokens=parse_initializer(tokens,l)
+        l.append(expr)
+        print('Parsed index 0')
+        while tokens and (tokens[0]==',' and tokens[1]!='}'):
+            expect(',',tokens)
+            exp,tokens=parse_initializer(tokens,l)
+            l.append(exp)
+        if tokens[0]==',':
+            expect(',',tokens)
+        expect('}',tokens)
+        return CompoundInit(l) ,tokens
+    else:
+        print('Found expr',tokens[0])
+        exp,tokens=parse_exp(tokens)
+        print('exp,',exp)
+        return SingleInit(exp),tokens
+
+def parse_declarator_suffix(tokens, simple_declarator):
+    """
+    Parses the suffix of a declarator, handling function and array declarators.
+    
+    For an array declaration like [5][10], the first bracket (5) becomes nested 
+    (i.e. applied to the simple_declarator), and then the next bracket (10) wraps it.
+    
+    Returns:
+        A tuple (declarator, remaining_tokens)
+    """
+    if tokens and tokens[0] == '(':
         expect('(', tokens)
         print('Parsing parameter list')
-        params, tokens = parse_param_list(tokens)  # Assuming parse_param_list returns ParamInfo objects
-        print('Param List',params)
+        params, tokens = parse_param_list(tokens)
+        print('Param List:', params)
         expect(')', tokens)
-        print('Exisitng parse direct decl')
+        print('Exiting parse direct decl')
         return FunDeclarator(params, simple_declarator), tokens
+
+    elif tokens and tokens[0] == '[':
+        expect('[', tokens)
+        cont, tokens = parse_constant(tokens)
+        if isinstance(cont.value, ConstDouble):
+            raise ValueError('Expression must have integral type.')
+        expect(']', tokens)
+        # Build the current array declarator level:
+        current = ArrayDeclarator(simple_declarator, cont)
+        # If there's another '[' following, recursively process it using the current declarator.
+        if tokens and tokens[0] == '[':
+            return parse_declarator_suffix(tokens, current)
+        else:
+            return current, tokens
+
     else:
         return simple_declarator, tokens
+
+
+
+
+        
+
+
 
 def parse_simple_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
     """
@@ -249,7 +305,7 @@ def parse_simple_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
         raise SyntaxError(f"Expected identifier or '(', got '{tokens}'")
 
 def process_declarator(declarator: Declarator, base_type: Type) -> Tuple[Identifier, Type, List[Identifier]]:
-    print('Inside process declarator')
+    print('Inside process declarator',declarator)
     """
     Processes a declarator to derive type and identifier information.
     """
@@ -258,10 +314,8 @@ def process_declarator(declarator: Declarator, base_type: Type) -> Tuple[Identif
         return declarator.identifier, base_type,[]
     
     elif isinstance(declarator, PointerDeclarator):
-        
         derived_type = Pointer(base_type)
         print('Exist process declarator Pointer decl')
-        
         return process_declarator(declarator.declarator, derived_type)
     elif isinstance(declarator, FunDeclarator):
         if not isinstance(declarator.declarator, Ident):
@@ -273,17 +327,33 @@ def process_declarator(declarator: Declarator, base_type: Type) -> Tuple[Identif
             param_name, param_type, _ = process_declarator(param_info.declarator, param_info._type)
             if isinstance(param_type, FunType):
                 raise SyntaxError("Function pointers in parameters aren't supported")
-            param_names.append(Parameter(_type=param_type,declarator=declarator.declarator,name=param_name))
+            param_names.append(Parameter(_type=param_type,declarator=declarator.declarator,name=Identifier(param_name)))
             param_types.append(param_type)
         derived_type = FunType(param_count=len(param_names),params=param_types,base_type=base_type)
         print(derived_type)
         print('Exist process declarator')
         
         return declarator.declarator.identifier, derived_type, param_names
+    elif isinstance(declarator,ArrayDeclarator):
+        print(declarator)
+        # exit()
+        print('HERE')
+        print('Base type',base_type)
+        derived_type = Array(base_type,declarator.size)
+        print('Derived type',derived_type)
+        print('Sub declarator',declarator.declarator)
+        print(process_declarator(declarator.declarator,derived_type))
+        # exit()
+        
+        return process_declarator(declarator.declarator,derived_type)
     else:
+        print(declarator)
         raise ValueError(f"Unknown declarator type: {type(declarator)}")
 
 def parse_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclarator, List[str]]:
+    print('parse_abstract_declarator')
+    print(tokens)
+    # exit()
     """
     Parses an abstract declarator.
     <abstract-declarator>::= "*" [ <abstract-declarator> ] | <direct-abstract-declarator>
@@ -291,28 +361,66 @@ def parse_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclarator, Li
  
     if tokens[0] == "*":
         print('Inside parse abstract declaration',tokens[0])
-        _, tokens = take_token(tokens)
-        if tokens and tokens[0] in ("*", "("):  # Check for inner declarator
+        if tokens[0]=='*' or tokens[0]==')':
+            _, tokens = take_token(tokens)
+        print(tokens)
+        # exit()
+        if tokens and tokens[0] in ("*", "(",'['):  # Check for inner declarator
             inner_declarator, tokens = parse_abstract_declarator(tokens)
-            print('Returning abstract pointer')
+            
+            
             return AbstractPointer(inner_declarator), tokens
+        
         else:
-            print('returning abstract base')
+           
             return AbstractPointer(AbstractBase()), tokens  # No inner declarator
     else:
+      
         return parse_direct_abstract_declarator(tokens)
 
-def parse_direct_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclarator, List[str]]:
 
-    """
-    Parses a direct abstract declarator.
-    <direct-abstract-declarator>::= "(" <abstract-declarator> ")"
-    """
-    # print('In parse direct',tokens)
-    expect('(', tokens)
-    abstract_declarator, tokens = parse_abstract_declarator(tokens)
-    expect(')', tokens)
-    return abstract_declarator, tokens
+def parse_direct_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclarator, List[str]]:
+    if not tokens:
+        return AbstractBase(), tokens  # Handle empty case
+
+    if tokens[0] == '(':
+        expect('(', tokens)
+        abstract_declarator, tokens = parse_abstract_declarator(tokens)
+        expect(')', tokens)
+        
+        base_type=None
+        while tokens and tokens[0] == '[':
+            expect('[', tokens)
+            const,tokens = parse_constant(tokens)
+            # print(const)
+            # exit()
+            if isinstance(const.value,ConstDouble):
+                raise ValueError('Expression must have integral type.')
+            expect(']', tokens)
+            if base_type is None:
+                base_type = AbstractBase() #if there is no base type set it to constant
+            base_type = AbstractArray(base_type, const)  # Create AbstractArray
+        if base_type is None: #if there are no array brackets
+            return abstract_declarator, tokens
+        return base_type, tokens
+    
+    else:
+        base_type: AbstractDeclarator = None #store the base type
+        while tokens and tokens[0] == '[':
+            expect('[', tokens)
+            const,tokens = parse_constant(tokens)
+            if isinstance(const.value,ConstDouble):
+                raise ValueError('Expression must have integral type.')
+            # exit()
+            expect(']', tokens)
+            if base_type is None:
+                base_type = AbstractBase() #if there is no base type set it to constant
+            base_type = AbstractArray(base_type, const)  # Create AbstractArray
+        if base_type is None: #if there are no array brackets
+            return AbstractBase(),tokens #return base type if there is no array
+        # print(base_type)
+        return base_type, tokens
+        
 
 def process_abstract_declarator(abstract_declarator: AbstractDeclarator, base_type: Type) -> Type:
     """
@@ -323,73 +431,14 @@ def process_abstract_declarator(abstract_declarator: AbstractDeclarator, base_ty
     elif isinstance(abstract_declarator, AbstractPointer):
         derived_type = Pointer(base_type)
         return process_abstract_declarator(abstract_declarator.abstract_declarator, derived_type)
+    elif isinstance(abstract_declarator,AbstractArray):
+        derived_type=Array(base_type,abstract_declarator.size)
+        return process_abstract_declarator(abstract_declarator.abstract_declarator,derived_type)
     else:
         raise ValueError(f"Unknown abstract declarator type: {type(abstract_declarator)}")
 
 
-# def parse_direct_declarator(tokens):
-#     tokens,identifier = parse_simple_declarator(tokens)
-#     next_token=tokens[0]
-#     if next_token=='(' and tokens[1]==')':
-#         expect('(',tokens)
-        
-#         expect(')',tokens)
-#         return tokens,identifier,[]
-#     elif next_token=='(':
-#         expect('(',tokens)
-#         tokens,exp=parse_param_list(tokens)
-#         expect(')',tokens)
-#         return tokens ,identifier,exp
-#     else:
-#         raise SyntaxError('Unknown token in direct declarator',next_token)
 
-# def process_declarator(declarator: Declarator, base_type: Type) -> Tuple[Identifier, Type, List[Identifier]]:
-#     """
-#     Processes a declarator to derive type and identifier information.
-#     """
-#     if isinstance(declarator, Ident):
-#         return declarator.identifier, base_type,
-#     elif isinstance(declarator, PointerDeclarator):
-#         derived_type = Pointer(base_type)
-#         return process_declarator(declarator.declarator, derived_type)
-#     elif isinstance(declarator, FunDeclarator):
-#         if not isinstance(declarator.declarator, Ident):
-#             raise SyntaxError("Can't apply additional type derivations to a function type")
-#         param_names =''
-#         param_types =''
-#         for param_info in declarator.params:
-#             param_name, param_type, _ = process_declarator(param_info.declarator, param_info.param_type)
-#             if isinstance(param_type, FunType):
-#                 raise SyntaxError("Function pointers in parameters aren't supported")
-#             param_names.append(param_name)
-#             param_types.append(param_type)
-#         derived_type = FunType(param_types, base_type)
-#         return declarator.declarator.identifier, derived_type, param_names
-#     else:
-#         raise ValueError(f"Unknown declarator type: {type(declarator)}")
-
-
-
-
-# def parse_func_decl(tokens,func_name:Identifier,_type,storage_class)->Tuple[FunDecl,str]:
-#  try:
-#     exp=Null()
-#     expect('(',tokens)
-#     exp,tokens=parse_param_list(tokens)
-#     expect(')',tokens)
-#     next_token  = tokens[0]
-#     #('functioon',tokens)
-#     if next_token==';':
-#         _,tokens=take_token(tokens)
-#         exp1=FunDecl(name=func_name,params=exp,fun_type=_type,body=Null(),storage_class=storage_class),tokens
-#         return exp1
-#     elif next_token=='{':
-#         list_block_items,tokens=parse_block(tokens)
-#         return FunDecl(name=func_name,params=exp,fun_type=_type,body=Block(list_block_items),storage_class=storage_class),tokens
-#  except Exception as e:
-#     raise SyntaxError('Error in parse_func_decl',e)
-        
-    
     
 def parse_declarations(tokens):
     try:
@@ -445,35 +494,7 @@ def parse_block_item(tokens):
         block_item = S(statement)
         return block_item
         
-    # block_items.append(block_item)
 
-def parse_variable_declaration(tokens:List[str],var_name:str,_type,storage_class)->Tuple[VarDecl,str]:
-    try:
-        
-        # Initialize 'init' to None (optional initializer)
-        init = Null()
-        # new_token = 
-        # Check if the next token is "=" indicating an initializer
-        # * [ "=" <exp> ] Square bracket indicate optional code
-        if tokens and tokens[0] == "=":
-            # Consume "="
-            expect("=", tokens)
-            # ##tokens)
-            # Parse <exp> for the initializer
-            # ##tokens)
-            # #(tokens)
-            init, tokens = parse_exp(tokens)
-            # ##tokens)
-        # Expect ";" to end the declaration
-        expect(";", tokens)
-        # ##tokens)
-        # Return the Declaration AST node
-        # ##'in var decl')
-        return VarDecl(name=var_name, init=init,var_type=_type,storage_class=storage_class),tokens
-    except Exception as e:
-        ##f"Syntax Error in declaration: {e}")
-        sys.exit(1)
-    
 def parse_specifier(tokens):
     if isSpecifier(tokens[0]):
         specifer,tokens=take_token(tokens)
@@ -562,6 +583,7 @@ def parse_declaration(tokens: List[str]):
     print('Base type',base_type)
     declarator, tokens = parse_declarator(tokens)
     print('declarator',declarator)
+    # exit()
     identifier, decl_type, params = process_declarator(declarator, base_type)
     print('decl_type',decl_type)
     print('Tokens',tokens)
@@ -584,8 +606,9 @@ def parse_declaration(tokens: List[str]):
         print("Tokens",tokens)
         if tokens and tokens[0] == "=": #checks if token exists and if it is =
             expect("=", tokens)
-            print('Found init')
-            init, tokens = parse_exp(tokens)
+            print('Found init',tokens)
+            init, tokens = parse_initializer(tokens)
+            print('INIT',init )
         expect(";", tokens)
         return VarDecl(name=identifier, init=init, var_type=decl_type, storage_class=storage_class), tokens
 
@@ -622,7 +645,7 @@ def parse_variable_declaration(tokens: List[str], var_name: Identifier, _type, s
     init = Null()
     if tokens and tokens == "=": #checks if token exists and if it is =
         expect("=", tokens)
-        init, tokens = parse_exp(tokens)
+        init, tokens = parse_initializer(tokens)
 
     expect(";", tokens)
     return VarDecl(name=var_name, init=init, var_type=_type, storage_class=storage_class), tokens
@@ -814,8 +837,159 @@ def parse_optional_parameter(tokens: List[str]) -> Tuple[Statement, List[str]]:
         exp, tokens = parse_exp(tokens)
         return exp, tokens
 
+
+
+def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
+    try:
+        
+        next_token = tokens[0]
+        print('Parsinf unary expre', next_token)
+        print(tokens)
+
+        # exit()
+        if next_token in ("-", "~", "!", '*', '&') or next_token.startswith('&') or next_token.startswith('*'):
+            print('Found unary operator', tokens[0])
+            operator_token, tokens = take_token(tokens)
+            operator = parse_unop(operator_token)
+            # Parse the sub-expression after the unary operator
+            expr, tokens = parse_unary_exp(tokens)
+            if operator == UnaryOperator.AMPERSAND:
+                return AddOf(expr), tokens
+            elif operator == UnaryOperator.DEREFERENCE:
+                return Dereference(expr), tokens
+            return Unary(operator=operator, expr=expr), tokens
+        elif next_token == "(" and isSpecifier(tokens[1]):  # Parenthesized expression or Cast
+            print('case')
+            print(tokens)
+            # exit()
+            _, tokens = take_token(tokens)
+            print('Found parenthesized expression', tokens[0])
+            print(tokens)
+            # exit()
+            
+            if tokens and isSpecifier(tokens[0]):  # Cast expression
+             
+             
+                specifiers = []
+                while tokens and isSpecifier(tokens[0]):
+                    specifier, tokens = take_token(tokens)
+                    specifiers.append(specifier)
+             
+                cast_type, storage_class = parse_type_and_storage_class(specifiers)  # Get the type for the cast
+              
+                if not isinstance(storage_class, Null):
+                    raise SyntaxError('a storage class cannot be specified while type conversion')
+             
+                while tokens and tokens[0] == '(' and tokens[1] == '(':
+                    expect('(', tokens)
+                #
+
+                if tokens and tokens[0] == '*' or tokens[0] == '(' or tokens[0]=='[':  # Check for abstract declarator
+                
+                    abstract_declarator, tokens = parse_abstract_declarator(tokens)
+                    
+
+                    if tokens[0] == ')':
+                        expect(')', tokens)
+                  
+
+                    cast_type = process_abstract_declarator(abstract_declarator, cast_type)
+                   
+              
+                while tokens and tokens[0] == ')':
+                    expect(')', tokens)
+                print(tokens)
+                # exit()
+                cast_expr, tokens = parse_unary_exp(tokens)
+                print(cast_expr)
+
+                print(tokens)
+                # exit()
+                return Cast(target_type=cast_type, exp=cast_expr), tokens
+
+            else:  # Parenthesized expression
+                print(tokens)
+                # exit()
+                expr, tokens = parse_exp(tokens)
+                expect(")", tokens)
+                return expr, tokens
+        else:
+            print('Found postfix expr')
+            expr, tokens = parse_postfix_expr(tokens)
+            print('POstfix expr', expr)
+            print(expr)
+            return expr, tokens
+    except Exception as e:
+        raise e
+    
+    
+def parse_postfix_expr(tokens):
+   
+    expr=Null()
+    if tokens[0]!='[':
+        print('Inside parse postfix expr',tokens)
+        expr,tokens=parse_primary_expr(tokens)
+        print('Primary Expression',expr)
+        # print('Next tokens',tokens[0])
+    while tokens and tokens[0] == '[':  # Handle multiple subscripts
+        print('Subscript')
+        expect('[', tokens)
+        exp, tokens = parse_exp(tokens)
+        # print('Parsing subscript:', expr, exp)
+        # exit()
+        expr = Subscript(expr, exp)
+        print(expr)
+        # exit()
+        expect(']', tokens)
+    # print('Exist parsepostfix expr',tokens)
+    # if x==6:
+        # print(tokens)
+    return expr,tokens
+   
+
+
+def parse_primary_expr(tokens):
+    print('Inside parse primary expr')
+    print(tokens)
+    if not tokens:
+            raise SyntaxError("Unexpected end of input when parsing factor.")
+        
+    next_token = tokens[0]
+    # print(isIdentifier(next_token))
+    # print(isKeyword(next_token))
+    
+    if next_token=='(':
+        expect('(',tokens)
+        expr,tokens=parse_exp(tokens)
+        expect(')',tokens)
+        return expr,tokens
+    
+    if isIdentifier(next_token) and tokens[1]=='(':
+        token,tokens=take_token(tokens)
+        ident=Identifier(token)
+        expect('(',tokens)
+        args=[]
+        if tokens[0] != ')':
+            args,tokens=parse_args_list(tokens)
+        expect(')',tokens)
+        return FunctionCall(identifier=ident,args=args),tokens
+    
+    if isIntegerConstant(next_token):
+        print('Found integer',tokens[0])
+        val,tokens=parse_constant(tokens)
+        print('Returning integer',val)
+        return val,tokens
+    
+    if isIdentifier(next_token) and not isKeyword(next_token):
+        print('here')
+        token,tokens=take_token(tokens)
+        return Var(Identifier(token)),tokens
+    
+
+
 def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
-    print('Inside parse exp')
+    
+    print('Inside parse exp',tokens[0])
     #(
         # 'Inside parse expression'
     # )
@@ -834,10 +1008,13 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
     """
     try:
         # Parse the left-hand side (lhs) as a factor
-    
-        lhs, tokens = parse_factor(tokens)
-        print('lhs',lhs)
-        print('Next Tokens',tokens[0])
+
+        # if tokens[0] in (UnaryOperator.NEGATE,UnaryOperator.NOT,UnaryOperator.DEREFERENCE,UnaryOperator.AMPERSAND,UnaryOperator.COMPLEMENT):
+        print(tokens)
+        lhs,tokens = parse_unary_exp(tokens)
+        print(lhs)
+        # exit()
+        
         while True:
             if not tokens:
                 break
@@ -880,6 +1057,7 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
                 # Combine lhs and rhs into a Binary AST node
                 lhs = Binary(operator=operator, left=lhs, right=rhs)
         print('Exist parse exp',tokens)
+        print(lhs)
         return lhs, tokens
     except Exception as e:
         # sys.exit(1)
@@ -984,119 +1162,6 @@ def parse_unop(operator_token: str) -> UnaryOperator:
     return unop_mapping[operator_token]
 
 
-def parse_factor(tokens: List[str]):
-   try:
-        print('Parsing Factors',tokens)
-        print(tokens[0])
-        # ##tokens)
-        """
-        Parses a <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")" rule.
-        
-        Args:
-            tokens (List[str]): The list of tokens to parse.
-        
-        Returns:
-            tuple: A tuple containing the parsed Exp AST node and the remaining tokens.
-        
-        Raises:
-            SyntaxError: If parsing fails.
-        """
-        if not tokens:
-            raise SyntaxError("Unexpected end of input when parsing factor.")
-        
-        next_token = tokens[0]
-
-        if isIntegerConstant(next_token):
-            print('Found integer',tokens[0])
-            val=parse_constant(tokens)
-            print('Returning integer',val)
-    
-            return val
-        
-        
-        # 2. If it's one of the unary operators
-        elif next_token in ("-", "~", "!",'*','&') or next_token.startswith('&') or next_token.startswith('*'):
-            print('Found unary operator',tokens[0])
-            
-            operator_token, tokens = take_token(tokens)
-            operator = parse_unop(operator_token)
-            # Parse the sub-expression after the unary operator
-            expr, tokens = parse_factor(tokens)
-            if operator == UnaryOperator.AMPERSAND:
-                return AddOf(expr), tokens
-            elif operator == UnaryOperator.DEREFERENCE:
-                return Dereference(expr), tokens
-            return Unary(operator=operator, expr=expr), tokens
-        elif isIdentifier(next_token) and  not isKeyword(next_token) and tokens[1]=='(':
-            # ##'inside func')
-            identifier_token, tokens = take_token(tokens)
-            identifier = Identifier(name=identifier_token)
-            # ##identifier)
-            expect('(',tokens)
-        
-            arg_list,tokens=parse_args_list(tokens)
-        
-            
-            expect(')',tokens)    
-            return FunctionCall(identifier,arg_list),tokens
-        
-      
-        elif next_token == "(":  # Parenthesized expression or Cast
-            # parse_factor(tokens)
-            _, tokens = take_token(tokens)
-            print('Found parenthesized expression',tokens[0])
-            if tokens and isSpecifier(tokens[0]):  # Cast expression
-                print('Found casting expr')
-                specifiers =[]
-                while tokens and isSpecifier(tokens[0]):
-                    specifier, tokens = take_token(tokens)
-                    specifiers.append(specifier)
-                cast_type, storage_class = parse_type_and_storage_class(specifiers)  # Get the type for the cast
-                if not isinstance(storage_class,Null):
-                    raise SyntaxError('a storage class cannot be specified while type conversion')
-        
-                print('cast_type',cast_type)
-                while tokens and tokens[0] == '(':
-                    expect('(', tokens)
-                # print(tokens[0])
-                if tokens and tokens[0] == '*':  # Check for abstract declarator
-                    abstract_declarator, tokens = parse_abstract_declarator(tokens)
-                    print('abstract_declarator',abstract_declarator)
-                    cast_type = process_abstract_declarator(abstract_declarator, cast_type)
-                    print('Cast Type',cast_type)
-                print(tokens)
-                while tokens and tokens[0] == ')':
-                    expect(')', tokens)
-                # expect(')', tokens)
-                cast_expr, tokens = parse_factor(tokens)
-                return Cast(target_type=cast_type, exp=cast_expr), tokens
-
-            else:  # Parenthesized expression
-                expr, tokens = parse_exp(tokens)
-                expect(")", tokens)
-                return expr, tokens
-        # 3. If it's an identifier, parse_var.
-        elif isIdentifier(next_token) and  not isKeyword(next_token):
-            identifier_token, tokens = take_token(tokens)
-            identifier = Identifier(name=identifier_token)
-            return Var(identifier=identifier), tokens
-        
-        # 4. If it's "(", parse a parenthesized expression: "(" <exp> ")"
-        elif next_token == "(":
-            # Consume "("
-            _, tokens = take_token(tokens)
-            # Parse <exp>
-            expr, tokens = parse_exp(tokens)
-            # Expect ")"
-            expect(")", tokens)
-            return expr, tokens
-
-        else:
-            raise SyntaxError(f"Expected <int>, <identifier>, '(', or unary operator, got '{next_token}'")
-            # raise SyntaxError(f"Expected <int>, <identifier>, '(', or unary operator, got '{next_token}'")
-
-   except SyntaxError as e:
-    raise e
 
     
 def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
