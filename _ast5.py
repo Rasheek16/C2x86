@@ -65,6 +65,31 @@ class Pointer(Type):
     def __repr__(self):
         return f'Pointer(referenced={self.ref})'
     
+class Char(Type):
+    def __init__(self):
+       pass
+       
+    
+    def __repr__(self):
+        return f'Char()'
+    
+class SChar(Type):
+    def __init__(self):
+       pass
+       
+    
+    def __repr__(self):
+        return f'SChar()'
+
+class UChar(Type):
+    def __init__(self):
+       pass
+       
+    
+    def __repr__(self):
+        return f'UChar()'
+    
+    
 
 class Array(Type):
     def __init__(self,_type:Type,_int):
@@ -312,6 +337,16 @@ class Exp:
     def get_type(self):
         return self._type
     
+    
+class String(Exp):
+    def __init__(self,string,_type=None):
+        super().__init__(_type)
+        self.string=string
+    def __repr__(self):
+        return f'String(string={self.string},type={self._type})'
+    
+    
+    
 class ConstInt(Exp):
     def __init__(self,_int,exp_type=Int()):
         super().__init__(exp_type)
@@ -380,6 +415,23 @@ class Subscript(Exp):
         return f'Subscript(exp1={self.exp1},exp2={self.exp2})'
     
 
+class ConstUChar(Exp):
+    def __init__(self,_int,exp_type=UInt()):
+        super().__init__(exp_type)
+        self._int=_int 
+        
+    
+    def __repr__(self):
+        return f'ConstUChar(int={self._int},type={self._type})'
+
+class ConstChar(Exp):
+    def __init__(self,_int,exp_type=UInt()):
+        super().__init__(exp_type)
+        self._int=_int 
+        
+    
+    def __repr__(self):
+        return f'ConstChar(int={self._int},type={self._type})'
 
 class Const():
     constInt=ConstInt
@@ -387,6 +439,10 @@ class Const():
     constUInt=ConstUInt
     constULong=ConstULong
     constDouble=ConstDouble
+    constChar=ConstChar
+    constUChar=ConstUChar
+    
+    
     
         # super(CLASS_NAME, self).__init__(*args, **kwargs)
     
