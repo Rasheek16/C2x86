@@ -1,26 +1,29 @@
 import re
 import sys
 from typing import List,Tuple
-
+import ast 
 from _ast5 import *
 
 return_flag = False
+
+def isString(token):
+   return re.match(r'^"([^"\\\n]|\\["\'?\\abfnrtv])*"$',token) is not None 
 
 def isKeyword(token):
     '''
     
     '''
-    if token in ('int','return','void','int','extern','static','signed','unsigned','long','if','else','do','while','for','break','continue','double'):
+    if token in ('int','return','void','int','extern','char','static','signed','unsigned','long','if','else','do','while','for','break','continue','double','char'):
         return True 
     return False
 
 def isSpecifier(token):
-    if token in ('int','extern','static','long','int','unsigned','signed','double'):
+    if token in ('int','extern','static','long','int','unsigned','signed','char','double'):
         return True 
     return False
 
 def isType(token):
-    if token in ('int','long','unsigned','signed','double'):
+    if token in ('int','long','unsigned','signed','double','char'):
         return True 
     return False
         
@@ -30,6 +33,9 @@ def get_temp_label():
     global temp_label_counter
     temp_label_counter+=1
     return f'tmp_label.{temp_label_counter}'
+
+def isCharConstant(token):
+    return re.match(r"""'([^'\\\n]|\\['"?\\abfnrtv])'""",token) is not None
 
 def isIntegerConstant(token: str) -> bool:
     # #(token)
@@ -239,7 +245,22 @@ def parse_initializer(tokens,list=None):
         return CompoundInit(l) ,tokens
     else:
         print('Found expr',tokens[0])
-        exp,tokens=parse_exp(tokens)
+        exp, tokens = parse_exp(tokens)
+        print(exp)
+        print('NEXT TOKENS',tokens[0])
+        # exit()
+        if isinstance(exp,String):  # Check if the next token is also a string
+            lis = [ast.literal_eval(exp.string)]  # Start with first parsed string
+
+            while tokens and isString(tokens[0]) and not isIdentifier(tokens[0]) and not isKeyword(tokens[0]):  # Keep merging adjacent strings
+                expr_new, tokens = parse_exp(tokens)  # Parse next part
+                lis.append(ast.literal_eval(expr_new.string))  # Append string content
+
+            exp.string = " ".join(lis)  # Merge into a single string
+            exp.string = f'{exp.string}'
+        # print('Expression:', exp.string)
+        # exit()
+            
         print('exp,',exp)
         return SingleInit(exp),tokens
 
@@ -481,7 +502,7 @@ def parse_block(tokens)->Tuple[List[BlockItem],str]:
 
 def parse_block_item(tokens):
 
-    if tokens[0] in ('int','static','extern','long','unsigned','signed','double'):
+    if tokens[0] in ('int','static','extern','long','unsigned','signed','double','char'):
         declaration,tokens = parse_declaration(tokens)
         ##'declaration')
         block_item = D(declaration)
@@ -513,12 +534,22 @@ def parse_types(types):
             if sorted_types[i]==sorted_types[i+1]:
                 raise SyntaxError('Duplicate type specifier')
         if types == ['double']:
-         
             return Double() 
+        if 'char' in types:
+            if 'signed' in types and 'char' in types:
+                return SChar()
+            if 'unsigned' in types and 'char' in types:
+                return UChar()
+            if types == ['char']:
+                return Char()
+            else:
+                raise SyntaxError('Invalid type specifier combination with char')
+                
         if 'double' in types:
             raise SyntaxError('Invalid type specifier combination with double')
         if 'signed' in types and 'unsigned' in types:
             raise SyntaxError('Invalid type specifier combination with unsigned')
+        
         if 'unsigned' in types and 'long' in types:
             return ULong()
         if 'unsigned' in types:
@@ -537,7 +568,7 @@ def parse_type_and_storage_class(specifiers:List):
         types=[]
         storage_classes:List[str]=[]
         for specifier in specifiers:
-            if specifier in ('int','long','unsigned','signed','double'):
+            if specifier in ('int','long','unsigned','signed','double','char'):
                 types.append(specifier)
             else:
                 storage_classes.append(specifier)
@@ -795,7 +826,7 @@ def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
         Tuple[Statement, List[str]]: The initialization statement and the remaining tokens.
     """
   
-    if tokens[0] in ('int','extern','static','long','unsigned','signed','double'):
+    if tokens[0] in ('int','extern','static','long','unsigned','signed','double','char'):
         # ##'here')
         # Parse declaration (e.g., int i = 0)
         if tokens[2]=='(':
@@ -924,40 +955,37 @@ def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
     
     
 def parse_postfix_expr(tokens):
-   
+    print('Inside parse posftfix expr',tokens[0])
     expr=Null()
-    if tokens[0]!='[':
-        print('Inside parse postfix expr',tokens)
+    if tokens[0]=='[':
         expr,tokens=parse_primary_expr(tokens)
-        print('Primary Expression',expr)
-        # print('Next tokens',tokens[0])
-    while tokens and tokens[0] == '[':  # Handle multiple subscripts
-        print('Subscript')
-        expect('[', tokens)
-        exp, tokens = parse_exp(tokens)
-        # print('Parsing subscript:', expr, exp)
-        # exit()
-        expr = Subscript(expr, exp)
-        print(expr)
-        # exit()
-        expect(']', tokens)
-    # print('Exist parsepostfix expr',tokens)
-    # if x==6:
-        # print(tokens)
+    else:
+        print('Going to parse primary expr')
+        expr,tokens=parse_primary_expr(tokens)
+        
+
+        while tokens and tokens[0] == '[':  
+            print('Subscript')
+            expect('[', tokens)
+            exp, tokens = parse_exp(tokens)
+        
+            expr = Subscript(expr, exp)
+            
+            expect(']', tokens)
+ 
     return expr,tokens
    
 
 
 def parse_primary_expr(tokens):
-    print('Inside parse primary expr')
-    print(tokens)
+    print('inside parse primary expr',tokens[0])
+    print('Is identifier ',isIdentifier(tokens[0]))
+ 
     if not tokens:
             raise SyntaxError("Unexpected end of input when parsing factor.")
         
     next_token = tokens[0]
-    # print(isIdentifier(next_token))
-    # print(isKeyword(next_token))
-    
+  
     if next_token=='(':
         expect('(',tokens)
         expr,tokens=parse_exp(tokens)
@@ -974,18 +1002,24 @@ def parse_primary_expr(tokens):
         expect(')',tokens)
         return FunctionCall(identifier=ident,args=args),tokens
     
-    if isIntegerConstant(next_token):
+    if isIntegerConstant(next_token) or isCharConstant(next_token):
         print('Found integer',tokens[0])
         val,tokens=parse_constant(tokens)
         print('Returning integer',val)
         return val,tokens
-    
+        
     if isIdentifier(next_token) and not isKeyword(next_token):
         print('here')
         token,tokens=take_token(tokens)
         return Var(Identifier(token)),tokens
     
-
+    if isString(next_token) and not isKeyword(next_token):
+        print('Found string')
+        token,tokens = take_token(tokens)
+        print('Returning string')
+        return String(token),tokens
+    else:
+        raise SyntaxError('Invalid token in primary expression',tokens[0])
 
 def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
     
@@ -1165,6 +1199,7 @@ def parse_unop(operator_token: str) -> UnaryOperator:
 
     
 def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
+    print('Inside parse contant',tokens[0])
     """
     Parses a <const> token according to the grammar:
     <const> ::= <int> | <long> | <uint> | <ulong> | <double>
@@ -1190,12 +1225,43 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
             'long': re.compile(r'^(\d+)[lL]$'),
             'int': re.compile(r'^(\d+)$'),
             'double': re.compile(r'^(\d+\.\d+|\d+\.|\.\d+|\d+)([eE][+-]?\d+)?$'),
+            'char': re.compile(
+                r"^'("
+                r"[^'\\\n]"               # Any single character except `'`, `\`, newline
+                r"|\\[\\'\"abfnrtv?]"     # Standard escape sequences (note the ? is now at end)
+                r"|\\x[0-9A-Fa-f]{2}"     # Hex escape: '\x41'
+                r"|\\[0-7]{1,3}"          # Octal escape: '\123'
+                r"|\\u[0-9A-Fa-f]{4}"     # Unicode escape: '\u00A9'
+                r"|\\U[0-9A-Fa-f]{8}"     # Unicode escape: '\U0001F600'
+                r")'$"
+            )
         }
         # #(token)
 
         # 1. Check for 'double'
+        match = patterns['char'].match(value_str)
+        
+        if match:
+            
+            char_repr = match.group(1)  # Extract character content
+            print(char_repr==r'\?')
+            print(ord('?'))
+            if char_repr == r'\?':
+                ascii_value = ord('?')  # ASCII 63
+            else:
+                char = char_repr.encode().decode('unicode_escape')
+                ascii_value = ord(char)
+            # print(char_repr)
+            # char = char_repr.encode().decode('unicode_escape')  # Decode escape sequences
+            # print(char)
+            # ascii_value = ord(char)  # Convert character to ASCII / Unicode value
+            # print(r"\\ascii_value")
 
-        # 2. Check for 'ulong' with 'ul' or 'lu' suffix
+            # print(f"Character: {char}, ASCII/Unicode: {ascii_value}")
+            ret =  Constant(Const.constInt(ascii_value)),tokens 
+            return ret # Return processed character constant
+        
+          
         match = patterns['ulong'].fullmatch(value_str)
         if match:
             number = int(match.group(1))
