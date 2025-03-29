@@ -1,4 +1,8 @@
 patterns = [
+    ('char',r'\bchar\b'),
+    ('string',r'\bstring\b'),
+    ('char_constant',r"""'([^'\\\n]|\\['"?\\abfnrtv])'"""),
+    ('string_constant',r'"([^"\\\n]|\\["?\\abfnrtv])*"'),
     ('floating_point_constant',r'(([0-9]*\.[0-9]+|[0-9]+\.?)[Ee][+-]?[0-9]+|[0-9]*\.[0-9]+|[0-9]+\.)[^\w.]'),
     ('double_keyword',r'\bdouble\b'),
      ("Constant", r'([0-9]+)[^\w.]'),
