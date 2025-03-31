@@ -1,0 +1,37 @@
+   .globl main
+   .text
+main:
+   pushq   %rbp
+   movq    %rsp, %rbp
+   subq $64, %rsp
+ leaq string.1,%r10
+   movq %r10, -16(%rbp)
+ leaq -16(%rbp),%r10
+   movq %r10, -24(%rbp)
+   movq -24(%rbp), %r10
+   movq %r10, -32(%rbp)
+   movl $2, %r10d
+   movslq %r10d, %r11
+   movq %r11, -40(%rbp)
+   movq -32(%rbp), %rax
+   movq -40(%rbp), %rdx
+   leaq (%rax,%rdx,4),  %r10
+   movq %r10, -48(%rbp)
+   movq -48(%rbp), %rax
+   movsd  0(%rax) , %xmm14
+   movsd %xmm14, -49(%rbp)
+   movsd -49(%rbp), %xmm14
+   movsd %xmm14, -53(%rbp)
+   movl -53(%rbp), %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   movl $0, %eax
+   movq   %rbp, %rsp
+   popq   %rbp
+   ret
+   .section .rodata
+   .align 8
+string.1:
+   .asciz Hello, World!
+.section .note.GNU-stack,"",@progbits

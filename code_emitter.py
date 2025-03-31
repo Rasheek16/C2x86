@@ -295,7 +295,7 @@ class CodeEmitter:
             # print(s)
                 self.emit_line(f"   leaq ({src[0]},{src[1]},{src[2]}),  {dst}")
             else:
-                
+                print('here')
                 self.emit_line(f' leaq {src},{dst}')
         elif isinstance(instruction, Cvtsi2sd):
             # operator = convertOperatorToAssembly(instruction.)
@@ -481,6 +481,9 @@ def convertOperandToAssembly(operand: Operand) -> str:
     elif isinstance(operand, Data):
         return f"{operand.identifier}(%rip)"
     elif isinstance(operand, str):
+        if operand.startswith('string'):
+            return f'{operand}(%rip)'
+       
         return operand
     else:
         raise ValueError(f"Invalid operand type: {type(operand).__name__}")
@@ -531,10 +534,13 @@ def convertOperandToAssemblySETCC(operand: Operand) -> str:
     else:
         raise ValueError(f"Invalid operand type: {type(operand).__name__}")
 
-
+i=0
 def Convert8BYTEoperand(operand) -> str:
-    # print(operand)
-    # exit()
+    # global i 
+    # if i==2:
+    #     print(operand)
+    #     exit()
+    # i+=1
     # #print(operand.value)
     if isinstance(operand, Reg):
         # print(operand)
@@ -638,7 +644,11 @@ def convert_static_init(instr, alignment):
         if instr.null_terminated == False:
             return f'.ascii {instr.string}'
         else:
-            return f'.asciz {instr.string}'
+            if instr.string.startswith('"'):
+                return f'.asciz {instr.string}'
+            else:
+                return f'.asciz "{instr.string}"'
+                
     elif isinstance(instr,PointerInit):
         return f'.quad {instr.name}'
     elif isinstance(instr,ZeroInit):
