@@ -271,12 +271,16 @@ def replace_pseudoregisters(
                             if symbol.assembly_type == AssemblyType.longWord:
                                 current_offset -= 4
                                 # current_offset = align_offset(current_offset, 4)
-                            else :
+                            elif symbol.assembly_type== AssemblyType.byte:
+                                current_offset -= 1
+                                # current_offset = align_offset(current_offset, 8)
+                            else:
                                 current_offset -= 8
                                 current_offset = align_offset(current_offset, 8)
-                            # else:
-                            #     current_offset -= operand.size 
+                                
                             pseudo_map[name] = current_offset
+                            
+                            
                             return Stack(current_offset)
                     else:
                         raise ValueError(f"Pseudo variable '{name}' not found in backend symbol table.")
@@ -311,15 +315,16 @@ def replace_pseudoregisters(
                             # exit()
                             if isinstance(symbol.assembly_type ,AssemblyType.byteArray):
                                 current_offset -= symbol.assembly_type.size # Changed from += to -=
-                                # print(symbol.assembly_type.size)
-                                # print(current_offset)
+                              
                                 current_offset = int (align_offset(current_offset,16))
-                                # if symbol.assembly_type.size>=40:
-                                #     print(current_offset)
-                                #     exit()
+                            
                             elif symbol.assembly_type == AssemblyType.longWord:
                                 current_offset -= 4
-                                # current_offset = align_offset(current_offset, 4)
+                                # current_offset = align_offset(current_offset, 4
+                                #
+                            elif symbol.assembly_type == AssemblyType.byte:
+                                current_offset -= 1
+                                
                             else:
                                 current_offset -= 8
                                 current_offset = align_offset(current_offset, 8)

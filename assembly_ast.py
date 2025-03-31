@@ -41,6 +41,7 @@ class AssemblyType:
     quadWord='QuadWord' 
     double='Double'
     byteArray=ByteArray
+    byte = 'Byte'
     
     
 
@@ -182,13 +183,16 @@ class MovZeroExtend(Instruction):
     mov SRC, DEST
     (Grammar: Mov(operand src, operand dst))
     """
-    def __init__(self, src, dest):
+    def __init__(self,assembly_type_src,assembly_type_dst, src, dest):
+        self.assembly_type_src = assembly_type_src
+        self.assembly_type_dst = assembly_type_dst
+        
         self.src = src
         self.dest = dest
         # self._type=assembly_type
 
     def __repr__(self):
-        return f"MovZeroExtend(src={repr(self.src)}, dest={repr(self.dest)})"
+        return f"MovZeroExtend(assembly_src = {self.assembly_type_src},assembly_dst = {self.assembly_type_dst},src={repr(self.src)}, dest={repr(self.dest)})"
 
 class Mov(Instruction):
     """
@@ -211,12 +215,14 @@ class Movsx(Instruction):
     mov SRC, DEST
     (Grammar: Mov(operand src, operand dst))
     """
-    def __init__(self, src, dest):
+    def __init__(self,assembly_type_src,assembly_type_dst, src, dest):
+        self.assembly_type_src = assembly_type_src
+        self.assembly_type_dst = assembly_type_dst
         self.src = src
         self.dest = dest
 
     def __repr__(self):
-        return f"Movsx(src={repr(self.src)}, dest={repr(self.dest)})"
+        return f"Movsx(assembly_type_src = {self.assembly_type_src},assembly_type_dst = {self.assembly_type_dst},src={repr(self.src)}, dest={repr(self.dest)})"
     
 
 

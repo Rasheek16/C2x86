@@ -1,3 +1,7 @@
+// int a =1;
+// static unsigned int *s ;
 int main(void){
-    char s = 'd';
+    static char  *x="as";
+    // int a = 1;
+    return x[1];
 }

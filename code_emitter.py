@@ -106,11 +106,19 @@ class CodeEmitter:
             if isinstance(instruction._type,ByteArray):
                 instruction._type  = calculate_type(instruction._type)
             print(instruction._type)
-            if (
+            if instruction._type == AssemblyType.byte:
+                # print(instruction)
+                # exit()
+                src = convertOperandToAssemblySETCC(instruction.src)
+                dest = convertOperandToAssemblySETCC(instruction.dest)
+                self.emit_line(f"   mov{convert_type(instruction._type)} {src}, {dest}")
+            elif (
                 instruction._type == AssemblyType.double
                 and isinstance(instruction.dest, Reg)
                 and instruction.dest.value == Registers.SP
+                
             ):
+                # exit()
                 self.emit_line(
                     f"   movsd   {Convert8BYTEoperand(instruction.src)}  (%rsp)"
                 )
@@ -152,8 +160,9 @@ class CodeEmitter:
                 src = convertOperandToAssembly(instruction.src)
                 dest = convertOperandToAssembly(instruction.dest)
                 self.emit_line(f"   mov{convert_type(instruction._type)} {src}, {dest}")
-
             else:
+                # exit()
+                # print(instruction)
                 # exit()
                 src = Convert8BYTEoperand(instruction.src)
                 dest = Convert8BYTEoperand(instruction.dest)
@@ -177,10 +186,13 @@ class CodeEmitter:
             self.emit_line("   popq   %rbp")
             self.emit_line("   ret")
         elif isinstance(instruction, Movsx):
+            src_type = convert_type(instruction.assembly_type_src)
+            dst_type = convert_type(instruction.assembly_type_dst)
+            
             src = convertOperandToAssembly(instruction.src)
             # #print(src)
             dest = Convert8BYTEoperand(instruction.dest)
-            self.emit_line(f"   movslq {src}, {dest}")
+            self.emit_line(f"   movs{src_type}{dst_type} {src}, {dest}")
 
         elif isinstance(instruction, Unary):
             if instruction._type == AssemblyType.longWord:
@@ -365,7 +377,17 @@ class CodeEmitter:
             self.emit_line(
                 f"   subq    ${instruction.value}, %rsp"
             )  # Allocate stack space
-
+        elif isinstance(instruction,MovZeroExtend):
+            src_type = convert_type(instruction.assembly_type_src)
+            dst_type = convert_type(instruction.assembly_type_dst)
+            src = Convert8BYTEoperand(instruction.src)
+            dst = Convert8BYTEoperand(instruction.dst)
+            
+            self.emit_line(f'movz{src_type}{dst_type}   {src},{dst}')
+            
+            
+            
+            
         else:
             print(isinstance(instruction, Push))
             raise ValueError(f"Unsupported instruction type: {type(instruction)}")
@@ -592,8 +614,8 @@ def convert_code_to_assembly(code: str):
 
 
 def convert_static_init(instr, alignment):
-    print(instr.value)
-    print(type(instr))
+    # print(instr.value)
+    # print(type(instr))
     # exit()
     if isinstance(instr, DoubleInit):
         if instr.value == float("inf"):
@@ -602,7 +624,23 @@ def convert_static_init(instr, alignment):
         val = f".double {instr.value}"
         # print('error')
         return val
-        # return 'ERror here '
+    elif isinstance(instr,CharInit):
+        if instr.value == 0:
+            return '.zero 1'
+        else:
+            return f'.byte {instr.value}'
+    elif isinstance(instr,UCharInit):
+        if instr.value == 0:
+            return '.zero 1'
+        else:
+            return f'.byte {instr.value}'
+    elif isinstance(instr,StringInit):
+        if instr.null_terminated == False:
+            return f'.ascii {instr.string}'
+        else:
+            return f'.asciz {instr.string}'
+    elif isinstance(instr,PointerInit):
+        return f'.quad {instr.name}'
     elif isinstance(instr,ZeroInit):
         return f' .zero {instr.value}'
     elif isinstance(instr, UIntInit):
@@ -638,6 +676,8 @@ def convert_type(_type):
         return "q"
     elif _type == AssemblyType.double :
         return "sd"
+    elif _type == AssemblyType.byte:
+        return 'b'
     else:
         raise ValueError("Invalid operand type", _type)
 

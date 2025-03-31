@@ -90,6 +90,17 @@ class TackyStaticVariable:
     
     def __repr__(self):
         return f'TackyStaticVariable(name={self.name},_global={self._global},type={self._type},init={self.init})'
+
+class TackyStaticConstant:
+    def __init__(self,identifier,_type,init):
+        self.name = identifier
+
+        self.init = init
+        self._type=_type
+    
+    def __repr__(self):
+        return f'TackyStaticCostant(name={self.name}    ,type={self._type},init={self.init})'
+        
         
 
 class TopLevel:

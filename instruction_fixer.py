@@ -4,6 +4,7 @@ from typing import List, Dict
 from assembly_ast import *
 import sys 
 import logging
+from _ast5 import Double
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -96,10 +97,11 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
 
 
 def fix_instr(instr,new_instructions:list):
-    
+    print(instr)
     if isinstance(instr, Mov):
         # Handle large immediate values that need truncation
         if isinstance(instr.src, Imm):
+            # print('here')
             # If this is a long to int conversion (moving to a 32-bit register/memory)
             if instr._type == AssemblyType.longWord and int(instr.src.value) >= 2147483647 :
                 # Properly truncate the value to 32 bits
@@ -129,19 +131,17 @@ def fix_instr(instr,new_instructions:list):
                     new_instructions.append(new_mov)
                     
          
-            
-            elif isinstance(instr.src,Imm) and (int(instr.src.value)>=2147483647  and isinstance(instr.dest,(Stack,Data,Memory))):
+               
+            elif isinstance(instr.src,Imm) and int(instr.src.value)>=2147483647  and isinstance(instr.dest,(Stack,Data,Memory)):
                 Mov1=Mov(assembly_type=instr._type,src=instr.src,dest=Reg(Registers.R10))
                 Mov2=Mov(assembly_type=instr._type,src=Reg(Registers.R10),dest=instr.dest)
                 new_instructions.extend([Mov1,Mov2])
             
                 
-                # mov1=
+                
             
             else:
-                # print(instr)
-                # exit()
-                # Handle stack-to-stack moves
+                
                 if isinstance(instr.src, (Stack, Data)) and isinstance(instr.dest, (Stack, Data)):
                     mov_to_reg = Mov(
                         assembly_type=instr._type,
@@ -639,9 +639,65 @@ def fix_instr(instr,new_instructions:list):
         """
         new_instructions.append(instr)
     elif isinstance(instr,MovZeroExtend):
-        print(instr)
-        # exit()
-        if isinstance(instr.dest,Reg):
+        if instr.assembly_type_src == AssemblyType.byte and (isinstance(instr.src, Imm) or not isinstance(instr.dest, Reg)):
+            # Step 1: Move immediate to temporary register if source is immediate
+            if isinstance(instr.src, Imm):
+                # Handle byte overflow if needed
+                if isinstance(instr.src.value, int) and instr.src.value > 255:
+                    fixed_value = instr.src.value % 256
+                    mov1 = Mov(
+                        assembly_type=AssemblyType.byte,
+                        src=Imm(fixed_value),
+                        dest=Reg(Registers.R10))
+                else:
+                    mov1 = Mov(
+                        assembly_type=AssemblyType.byte,
+                        src=instr.src,
+                        dest=Reg(Registers.R10))
+                new_instructions.append(mov1)
+                actual_src = Reg(Registers.R10)
+            else:
+                actual_src = instr.src
+            
+            # Step 2: Perform the zero extension to temporary register
+            movz = MovZeroExtend(
+                assembly_type_src=AssemblyType.byte,
+                assembly_type_dst=instr.assembly_type_dst,
+                src=actual_src,
+                dst=Reg(Registers.R11))
+            new_instructions.append(movz)
+            
+            # Step 3: Move result to final destination if not register
+            if not isinstance(instr.dest, Reg):
+                mov_final = Mov(
+                    assembly_type=AssemblyType.longWord,
+                    src=Reg(Registers.R11),
+                    dest=instr.dest)
+                new_instructions.append(mov_final)
+        
+        # Case 2: Source is longword - replace with mov instructions
+            elif instr.assembly_type_src == AssemblyType.longWord:
+                if isinstance(instr.dest, Reg):
+                    new_instructions.append(
+                        Mov(
+                            assembly_type=AssemblyType.longWord,
+                            src=instr.src,
+                            dest=instr.dest
+                        )
+                    )
+                elif isinstance(instr.dest, (Stack, Memory)):
+                    mov1 = Mov(
+                        assembly_type=AssemblyType.longWord,
+                        src=instr.src,
+                        dest=Reg(Registers.R11))
+                    mov2 = Mov(
+                        assembly_type=AssemblyType.longWord,
+                        src=Reg(Registers.R11),
+                        dest=instr.dest)
+                    new_instructions.extend([mov1, mov2])
+            
+       
+        elif isinstance(instr.dest,Reg):
             new_instructions.append(
                 Mov(
                     assembly_type=AssemblyType.longWord,
@@ -661,8 +717,8 @@ def fix_instr(instr,new_instructions:list):
                 dest=instr.dest
             )
             new_instructions.extend([mov,mov2])
-        # else:
-        #     new_instructions.append(instr)
+        else:
+            new_instructions.append(instr)
     elif isinstance(instr,Movsx):
         if isinstance(instr.dest,Stack) and isinstance(instr.src,Imm):
             mov = Mov(
@@ -671,6 +727,8 @@ def fix_instr(instr,new_instructions:list):
                 dest=Reg(Registers.R10),
             )
             movsx=Movsx(
+                assembly_type_src=instr.assembly_type_src,
+                assembly_type_dst=instr.assembly_type_dst,
                 src=Reg(Registers.R10),
                 dest=Reg(Registers.R11)
             )
@@ -682,17 +740,22 @@ def fix_instr(instr,new_instructions:list):
             new_instructions.extend([mov,movsx,mov2])
         elif isinstance(instr.src,Imm):
             mov = Mov(
+                
                 assembly_type=AssemblyType.longWord,
                 src=instr.src,
                 dest=Reg(Registers.R10),
             )
             movsx=Movsx(
+                 assembly_type_src=instr.assembly_type_src,
+                assembly_type_dst=instr.assembly_type_dst,
                 src=Reg(Registers.R10),
                 dest=instr.dest
             )
             new_instructions.extend([mov,movsx])
         elif isinstance(instr.dest,Stack):
             movsx=Movsx(
+                 assembly_type_src=instr.assembly_type_src,
+                assembly_type_dst=instr.assembly_type_dst,
                 src=instr.src,
                 dest=Reg(Registers.R11)
             )

@@ -105,13 +105,12 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)->
 # 3) Resolve Expressions
 # -------------------------------------------------------------------------
 def resolve_exp(expression, identifier_map: dict):
-    print(expression)
     """
     Resolves an expression by mapping variable/function identifiers
     to their unique names. Preserves names for items with has_linkage=True.
     """
     if isinstance(expression, Assignment):
-        if not isinstance(expression.left,(Var,Dereference,Subscript)):
+        if not isinstance(expression.left,(Var,Dereference,Subscript,String)):
             raise ValueError(f"Invalid lvalue in assignment: {expression.left}")
         if isinstance(expression.left,Unary):
             resolved_left = resolve_exp(expression.left.expr,identifier_map)
@@ -217,7 +216,10 @@ def resolve_exp(expression, identifier_map: dict):
         resolved_exp1 = resolve_exp(expression.exp1,identifier_map)
         resolved_exp2 = resolve_exp(expression.exp2,identifier_map)
         return Subscript(exp1=resolved_exp1,exp2=resolved_exp2)
-   
+    elif isinstance(expression,String):
+        return expression
+        
+        
     else:
         raise SyntaxError(f"Unknown expression type: {type(expression)}")
 
@@ -412,7 +414,7 @@ def label_statement(statement: Statement, current_label: Optional[str] = None) -
     elif isinstance(statement, (Return, Var, Constant)):
         pass  # no label needed
 
-    elif isinstance(statement, (Expression, Assignment, Binary, Unary,Cast,AddOf,Dereference,SingleInit,CompoundInit)):
+    elif isinstance(statement, (Expression, Assignment, Binary, Unary,Cast,AddOf,Dereference,SingleInit,CompoundInit,String)):
         pass  # no label needed
 
     elif isinstance(statement, Null):
