@@ -1,12 +1,12 @@
-from _ast5 import *
+from src.frontend.parser._ast5 import *
 # from tacky_emiter import , convert_binop, convert_unop
 from typing import List, Dict, Any, Optional
 import copy
 # from typechecker import typecheck_program
-from tacky_emiter import temp_counter,make_temporary_var
+from src.backend.ir.tacky_emiter import temp_counter,make_temporary_var
 # from
 # from Cython.src.frontend.semantic_analysis.typechecker import typecheck_program
-from typechecker import typecheck_program
+from src.backend.typechecker.typechecker import typecheck_program
 # -------------------------------------------------------------------------
 # 1) Global Labeling Variables
 # -------------------------------------------------------------------------

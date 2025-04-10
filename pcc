@@ -2,15 +2,10 @@
 import sys
 import subprocess
 import time
-from lexer import lex
-from parser import parse_program
-from converter import Converter
-from code_emitter import CodeEmitter
 from pathlib import Path
-from tacky_emiter import emit_tacky
-from pseudoregister_replacer import replace_pseudoregisters
-from instruction_fixer import fix_up_instructions
-from variable_resolution import variable_resolution_pass
+
+from src.backend import * 
+from src.frontend import * 
 
 def compile_file(input_file: str, output_file: str = None, stage: str = None, library_options: list = None):
     """
@@ -71,6 +66,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None, li
         if stage == '--tacky':
             print("Tacky IR:")
             print(tacky_ir)
+            print(symbols1)
             return  # Done, exit code 0
 
         # 6) Convert To Assembly AST
@@ -88,7 +84,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None, li
 
         # 7) Fixing Up Instructions
         # This pass inserts AllocateStack and rewrites invalid Mov instructions
-        fix_up_instructions(a_ast, stack_allocation)
+        fix_up_instructions(a_ast, stack_allocation,backend_symbol_table)
         # print("After Fixing Up Instructions:")
         # print(a_ast)
      

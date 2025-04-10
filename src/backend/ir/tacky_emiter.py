@@ -1,11 +1,11 @@
 # emitter.py
 
-from _ast5 import *  # Your high-level AST classes
-from tacky import *
+from src.frontend.parser._ast5 import *  # Your high-level AST classes
+from src.backend.ir.tacky import *
 from typing import List, Union
-from type_classes import *
-from typechecker import isSigned
-from typechecker import size,size_compound_init,zero_initializer,array_size
+from src.backend.typechecker.type_classes import *
+from src.backend.typechecker.typechecker import isSigned
+from src.backend.typechecker.typechecker import size,size1,size_compound_init,zero_initializer,array_size
 
 def align_offset(offset, alignment):
             return offset - (offset % alignment) if offset % alignment != 0 else offset
@@ -95,13 +95,16 @@ def generate_zero_initializer(array_type):
     raise ValueError("Unsupported type for ZeroInit")
 
 def convert_symbols_to_tacky(symbols:dict):
-    print('Convert symbols to tacky')
+    # print('Convert symbols to tacky')
     # #symbols)
-    # ##symbols)
+    ##symbols)
+    # print(symbols)
+    # exit()
     tacks_defs=[]
     for name,entry in symbols.items():
         if entry['attrs']!=None:
             print(entry['attrs'])
+            # exit()
             if isinstance(entry['attrs'],StaticAttr):
                 # #entry['attrs'].init)
                 if isinstance(entry['attrs'].init,Initial):
@@ -110,15 +113,31 @@ def convert_symbols_to_tacky(symbols:dict):
                     # exit()
                     for i in entry['attrs'].init.value:
                         if isinstance(i,(StringInit,PointerInit)):
+                            if isinstance(i,StringInit):
+                               
+                                string_val = i.string 
+                                decoded_string = i.string.encode().decode('unicode_escape')
+                                print(decoded_string)
+                                # exit()
+                                i.string = decoded_string
                             init.append(i)
-                        elif isinstance(i,ZeroInit):
+                        elif isinstance(i,(ZeroInit)):
                             init.append(i)
                         elif isinstance(i.value,(IntInit,UIntInit)):
                             init.append(IntInit(i.value.value._int))
                         elif isinstance(i.value,DoubleInit):
                             init.append(DoubleInit(i.value.value._int))
-                        else:
+                        elif isinstance(i.value,CharInit):
+                            init.append(CharInit(i.value.value._int))
+                           
+                        elif isinstance(i.value,UCharInit):
+                            init.append(UCharInit(i.value.value._int))
+                        elif isinstance(i.value,LongInit):
                             init.append(LongInit(i.value.value._int))
+                        elif isinstance(i.value,ULongInit):
+                            init.append(ULongInit(i.value.value._int))
+                        else :
+                            raise TypeError('UNKNOWN SYMBOL TYPE',i.value)
                             
                     tacks_defs.append(TackyStaticVariable(identifier=name,_global =entry['attrs'].global_scope,_type=entry['val_type'],init=init))
                     # print('after loop')
@@ -138,15 +157,15 @@ def convert_symbols_to_tacky(symbols:dict):
                         init.append(ZeroInit(ini * _type))
                         # print(init)
                         # exit()
-                    if type(entry['val_type']==type(Long)):
+                    if type(entry['val_type'])==type(Long):
                         init.append(LongInit(0))
                     else:
                         init.append(IntInit(0))
                     tacks_defs.append(TackyStaticVariable(identifier=name,_type=entry['val_type'],_global =entry['attrs'].global_scope,init=init))
             
             elif isinstance(entry['attrs'],ConstantAttr):
-                print(entry['attrs'].init)
                 # exit()
+                
                 tacks_defs.append(TackyStaticConstant(identifier=name,_type=entry['val_type'],init=entry['attrs'].init))
                 
                 
@@ -254,10 +273,12 @@ def emit_tacky_expr_and_convert(e, instructions, symbols):
 
 
 def emit_char_Array(exp,instructions,symbols):
+    exit()
     print('EXPRESSION',exp.declaration.init.exp)
     for i in exp.declaration.init.exp.string:
         import ast
         try:
+            print('Error in emit char array')
             # Use ast.literal_eval to properly interpret escape sequences
             decoded_string = ast.literal_eval(f'{i}')
         except (ValueError, SyntaxError):
@@ -276,30 +297,43 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
     the result of the expression in the Tacky IR.
     """
     if isinstance(expr, Constant):
-        # #expr)
-        if not isinstance(expr.value,(ConstInt,ConstLong,ConstUInt,ConstULong,ConstDouble)):
+      
+        if not isinstance(expr.value,(ConstInt,ConstLong,ConstUInt,ConstULong,ConstDouble,ConstUChar,ConstChar)):
             return PlainOperand(TackyConstant(expr.value._int))
+    
+        
         return PlainOperand(TackyConstant(expr.value))
     elif isinstance(expr,SingleInit):
         # exit()
       
         return emit_tacky_expr(expr.exp,instructions,symbols)
+    
     elif isinstance(expr, Var):
         # #expr)
         # exit()
         return PlainOperand(TackyVar(expr.identifier.name))
     elif isinstance(expr, Assignment):
+        print('assignment',expr)
+        # exit()
         if isinstance(expr.right,CompoundInit):
             compount_init(expr.right,instructions,symbols,[0],expr.left)
+            print(expr.right)
+            # exit()
             return 
         else:
             rval = emit_tacky_expr_and_convert(expr.right, instructions,symbols)
+            print('rvalue',rval)
+            # exit()
+            # print(symbols[rval.identifier])
+        # exit()
         lval=emit_tacky_expr(expr.left,instructions,symbols)
+     
         if isinstance(lval,PlainOperand):
             
             instructions.append(TackyCopy(rval, lval.val))
             return lval
         elif isinstance(lval,DereferencedPointer): 
+            # exit()
             instructions.append(TackyStore(rval, lval.val))
             return PlainOperand(rval)
         else:
@@ -353,21 +387,33 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         return PlainOperand(tmp_result)
     
     elif isinstance(expr,Cast):      
-        print('Inside cast')
-      
+        print('inside cast')
+        print(expr.exp)
+        print('Target_type',expr.target_type)
+        print('Inner type',expr.exp.get_type())
+        print('Target_size',size(expr.target_type))
+        print('inner_size',size(expr.exp.get_type()))
+        # exit()
         result  = emit_tacky_expr_and_convert(expr.exp,instructions,symbols=symbols)
         inner_type = expr.exp._type
+        
         t = expr.target_type
+        
+        if isinstance(t,ULong) and isinstance(expr.exp,Constant):
+            print(expr)
+            # exit()
+   
         if isinstance(t,type(inner_type)):
             return PlainOperand(result)
         dst_name = make_temporary(symbols,expr.target_type)
-        print('Inner type',expr.exp)
+ 
         if isinstance(expr.target_type, Array) and isinstance(expr.exp._type, Pointer):
             # if isinstance(expr.target_type._type,type(expr.exp._type.ref)):
                 return DereferencedPointer(result)
         if isinstance(expr.target_type,Pointer) and isinstance(expr.exp._type, Array):
             # if isinstance(expr.target_type._type,type(expr.exp._type.ref)):
                 return DereferencedPointer(result)
+        
         if isinstance(t,Pointer):
             t=ULong()
         if isinstance(inner_type,Pointer):
@@ -375,6 +421,7 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         if size(t)==size(inner_type):
             instructions.append(TackyCopy(result,dst_name))
         elif size(t) < size(inner_type) and isinstance(inner_type,Double):
+         
             if isSigned(t):
                 instructions.append(TackyDoubleToInt(result,dst_name))
             else:
@@ -383,17 +430,19 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
             if isSigned(inner_type):
                 instructions.append(TackyIntToDouble(result,dst_name))
             else:
+              
                 instructions.append(TackyUIntToDouble(result,dst_name))
         elif size(t)<size(inner_type):
-      
             instructions.append(TackyTruncate(result,dst_name))
         elif isSigned(inner_type):
+          
             instructions.append(TackySignExtend(result,dst_name))
+          
+            
         else:
-           
+         
             instructions.append(TackyZeroExtend(result,dst_name))
-        #'Returning from cast')
-        # print('exit cast')
+   
         return PlainOperand(dst_name)
   
     elif isinstance(expr, Binary):
@@ -508,6 +557,8 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         # 1. Evaluate each argument
         arg_vals = []
         for arg in expr.args:
+            print(arg)
+           
             arg_val = emit_tacky_expr_and_convert(arg, instructions,symbols)
             arg_vals.append(arg_val)
         
@@ -540,38 +591,41 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         return Constant(expr.value)
         # pass 
     elif isinstance(expr,AddOf):
+        print(expr)
         v = emit_tacky_expr(expr.exp, instructions, symbols)
+        # exit()
         if isinstance(v,PlainOperand):
            
             dst = make_temporary(symbols,expr.get_type())
-            print(expr)
-            # exit()
+           
             instructions.append(TackyGetAddress(v.val, dst))
             return PlainOperand(dst)
         elif isinstance(v,DereferencedPointer):
             return PlainOperand(v.val)
   
     elif isinstance(expr, Subscript):
-        # Generate TACKY for a subscript expression: <ptr>[<int>] is equivalent to *(<ptr> + <int>)
-        # print('Subscript expr',expr)
-        # print(symbols[expr.exp2.exp.identifier.name])
-        # exit()
+      
         # 1. Process the base array expression to get its pointer value.
         base_ptr = emit_tacky_expr_and_convert(expr.exp1, instructions, symbols)
 
         # 2. Process the index expression to get the index value.
         index_val = emit_tacky_expr_and_convert(expr.exp2, instructions, symbols)
 
-        # 3. Compute the scale factor based on the size of the element type.
-        print(isinstance(expr.exp1.get_type(),Pointer))
-        print(expr.exp2.get_type())
-        # exit()
-        if isinstance(expr.exp1.get_type(),(Pointer,Array)):
+        # 3. Compute the scale factor based on the size of the element type.  
+        
+     
+        if isinstance(expr.exp1.get_type(),(Pointer)):
             tmp_ptr = make_temporary(symbols, expr.exp1.get_type())
             stride = array_size(expr.exp1.get_type())  # Get the size of the element type
+            
+            print('Stride',stride)
+            # exit()
+            if isinstance(expr.exp1.get_type(),(Char,UChar,SChar)):
+                stride = 1
             instructions.append(TackyAddPtr(ptr=base_ptr, index=index_val, scale=stride, dst=tmp_ptr))
-            if not isinstance(symbols[base_ptr.identifier]['val_type'],Pointer): 
-            # exit() 
+            if not isinstance(symbols[base_ptr.identifier]['val_type'],(Pointer,Array)): 
+                
+                
                 # Lvalue conversion: Load the scalar value from the computed pointer
                 tmp_val = make_temporary(symbols,symbols[base_ptr.identifier]['val_type'])
                 instructions.append(TackyLoad(src_ptr=tmp_ptr, dst=tmp_val))
@@ -580,9 +634,10 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         else:
             tmp_ptr = make_temporary(symbols, expr.exp2.get_type())
             stride = array_size(expr.exp2.get_type())  # Get the size of the element type
+            if isinstance(expr.exp1.get_type(),(Char,UChar,SChar)):
+                stride = 1
             instructions.append(TackyAddPtr(ptr=index_val, index=base_ptr, scale=stride, dst=tmp_ptr))
-            if not isinstance(symbols[index_val.identifier]['val_type'],Pointer): 
-                # exit() 
+            if not isinstance(symbols[index_val.identifier]['val_type'],(Pointer,Array)): 
                 # Lvalue conversion: Load the scalar value from the computed pointer
                 tmp_val = make_temporary(symbols,symbols[index_val.identifier]['val_type'])
                 instructions.append(TackyLoad(src_ptr=tmp_ptr, dst=tmp_val))
@@ -594,30 +649,104 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         return DereferencedPointer(tmp_ptr)  # No need to dereference if it's another array
     
     elif isinstance(expr,String):
-        
+        print(expr._type)
+        # exit()
         temp_str = get_string_label()
+        # #expr.string)
+        import ast
+      
+            # Use ast.literal_eval to properly interpret escape sequences
+        # decoded_string = ast.literal_eval(expr.string)
         
+        #     # decoded_string = unescape_c_string(expr.string)
+        # decoded_string = expr.string.encode().decode('unicode_escape')
+        # # print(decoded_string)
+        # # for char in expr.string:
+            
+        # #    char = char.encode().decode('latin1')
+               
+        # expr.string = decoded_string
+        print('String',expr.string)
+        # exit()
         symbols[temp_str] = {
-            'val_type':Array(Char(),_int=len(expr.string)+1),
+            'val_type':expr._type,
             'attrs':ConstantAttr(StringInit(string=expr.string,null_terminated=True)),
             'isDouble':False,
-            'ret':Array(Char(),_int=len(expr.string)+1)
+            'ret':expr._type
         }
         
-        temp_dst = make_temporary(symbols,Char)
-        instructions.append(TackyGetAddress(src=temp_str,dst = temp_dst))
+        # exit()
+        temp_dst = make_temporary(symbols,expr._type)
+        instructions.append(TackyGetAddress(src=TackyVar(temp_str),dst = temp_dst))
         
         
         #! CAN BE WRONG
-        return PlainOperand(temp_dst)
+        return DereferencedPointer(temp_dst)
     
     
 
     else: 
         ##expr)
         raise TypeError(f"Unsupported expression type: {type(expr)}")
+import re
+
+# def unescape_c_string(s):
+    # """
+    # Convert C-style escape sequences to their actual bytes.
+    # Handles: \a, \b, \f, \n, \r, \t, \v, \", \', \\, \0, \ooo (octal), \xHH (hex)
+    # Returns bytes object
+    # """
+    # escape_map = {
+    #     'a': b'\x07',  # Bell
+    #     'b': b'\x08',  # Backspace
+    #     'f': b'\x0c',  # Form feed
+    #     'n': b'\x0a',  # Newline
+    #     'r': b'\x0d',  # Carriage return
+    #     't': b'\x09',  # Horizontal tab
+    #     'v': b'\x0b',  # Vertical tab
+    #     '"': b'\x22',
+    #     "'": b'\x27',
+    #     '\\': b'\x5c',
+    #     '0': b'\x00',
+    # }
+    
+    # result = []
+    # i = 0
+    # while i < len(s):
+    #     if s[i] == '\\':
+    #         if i+1 >= len(s):
+    #             raise ValueError("Incomplete escape sequence")
+            
+    #         next_char = s[i+1]
+    #         # Simple escapes
+    #         if next_char in escape_map:
+    #             result.append(escape_map[next_char])
+    #             i += 2
+    #         # Octal escapes (\0 - \377)
+    #         elif re.match(r'[0-7]', next_char):
+    #             octal = s[i+1:i+4]
+    #             octal = octal[:next((idx for idx, ch in enumerate(octal) if ch not in '01234567'), 3)]
+    #             result.append(int(octal, 8).to_bytes(1, 'little'))
+    #             i += 1 + len(octal)
+    #         # Hex escapes (\xHH)
+    #         elif next_char == 'x':
+    #             if i+3 >= len(s):
+    #                 raise ValueError("Incomplete hex escape")
+    #             hex_digits = s[i+2:i+4]
+    #             if not all(c in '0123456789abcdefABCDEF' for c in hex_digits):
+    #                 raise ValueError(f"Invalid hex escape \\x{hex_digits}")
+    #             result.append(int(hex_digits, 16).to_bytes(1, 'little'))
+    #             i += 4
+    #         else:
+    #             raise ValueError(f"Invalid escape sequence \\{next_char}")
+    #     else:
+    #         result.append(s[i].encode('latin1'))
+    #         i += 1
+    
+    # return b''.join(result)
 
 def get_type_size(t):
+    
     if isinstance(t, Array):
         return size(t._type) * t._int
     # elif isinstance(t, StructType):
@@ -718,24 +847,31 @@ def emit_statement(stmt, instructions: List[TackyInstruction],symbols:Optional[d
         if isinstance(stmt.declaration,FunDecl):
             convert_fun_decl_to_tacky(stmt.declaration,symbols)
         else:
-        
+            print('declaration')
+            print(stmt.declaration.init)
+            # exit()
             if stmt.declaration.init is not None and not isinstance(stmt.declaration.init, Null) and not isinstance(stmt.declaration.storage_class,Static):
-                if isinstance(stmt.declaration.init,SingleInit) and isinstance(stmt.declaration.init._type,Array) and isinstance(stmt.declaration.init.exp,String) and isinstance(stmt.declaration.init._type._type,Char):
-                    emit_char_Array(stmt,instructions,symbols)
+                # exit()
+                if isinstance(stmt.declaration.init,SingleInit) and isinstance(stmt.declaration.init._type,(Array)) :
+                  
+                    compount_init(stmt.declaration.init,instructions,symbols,[0],stmt.declaration.name)
                     
-                if isinstance(stmt.declaration.init,CompoundInit):
-                    print(stmt.declaration.name)
-                    # exit()
+                    return
+                elif isinstance(stmt.declaration.init,CompoundInit):
+                    print('goind to solve comound init')
                     compount_init(stmt.declaration.init,instructions,symbols,[0],stmt.declaration.name)
                     print('exit compound init')
                     # return
                 else:
+                    print('emitting assignment')
+                    # exit()
                 # Emit assignment to initialize the variable
                     assign_expr = Assignment(
                         left=Var(stmt.declaration.name),
                         right=stmt.declaration.init
                     )
-                    emit_tacky_expr(assign_expr, instructions,symbols)
+                    emit_tacky_expr_and_convert(assign_expr, instructions,symbols)
+                    # exit()
         # Else, no initialization needed
     elif isinstance(stmt, Expression):
         emit_tacky_expr(stmt.exp, instructions,symbols)
@@ -754,7 +890,6 @@ def emit_statement(stmt, instructions: List[TackyInstruction],symbols:Optional[d
         ##'Found s statements')
         emit_s_statement(stmt, instructions,symbols)
         ##'After s statements')
-
     elif isinstance(stmt, Null):
         pass  # No operation for Null statements
     else:
@@ -878,33 +1013,94 @@ def emit_s_statement(stmt: S, instructions: List[TackyInstruction],symbols):
 def compount_init(expr, instructions, symbols, offset, name):
   
     if isinstance(expr, CompoundInit):
+        # exit()
         for element in expr.initializer:
-            if isinstance(element, SingleInit):
+            if isinstance(element,SingleInit) and isinstance(element.exp,String):
+                # exit()
+                count = 0
+                for i in element.exp.string:
+                    if isinstance(i,CompoundInit):
+                        
+                        compount_init(i, instructions, symbols, offset, name)
+                
+                    import ast
+                    try:
+                        print('Error in compound init')
+                        # Use ast.literal_eval to properly interpret escape sequences
+                        decoded_string = ast.literal_eval(f'{i}')
+                    except (ValueError, SyntaxError):
+                        # Fallback if literal_eval fails
+                        decoded_string = i.encode().decode('unicode-escape')
+                        print(decoded_string)
+                    val = ord(str(decoded_string))
+                    instructions.append(TackyCopyToOffSet(TackyConstant(ConstChar(val)),dst =name,offset=offset[0]))
+                    # i+=1
+                    count+=1
+                    elem_size = 1
+                    offset[0] += elem_size
+                    print(element)
+                    # exit()
+                while count < element._type._int.value._int:
+                    
+                    instructions.append(TackyCopyToOffSet(TackyConstant(ConstChar(0)),dst =name,offset=offset[0]))
+                    elem_size = 1
+                    offset[0] += elem_size
+                    count+=1
+                
+            elif isinstance(element, SingleInit):
+                # exit
                 # Evaluate the scalar expression
                 scalar_val = emit_tacky_expr_and_convert(element.exp, instructions, symbols)
                 
                 # Get element type, size, and alignment
+                # print('jere')
                 elem_type = element.exp._type
                 elem_size = size_compound_init(elem_type)
-                # elem_alignment = get_alignment(elem_type)  # Replace with your alignment logic
-                
-                # Align the current offset to the element's alignment requirement
-                # offset[0] = align_offset(offset[0], elem_size)
-                
-                # Emit CopyToOffset at the aligned offset
+          
+                # exit()
                 instructions.append(TackyCopyToOffSet(src=scalar_val, dst=name, offset=offset[0]))
                 print(elem_size)
-                # exit()
+                
+                print('jhere')
+                print(elem_type)
+                
                 offset[0] += elem_size
+                if offset[0] >3:
+                    print(instructions)
+                    # exit()
                 
-                # Increment offset by the element's size
-               
-               
-                
-                
+    
             elif isinstance(element, CompoundInit):
                 # Recursively process nested compound initializer
                 compount_init(element, instructions, symbols, offset, name)
+    
+    elif isinstance(expr,SingleInit):
+        # if isinstance(expr.exp,AddOf):
+           
+        #     emit_tacky_expr_and_convert(expr.exp,instructions,symbols)
+        #     return 
+        for element in expr.exp.string:
+            if isinstance(element,CompoundInit):
+                # elif isinstance(element, CompoundInit):
+                # Recursively process nested compound initializer
+                compount_init(element, instructions, symbols, offset, name)
+                print('element',element)
+            else:
+            
+                import ast
+                try:
+                    print('error in compount -> single inint')
+                    # Use ast.literal_eval to properly interpret escape sequences
+                    decoded_string = ast.literal_eval(f'{element}')
+                except (ValueError, SyntaxError):
+                    # Fallback if literal_eval fails
+                    decoded_string = element.encode().decode('unicode-escape')
+                
+                val = ord(decoded_string)
+                instructions.append(TackyCopyToOffSet(TackyConstant(ConstChar(val)),dst =name,offset=offset[0]))
+                elem_size = 1
+                offset[0] += elem_size
+        instructions.append(TackyCopyToOffSet(TackyConstant(ConstInt(0)),dst =name,offset=offset[0]))
         
 
 

@@ -465,14 +465,14 @@ class Cvtsi2sd(Instruction):
     def __repr__(self):
         return f'Cvtsi2sd(Operand1={self.src},assemby_type={self._type},Operand2 ={self.dst})'
 class Lea(Instruction):
-    def __init__(self, src , dst):
+    def __init__(self, src , dst,_type=None):
         # super().__init__(assembly_type)
-        # self._type=src_type
+        self._type=_type
         self.src=src
         self.dst=dst
 
     def __repr__(self):
-        return f'Lea(src={self.src},dst ={self.dst})'
+        return f'Lea(src={self.src},dst ={self.dst},_type={self._type})'
 
 # ------------------
 # Operator Constants

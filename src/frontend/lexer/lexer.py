@@ -1,5 +1,5 @@
 import re
-from tokens import patterns
+from .tokens import patterns
 
 def lex(data):
     """

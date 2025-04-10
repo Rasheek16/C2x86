@@ -343,7 +343,7 @@ class String(Exp):
         super().__init__(_type)
         self.string=string
     def __repr__(self):
-        return f'String(string={self.string},type={self._type})'
+        return f'String(string={repr(self.string)},type={self._type})'
     
     
     

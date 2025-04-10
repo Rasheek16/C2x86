@@ -1,8 +1,10 @@
 patterns = [
     ('char',r'\bchar\b'),
     ('string',r'\bstring\b'),
-    ('char_constant',r"""'([^'\\\n]|\\['"?\\abfnrtv])'"""),
-    ('string_constant',r'"([^"\\\n]|\\["?\\abfnrtv])*"'),
+    ('char_constant', r"""'(\\[\\'"?abfnrtv0]|\\x[0-9a-fA-F]{2}|\\[0-7]{1,3}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}|[^'\\\n])'"""),
+
+    # ('char_constant', r"""'(\\[\\'"abfnrtv0]|\\x[0-9a-fA-F]{2}|\\[0-7]{1,3}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}|[^'\\\n])'"""),
+    ('string_constant', r'"([^"\\\n]|\\["\'?\\abfnrtv]|\\[0-7]{1,3}|\\x[0-9a-fA-F]+)*"'),
     ('floating_point_constant',r'(([0-9]*\.[0-9]+|[0-9]+\.?)[Ee][+-]?[0-9]+|[0-9]*\.[0-9]+|[0-9]+\.)[^\w.]'),
     ('double_keyword',r'\bdouble\b'),
      ("Constant", r'([0-9]+)[^\w.]'),

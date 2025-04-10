@@ -2,7 +2,7 @@ import re
 import sys
 from typing import List,Tuple
 import ast 
-from _ast5 import *
+from ._ast5 import * 
 
 return_flag = False
 
@@ -35,7 +35,7 @@ def get_temp_label():
     return f'tmp_label.{temp_label_counter}'
 
 def isCharConstant(token):
-    return re.match(r"""'([^'\\\n]|\\['"?\\abfnrtv])'""",token) is not None
+    return re.match(r"""'(\\[\\'"abfnrtv0]|\\x[0-9a-fA-F]{2}|\\[0-7]{1,3}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}|[^'\\\n])'""",token) or re.match (r"""'(\\[\\'"?abfnrtv0]|\\x[0-9a-fA-F]{2}|\\[0-7]{1,3}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}|[^'\\\n])'""",token) is not None
 
 def isIntegerConstant(token: str) -> bool:
     # #(token)
@@ -185,20 +185,6 @@ def parse_args_list(tokens)->Tuple[List[Exp],str]:
     
     return arg_body,tokens
     
-        
-def parse_simple_declarator(tokens):
-    next_token=tokens[0]
-    if isIdentifier(next_token) and not isKeyword(next_token):
-        identifier=next_token
-        _,tokens=take_token(tokens)
-        return identifier,tokens
-    elif next_token=='(':
-        expect('(',tokens)
-        identifier,tokens=parse_declarator(tokens)
-        expect(')',tokens)
-        return identifier,tokens
-    else:
-        raise SyntaxError('Unknown token in simple declarator',next_token)
 
 def parse_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
     """
@@ -227,6 +213,18 @@ def parse_direct_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
     print(tokens[0])
     return parse_declarator_suffix(tokens,simple_declarator)
 
+import codecs 
+def safe_decode(s):
+    # Temporarily replace \" with a unique placeholder
+    s = s.replace(r'\"', '__ESCAPED_QUOTE__')
+    s=s.replace(r'\\','__DOUBLE_ESCAPE__')
+    # Decode escape sequences
+    s = codecs.decode(s, 'unicode_escape')
+    # Restore the escaped quotes
+    s = s.replace('__ESCAPED_QUOTE__', r'\"')
+    s=s.replace('__DOUBLE_ESCAPE__',r'\\')
+    return s
+
 def parse_initializer(tokens,list=None):
     l=[]
     if tokens[0]=='{':
@@ -248,18 +246,53 @@ def parse_initializer(tokens,list=None):
         exp, tokens = parse_exp(tokens)
         print(exp)
         print('NEXT TOKENS',tokens[0])
-        # exit()
+        
         if isinstance(exp,String):  # Check if the next token is also a string
-            lis = [ast.literal_eval(exp.string)]  # Start with first parsed string
+         
+            if exp.string.startswith('"'):
+                    exp.string = exp.string
+           
+            import codecs
+            match = re.search(r'"((?:\\.|[^"\\])*)"', exp.string)
+            if match:
+                # exit()
+                c_str = match.group(1)  
+                print("Raw captured:", repr(c_str))
 
+                # Now decode using unicode_escape
+                decoded = decoded = safe_decode(c_str)
+                exp.string = decoded
+                # print("Decoded:", repr(decoded))
+                print("Ordinals:", [ord(c) for c in decoded])
+          
+                lis = [decoded] # Start with first parsed string
+            
+            else:
+                lis = [exp.string]
+                
+           
+     
             while tokens and isString(tokens[0]) and not isIdentifier(tokens[0]) and not isKeyword(tokens[0]):  # Keep merging adjacent strings
                 expr_new, tokens = parse_exp(tokens)  # Parse next part
-                lis.append(ast.literal_eval(expr_new.string))  # Append string content
+                import codecs
+                match = re.search(r'"((?:\\.|[^"\\])*)"', expr_new.string)
+                if match:
+                
+                    c_str = match.group(1)  
+                    print("Raw captured:", repr(c_str))
 
-            exp.string = " ".join(lis)  # Merge into a single string
-            exp.string = f'{exp.string}'
-        # print('Expression:', exp.string)
-        # exit()
+                    # Now decode using unicode_escape
+                    decoded = decoded = safe_decode(c_str)
+                    exp.string = decoded
+
+                  
+                if expr_new.string.startswith('"'):
+                    expr_new.string = expr_new.string[1:-1]
+                lis.append(expr_new.string)  # Append string content
+            exp.string = ''.join(lis)
+            print(exp.string)
+            # exit()
+  
             
         print('exp,',exp)
         return SingleInit(exp),tokens
@@ -299,12 +332,6 @@ def parse_declarator_suffix(tokens, simple_declarator):
 
     else:
         return simple_declarator, tokens
-
-
-
-
-        
-
 
 
 def parse_simple_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
@@ -458,9 +485,7 @@ def process_abstract_declarator(abstract_declarator: AbstractDeclarator, base_ty
     else:
         raise ValueError(f"Unknown abstract declarator type: {type(abstract_declarator)}")
 
-
-
-    
+  
 def parse_declarations(tokens):
     try:
         body=[]
@@ -477,8 +502,6 @@ def parse_declarations(tokens):
     except Exception as e:
         raise e
         # sys.exit(1)
-
-
 
 
 def parse_block(tokens)->Tuple[List[BlockItem],str]:
@@ -599,8 +622,6 @@ def parse_storage_class(storage_class):
     else:
        raise ValueError('Invalid storage class')
     
-
-
 
 def parse_declaration(tokens: List[str]):
     """Parses a declaration (variable or function)."""
@@ -869,7 +890,6 @@ def parse_optional_parameter(tokens: List[str]) -> Tuple[Statement, List[str]]:
         return exp, tokens
 
 
-
 def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
     try:
         
@@ -952,8 +972,7 @@ def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
             return expr, tokens
     except Exception as e:
         raise e
-    
-    
+     
 def parse_postfix_expr(tokens):
     print('Inside parse posftfix expr',tokens[0])
     expr=Null()
@@ -975,11 +994,10 @@ def parse_postfix_expr(tokens):
  
     return expr,tokens
    
-
-
 def parse_primary_expr(tokens):
     print('inside parse primary expr',tokens[0])
     print('Is identifier ',isIdentifier(tokens[0]))
+    print('Is char constant ',isCharConstant(tokens[0]))
  
     if not tokens:
             raise SyntaxError("Unexpected end of input when parsing factor.")
@@ -1098,7 +1116,6 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
         raise e
 
 
-
 def parse_conditional_middle(tokens):
     token,tokens = take_token(tokens)
     exp,tokens=parse_exp(tokens,min_prec=0)
@@ -1195,8 +1212,6 @@ def parse_unop(operator_token: str) -> UnaryOperator:
         raise SyntaxError(f"Unknown unary operator: '{operator_token}'")
     return unop_mapping[operator_token]
 
-
-
     
 def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
     print('Inside parse contant',tokens[0])
@@ -1244,8 +1259,7 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
         if match:
             
             char_repr = match.group(1)  # Extract character content
-            print(char_repr==r'\?')
-            print(ord('?'))
+          
             if char_repr == r'\?':
                 ascii_value = ord('?')  # ASCII 63
             else:

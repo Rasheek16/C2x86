@@ -1,10 +1,11 @@
 # instuction_fixer.py
 
 from typing import List, Dict
-from assembly_ast import *
+from src.backend.codegen.assembly_ast import *
 import sys 
 import logging
-from _ast5 import Double
+from src.frontend.parser._ast5 import Double
+
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -34,7 +35,7 @@ def round_up_to_multiple_of_16(value: int) :
     """
     return (value + 15) & ~0xF
 
-def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int) -> None:
+def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int,symbols) -> None:
     """
     Performs critical transformations on the Assembly AST to ensure valid and optimized
     instructions before emitting the final assembly program. Specifically, it handles:
@@ -101,9 +102,9 @@ def fix_instr(instr,new_instructions:list):
     if isinstance(instr, Mov):
         # Handle large immediate values that need truncation
         if isinstance(instr.src, Imm):
-            # print('here')
             # If this is a long to int conversion (moving to a 32-bit register/memory)
             if instr._type == AssemblyType.longWord and int(instr.src.value) >= 2147483647 :
+                print('here')
                 # Properly truncate the value to 32 bits
                 truncated_value = int(instr.src.value) & 0xFFFFFFFF
                 # If value is too large for direct move, use intermediate register
@@ -132,7 +133,7 @@ def fix_instr(instr,new_instructions:list):
                     
          
                
-            elif isinstance(instr.src,Imm) and int(instr.src.value)>=2147483647  and isinstance(instr.dest,(Stack,Data,Memory)):
+            elif ( isinstance(instr.src,Imm) and instr.src.value!='\0') and int(instr.src.value)>=2147483647  and isinstance(instr.dest,(Stack,Data,Memory)):
                 Mov1=Mov(assembly_type=instr._type,src=instr.src,dest=Reg(Registers.R10))
                 Mov2=Mov(assembly_type=instr._type,src=Reg(Registers.R10),dest=instr.dest)
                 new_instructions.extend([Mov1,Mov2])
@@ -155,6 +156,7 @@ def fix_instr(instr,new_instructions:list):
                     )
                     new_instructions.extend([mov_to_reg, mov_to_dest])
                 else:
+                   
                     new_instructions.append(instr)
       
             
@@ -498,12 +500,12 @@ def fix_instr(instr,new_instructions:list):
             mov = Mov(
                 assembly_type=instr._type,
                 src=instr.operand2, 
-                dest=Reg(Registers.XMM15),
+                dest=Reg(Registers.XMM14),
             )
             compl = Cmp(
                 assembly_type=instr._type,
                 operand1=instr.operand1,
-                operand2=Reg(Registers.XMM15),
+                operand2=Reg(Registers.XMM14),
                 )
             new_instructions.extend([mov,compl])
             
@@ -664,13 +666,13 @@ def fix_instr(instr,new_instructions:list):
                 assembly_type_src=AssemblyType.byte,
                 assembly_type_dst=instr.assembly_type_dst,
                 src=actual_src,
-                dst=Reg(Registers.R11))
+                dest=Reg(Registers.R11))
             new_instructions.append(movz)
             
             # Step 3: Move result to final destination if not register
             if not isinstance(instr.dest, Reg):
                 mov_final = Mov(
-                    assembly_type=AssemblyType.longWord,
+                    assembly_type=instr.assembly_type_dst,#! fghwaeuyfghkuiaserhkgufi
                     src=Reg(Registers.R11),
                     dest=instr.dest)
                 new_instructions.append(mov_final)
@@ -700,7 +702,7 @@ def fix_instr(instr,new_instructions:list):
         elif isinstance(instr.dest,Reg):
             new_instructions.append(
                 Mov(
-                    assembly_type=AssemblyType.longWord,
+                    assembly_type=instr.assembly_type_src,
                     src=instr.src,
                     dest=instr.dest
                 )
@@ -722,7 +724,7 @@ def fix_instr(instr,new_instructions:list):
     elif isinstance(instr,Movsx):
         if isinstance(instr.dest,Stack) and isinstance(instr.src,Imm):
             mov = Mov(
-                assembly_type=AssemblyType.longWord,
+                assembly_type=instr.assembly_type_src,
                 src=instr.src,
                 dest=Reg(Registers.R10),
             )
@@ -733,15 +735,14 @@ def fix_instr(instr,new_instructions:list):
                 dest=Reg(Registers.R11)
             )
             mov2=Mov(
-                assembly_type=AssemblyType.quadWord,
+                assembly_type=instr.assembly_type_dst,
                 src=Reg(Registers.R11),
                 dest=instr.dest
             )
             new_instructions.extend([mov,movsx,mov2])
         elif isinstance(instr.src,Imm):
             mov = Mov(
-                
-                assembly_type=AssemblyType.longWord,
+                assembly_type=instr.assembly_type_src,
                 src=instr.src,
                 dest=Reg(Registers.R10),
             )
@@ -760,7 +761,7 @@ def fix_instr(instr,new_instructions:list):
                 dest=Reg(Registers.R11)
             )
             mov2=Mov(
-                assembly_type=AssemblyType.quadWord,
+                assembly_type=instr.assembly_type_dst, #! MAJOR CHANGE
                 src=Reg(Registers.R11),
                 dest=instr.dest
             )
@@ -769,7 +770,11 @@ def fix_instr(instr,new_instructions:list):
         else:
             new_instructions.append(instr)
     elif isinstance(instr,Cvttsd2si):
+        print(instr)
         if not isinstance(instr.dst,Reg):
+            # exit()
+            # if instr._type == AssemblyType.byte:
+                # exit()
             c_1=Cvttsd2si(
                 dst_type=instr._type,
                 src=instr.src,
@@ -836,14 +841,10 @@ def fix_instr(instr,new_instructions:list):
             new_instructions.append(instr)
     elif isinstance(instr,Lea):
         if not isinstance(instr.dst,Reg):
-            # mov_1= Mov(
-            #     assembly_type=AssemblyType.quadWord,
-            #     src = instr.dst,
-            #     dest=Reg(Registers.R10)
-            # )
             lea=Lea(
                 dst=Reg(Registers.R10),
-                src=instr.src
+                src=instr.src,
+                _type = instr._type
                 
             )
             mv_back = Mov(
@@ -864,3 +865,6 @@ def fix_instr(instr,new_instructions:list):
         logger.error(f"Unsupported instruction type: {type(instr).__name__} in function' ")
         sys.exit(1)
     return new_instructions
+
+
+

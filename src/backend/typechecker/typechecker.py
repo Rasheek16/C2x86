@@ -1,10 +1,11 @@
-from _ast5 import *
+from src.frontend.parser._ast5 import *
 from typing import Optional, List
-from type_classes import *
+from src.backend.typechecker.type_classes import *
 import sys
 
 x =0
 def size_compound_init(_type):
+   
     if isinstance(_type,(Char,UChar,SChar)):
         return 1 
     elif type(_type)==type(Int()):
@@ -31,6 +32,8 @@ def array_size(array_type):
     if isinstance(array_type,Pointer):
         if isinstance(array_type.ref,(Double,Pointer)):
             return 8
+     
+        
         return size(array_type.ref)        
     if isinstance(array_type,Double):
         return 8
@@ -39,8 +42,7 @@ def array_size(array_type):
 
 
 
-def size(_type):
-    
+def size1(_type):
     if isinstance(_type,(Int,Char,SChar)):
         return 4
     elif isinstance(_type,Long):
@@ -54,12 +56,33 @@ def size(_type):
     elif isinstance(_type,Pointer):
         return array_size(_type.ref)
     elif isinstance(_type,Array):
+       
         if isinstance(_type._type,Pointer):
             return 8
-        # print(size(_type._type) * _type._int.value._int)
-        # exit()
+        
         print(_type._type)
-        # exit()
+    
+        return array_size(_type._type) * _type._int.value._int 
+    
+def size(_type):
+    if isinstance(_type,(UChar,Char,SChar)):
+        return 1
+    elif isinstance(_type,Long):
+        return 8
+    elif isinstance(_type,(Int,UInt)):
+        return 4
+    elif isinstance(_type,ULong):
+        return 8
+    elif isinstance(_type,Double):
+        return 16
+    elif isinstance(_type,Pointer):
+        return array_size(_type.ref)
+    elif isinstance(_type,Array):
+        if isinstance(_type._type,Pointer):
+            return 8
+        
+
+    
         return array_size(_type._type) * _type._int.value._int
     
 def is_null_pointer_constant(c):
@@ -140,10 +163,16 @@ def isSigned(_type):
 
 def get_common_type(type1, type2):
     
-    if isinstance(type1,(Char,UChar,SChar)):
+    if isinstance(type1,(Char,SChar,UChar)):
         type1 = Int()
-    if isinstance(type2,(Char,UChar,SChar)):
+    if isinstance(type2,(Char,SChar,UChar)):
         type2 = Int()
+    
+    # if isinstance(type1,(UChar)):
+    #     type1 = UInt()
+    # if isinstance(type2,(UChar)):
+    #     type2 = UInt()
+
 
     if type(type1) == type(type2):
         return type1
@@ -193,9 +222,7 @@ def typecheck_exp_and_convert(expression,symbols,_type=None):
     print('Typed expression',typed_e)
     if not isinstance(typed_e,Null) and isinstance(typed_e.get_type(),Array):
         expression = AddOf(typed_e)
-        # print('Add of',addr_exp)
-        # print(typed_e.get_type()._type)
-        # 
+   
         expression.set_type(Pointer(typed_e.get_type()._type))
         return expression
     print('return Typecheck and convert')
@@ -203,9 +230,19 @@ def typecheck_exp_and_convert(expression,symbols,_type=None):
 
 
 def flat_val(var_type,val):
+    print(var_type)
     decl = var_type
     if isinstance(var_type,Array):
-        decl = var_type._type
+        a=[]
+        for i in val:
+            i=ord(i)
+            x=flat_val(var_type._type,i)
+            a.extend(x)
+            print(a)
+            # exit()
+        return a 
+        
+   
     elif isinstance(var_type,Pointer):
         decl = var_type.ref
     
@@ -234,12 +271,20 @@ def flat_val(var_type,val):
         new_init = Constant(StaticInit.uCharInit(Const.constUChar(val)))
         new_init.set_type(var_type)
  
-    return new_init
+    return [new_init]
     
 
+def get_type(_Type):
+    if isinstance(_Type,Array):
+        return get_type(_Type._type)
+    if isinstance(_Type,Pointer):
+        return getattr(_Type.ref)
+    return _Type
 
 
 def typecheck_array_init(decl, var_type=None):
+
+
     """
     Recursively typechecks an array initializer and returns a flattened list of initial values.
 
@@ -268,14 +313,15 @@ def typecheck_array_init(decl, var_type=None):
     if isinstance(decl, SingleInit):
         if isinstance(decl.exp,Cast):
             decl.exp.exp.set_type(var_type)
-            return [flat_val(var_type, decl.exp.exp.value._int)]
+            return flat_val(var_type, decl.exp.exp.value._int)
         decl.exp.set_type(var_type)
- 
+      
         if isinstance(decl.exp,String):
+            print('here')
             decl.exp.set_type(var_type)
-            return [flat_val(var_type,decl.exp.string)]
+            return flat_val(var_type,decl.exp.string)
         decl.exp.set_type(var_type)
-        return [flat_val(var_type, decl.exp.value._int)]
+        return flat_val(var_type, decl.exp.value._int)
     
     # Recursive case: CompoundInit.
     elif isinstance(decl, CompoundInit):
@@ -303,8 +349,16 @@ def typecheck_array_init(decl, var_type=None):
                     # If the row has fewer elements than expected, pad with ZeroInit(4) per element.
                   
                     if len(flattened) < expected_inner:
+                        print('sub 1')
                         missing = expected_inner - len(flattened)
-                        flattened.extend([ZeroInit(4)] * missing)
+                        print(missing)
+                        if isinstance(get_type(var_type),(Char,SChar,UChar)):
+                            flattened.extend([Constant(CharInit(ConstChar(0)))])
+                            if missing>1:
+                                flattened.extend([Constant(CharInit(ConstChar(0)))]*(missing -1 ))
+                                
+                        else:
+                            flattened.extend([ZeroInit(4)]*missing)
                     # Append the flattened row to the overall result.
                     result.extend(flattened)
                 else:
@@ -315,6 +369,11 @@ def typecheck_array_init(decl, var_type=None):
                     elif isinstance(elem, SingleInit):
                         result.extend(typecheck_array_init(elem, var_type._type))
                     else:
+                        if isinstance(get_type(var_type),(Char,SChar,UChar)):
+                            result.extend([Constant(CharInit(ConstChar(0)))])
+                                   
+                        else:
+                            result.extend([ZeroInit(4)]*missing)
                         result.append(ZeroInit(4))
             else:
                 # If no initializer is provided for this element:
@@ -322,13 +381,19 @@ def typecheck_array_init(decl, var_type=None):
                     # Missing entire row: pad with a single ZeroInit whose size is the row's total bytes.
                     result.append(ZeroInit(expected_inner * 4))
                 else:
-                    result.append(ZeroInit(4))
+                    if isinstance(get_type(var_type),(Char,SChar,UChar)):
+                        result.extend([Constant(CharInit(ConstChar(0)))])
+                    else:
+                            result.extend([ZeroInit(4)]*missing)
+                    # result.append(ZeroInit(4))
         return result
 
     else:
         return []
 
 
+def to_signed_8bit(x) :
+    return ((x + 128) % 256) - 128
 
 
 def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
@@ -346,7 +411,9 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
         if isinstance(decl.var_type, Array):
             # Handle array initialization (including string literals)
             if isinstance(decl.init, SingleInit) and isinstance(decl.init.exp, String):
+            # exit()
                 # Handle string literal initialization for global arrays
+                
                 string_val = decl.init.exp.string
                 array_size = decl.var_type._int.value._int
                 char_type = decl.var_type._type
@@ -356,8 +423,11 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
                     raise TypeError('String literal can only initialize character arrays')
                 
                 # Check array size vs string length
+                
                 str_len = len(string_val)
+                
                 needs_null_term = array_size > str_len
+                print('sub 2')
                 pad_bytes = array_size - (str_len + 1) if needs_null_term else array_size - str_len
                 
                 if str_len > array_size:
@@ -365,6 +435,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
                 
                 # Create initializer
                 init_list = [StringInit(string_val, needs_null_term)]
+               
                 if pad_bytes > 0:
                     init_list.append(ZeroInit(pad_bytes))
                 
@@ -372,10 +443,13 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
             elif not isinstance(decl.init, CompoundInit):
                 raise ValueError("Array initializer must be a CompoundInit or StringLiteral")
             else:
+            
                 typecheck_init(decl.var_type, decl.init, symbols)
-              
+                # print(init)
                 new_init = Initial(typecheck_array_init(decl.init, decl.var_type))
-             
+                # print(new_init)
+                # exit()
+                # exit
         
         elif isinstance(decl.var_type, Pointer):
             if ((hasattr(decl.init, 'exp') and hasattr(decl.init.exp, 'exp') and 
@@ -447,19 +521,25 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
                 new_init = Initial(typecheck_init(decl.var_type, decl.init, symbols))
         
         elif hasattr(decl.init, 'exp') and isinstance(decl.init.exp, Constant):
+           
             # Handle scalar constant initializers
             init_val = decl.init.exp.value._int
             if isinstance(decl.var_type, Int):
                 new_init = Initial([Constant(StaticInit.IntInit(Const.constInt(int(init_val))))])
             elif isinstance(decl.var_type, (Char, SChar)):
+                decl.init.exp.value._int = int( decl.init.exp.value._int)
                 if decl.init.exp.value._int > 127:
-                    decl.init.exp.value._int = decl.init.exp.value._int % 128
+                    decl.init.exp.value._int = to_signed_8bit(int(decl.init.exp.value._int))
                 if decl.init.exp.value._int < -127:
-                    decl.init.exp.value._int = decl.init.exp.value._int % -127
+                    decl.init.exp.value._int = int(decl.init.exp.value._int) % -127
+                print('iNIT;',decl.init)
                 new_init = Initial([Constant(CharInit(decl.init.exp.value))])
+              
             elif isinstance(decl.var_type, UChar):
-                if decl.init.exp.value._int > 255:
-                    decl.init.exp.value._int = decl.init.exp.value._int % 255
+                decl.init.exp.value._int = int( decl.init.exp.value._int)
+                
+                if decl.init.exp.value._int >255:
+                    decl.init.exp.value._int = decl.init.exp.value._int % 256
                 new_init = Initial([Constant(UCharInit(decl.init.exp.value))])
             elif isinstance(decl.var_type, UInt):
                 new_init = Initial([Constant(StaticInit.UIntInit(Const.constUInt(int(init_val))))])
@@ -473,19 +553,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
                 raise SyntaxError("Unsupported type for constant initializer", decl.storage_class)
         else:
             raise SyntaxError("Non-constant initializer!", decl.storage_class)
-        # if isinstance(decl.var_type,Array) and isinstance(decl.init,SingleInit) and not isinstance(decl.init.exp,String):
-        #                 raise TypeError("can't initialize an array with a scalar expression.")
-        # elif isinstance(decl.var_type, Pointer) and isinstance(decl.var_type.ref, Array):
-        #         # Handle pointer-to-array initialization
-        #         if isinstance(decl.init, AddOf) and isinstance(decl.init.exp, String):
-        #             string_length = len(decl.init.exp.value) + 1  # +1 for null terminator
-        #             array_size = decl.var_type.ref._int.value._int
-                    
-        #             if string_length != array_size:
-        #                 raise TypeError(
-        #                     f'String length {string_length} does not match array size {array_size} '
-        #                     f'for pointer to array of type {decl.var_type}'
-        #                 )
+       
     # Determine the linkage: globals are those that are not static
     global_scope = not isinstance(decl.storage_class, Static)
     var_name = decl.name.name
@@ -549,6 +617,12 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
 
 def zero_initializer(_type):
     if isinstance(_type, Array):
+        
+        if isinstance(_type._type,(Char,UChar,SChar)):
+            # For character arrays, create a string literal with null terminator
+            e = SingleInit(String('\0'))
+            e.set_type(_type)
+            return e
         # For arrays, create compound initializer with proper number of zero elements
         zero_inits = []
         for _ in range(int(_type._int.value._int)):
@@ -558,66 +632,86 @@ def zero_initializer(_type):
         return e
     
     
-    if isinstance(_type,UChar):
+    elif isinstance(_type,UChar):
         e= SingleInit(Constant(ConstUChar(0),_type=_type))
         e.set_type(_type)
         e.exp.set_type(_type)
         return e 
-    if isinstance(_type,(SChar,Char)):
+    elif isinstance(_type,(SChar,Char)):
         e= SingleInit(Constant(ConstChar(0),_type=_type))
         e.set_type(_type)
         e.exp.set_type(_type)
         return e 
         
-    if isinstance(_type,Int):
+    elif isinstance(_type,Int):
         e= SingleInit(Constant(ConstInt(0),_type=_type))
         e.set_type(_type)
         e.exp.set_type(_type)
         
         return SingleInit(Constant(ConstInt(0),_type))
-    if isinstance(_type,Long):
+    elif isinstance(_type,Long):
         e= SingleInit(Constant(ConstLong(0)))
         e.set_type(_type)
         
         e.exp.set_type(_type)
         
         return e
-    if isinstance(_type,UInt):
+    elif isinstance(_type,UInt):
         e= SingleInit(Constant(ConstUInt(0),_type))
         e.set_type(_type)
         e.exp.set_type(_type)
         
         return e
-    if isinstance(_type,ULong):
+    elif isinstance(_type,ULong):
         e= SingleInit(Constant(ConstULong(0),_type))
         e.set_type(_type)
         e.exp.set_type(_type)
         
         return e
-    if isinstance(_type,Double):
+    elif isinstance(_type,Double):
         e= SingleInit(Constant(ConstDouble(0),_type))
         e.set_type(_type)
         e.exp.set_type(_type)
         
         return e
+    
+    elif isinstance(_type,Pointer):
+       e = zero_initializer(Long())
+    #    e = AddOf(e.exp)
+       e.exp.set_type(_type.ref)
+       e.set_type(_type)
+       print(e)
+    #    exit()
+       return e
+   
+    else:
+        raise TypeError(f"Unsupported type for zero initialization: {_type}")
 
+x__=0 
 
 def typecheck_init(target_type,init,symbols):
-    
+  
     if isinstance(target_type,Array) and isinstance(init,SingleInit) and isinstance(init.exp,String):
-        # print(target_type)
-        # exit()
         if not isinstance(target_type._type,(Char,UChar,SChar)):
             raise TypeError("Can't initialize a non-character type with a string literal")
-        print('ERROR HERWE')
+       
+       
+     
+   
+        if init.exp.string.startswith('"'):
+            init.exp.string=init.exp.string[1:-1]
+     
 
         if len(init.exp.string)>target_type._int.value._int:
             raise TypeError("Too many characters in string literal")
-        init.exp.set_type(target_type)
+        print('sub 1')
+        init.exp.string= init.exp.string+''.join(['\0'*(target_type._int.value._int - len(init.exp.string) -1)])
+        init.exp.set_type(target_type._type)
         init.set_type(target_type)
+   
         return init
-    if isinstance(target_type,Array) and isinstance(init,CompoundInit):
        
+    if isinstance(target_type,Array) and isinstance(init,CompoundInit):
         if len(init.initializer) > int(target_type._int.value._int):
             
             raise TypeError('Wrong no of valus in initializer')
@@ -627,20 +721,26 @@ def typecheck_init(target_type,init,symbols):
             typechecked_elem = typecheck_init(target_type._type,init_elem,symbols)
             typechecked_list.append(typechecked_elem)
         
-        print('ERROR HERE 2')
+        # print('ERROR HERE 2')
         while len(typechecked_list)<target_type._int.value._int:
             typechecked_list.append(zero_initializer(target_type._type)) 
             init.initializer = typechecked_list
           
+        print(len(typechecked_list),target_type._int.value._int)
+        print(typechecked_list)
+        # exit()
         init.set_type(target_type)
         return init
     if isinstance(init,SingleInit):
         typechecked_exp = typecheck_exp_and_convert(init.exp, symbols)
-      
+        # print(typechecked_exp)
         cast_exp = convert_by_assignment(typechecked_exp, target_type)
         init.exp=cast_exp
         init.exp.set_type(target_type)
         init.set_type(target_type)
+        print(init)
+        # exit()
+       
         return init
       
     else:
@@ -673,6 +773,7 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
         # Handle static declarations
         elif isinstance(decl.storage_class, Static):
             if isinstance(decl.var_type, Array) and isinstance(decl.init, SingleInit):
+               
                 if isinstance(decl.init.exp, String):
                     
                     # Handle string literal initialization for static arrays
@@ -684,9 +785,13 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                     if not isinstance(char_type, (Char, SChar, UChar)):
                         raise TypeError('String literal can only initialize character arrays')
                     
+                    if string_val.startswith('"'):
+                        string_val = string_val[1:-1]
+                
                     # Check array size vs string length
                     str_len = len(string_val)
                     needs_null_term = array_size > str_len
+                    print('sub 3')
                     pad_bytes = array_size - (str_len + 1) if needs_null_term else array_size - str_len
                     
                     if str_len > array_size:
@@ -698,11 +803,14 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                         init_list.append(ZeroInit(pad_bytes))
                     
                     initial_value = Initial(init_list)
+                
+                    
                 else:
                     raise ValueError("Array initializer must be a CompoundInit or StringLiteral")
             
             elif isinstance(decl.var_type, Pointer) and isinstance(decl.init, SingleInit) and isinstance(decl.init.exp,String):
                 if isinstance(decl.init.exp, String):
+                    # exit()
                     # Handle string literal initialization for static pointers
                     if not isinstance(decl.var_type.ref, Char):
                         raise TypeError('String literal can only initialize char*')
@@ -710,7 +818,9 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                     # Generate unique name for the string constant
                     string_id = f"string.{len([k for k in symbols if k.startswith('string.')])}"
                     string_val = decl.init.exp.string
-                    
+                    if string_val.startswith('"'):
+                        string_val = string_val[1:-1]
+              
                     # Add string constant to symbol table
                     symbols[string_id] = {
                         'type': Array(Char(), len(string_val) + 1),
@@ -722,12 +832,17 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                     
                     # Create pointer initializer pointing to the string constant
                     initial_value = Initial([PointerInit(string_id)])
+                
             
             elif isinstance(decl.init, CompoundInit):
                 typecheck_init(decl.var_type, decl.init, symbols)
-                print('HERE 3')
+            
                 initial_value = Initial(typecheck_array_init(decl.init, decl.var_type))
-                
+                print(initial_value)
+             
+                    
+                # exit()
+              
             elif isinstance(decl.init, Null):
                 if isinstance(decl.var_type, Array):
                     initial_value = Initial([ZeroInit(decl.var_type._int.value._int * size(decl.var_type._type))])
@@ -742,11 +857,11 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                          decl.init.exp.value._int =  decl.init.exp.value._int % 128
                     if decl.init.exp.value._int < -127:
                          decl.init.exp.value._int =  decl.init.exp.value._int % -127
-    
+                  
                     initial_value = Initial([Constant(CharInit(decl.init.exp.value))])
                 elif isinstance(decl.var_type,UChar):
-                    if decl.init.exp.value._int > 255: 
-                         decl.init.exp.value._int =  decl.init.exp.value._int % 255
+                    if decl.init.exp.value._int > 254: 
+                         decl.init.exp.value._int =  decl.init.exp.value._int % 254
                     initial_value = Initial([Constant(UCharInit(decl.init.exp.value))])
                 elif isinstance(decl.var_type,Int):
                     initial_value = Initial([Constant(IntInit(decl.init.exp.value))])
@@ -790,7 +905,7 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                 'ret': decl.var_type,
                 'Double': decl.var_type
             }
-            
+            # print('jere')
             if not isinstance(decl.init, Null):
                
                 if isinstance(decl.var_type, Pointer) and isinstance(decl.init, SingleInit):
@@ -803,27 +918,32 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                             
            
                 if isinstance(decl.var_type, Pointer) and isinstance(decl.var_type.ref, Array) and isinstance(decl.init,SingleInit):
-                    # exit()
+                   
                     # Handle pointer-to-array initialization
                     if isinstance(decl.init.exp, AddOf) and isinstance(decl.init.exp.exp, String):
-                        string_value = decl.init.exp.exp.string
-                        # exit()
+                        string_val = decl.init.exp.exp.string
+                    
+                        if string_val.startswith('"'):
+                            string_val = string_val[1:-1]
 
                         # Calculate the actual length in memory (escape sequences count as single chars)
                         # First decode escape sequences to get the real length
                         import ast
                         try:
                             # Use ast.literal_eval to properly interpret escape sequences
-                            decoded_string = ast.literal_eval(f'{string_value}')
+                            decoded_string = ast.literal_eval(f'{string_val}')
                             string_length = len(decoded_string) + 1  # +1 for null terminator
                         except (ValueError, SyntaxError):
                             # Fallback if literal_eval fails
-                            decoded_string = string_value.encode().decode('unicode-escape')
+                            decoded_string = string_val.encode().decode('unicode-escape')
                             string_length = len(decoded_string) + 1
 
                         # Get the array size from type definition
+                        # string_length = len(string_val)
+                        print(string_val)
+                        print(string_length)
                         array_size = decl.var_type.ref._int.value._int
-                   
+                        # exit()
                         if string_length != array_size:
                             raise TypeError('Invalid string length')
                 if isinstance(decl.var_type, Pointer) and isinstance(decl.var_type.ref, Array):
@@ -845,8 +965,8 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                         val_type = symbols[decl.init.exp.identifier.name]['val_type']
                         if isinstance(val_type,Pointer) and not isinstance(decl.var_type.ref,type(val_type.ref)):
                             raise TypeError("cannot convert char * to a signed char *")
-                
                 x = typecheck_init(decl.var_type, decl.init, symbols)
+               
                 if isinstance(decl.var_type, Pointer) and (
                     (isinstance(x, Constant) or isinstance(x, Var)) and
                     not isinstance(x.get_type(), Pointer)):
@@ -1125,6 +1245,8 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         print('Type checked function call')
         return e
     elif isinstance(e,String):
+        if e.string.startswith('"'):
+            e.string = e.string[1:-1]
         e.set_type(Array(_type=Char(),_int=len(e.string)+1))
         return e 
     elif isinstance(e, Var):
@@ -1165,6 +1287,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
     elif isinstance(e, Constant):
         if isinstance(e.value, ConstInt):
             e.set_type(Int())
+            
             return e
         elif isinstance(e.value, ConstLong):
          
@@ -1196,7 +1319,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
 
     elif isinstance(e, Assignment):
-        
+        # exit()
         
         type_left = typecheck_exp_and_convert(e.left, symbols)
         type_right = typecheck_exp_and_convert(e.right, symbols)
@@ -1440,11 +1563,14 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return typecheck_statement(e.name,symbols)
     
     elif isinstance(e,Subscript):
-       
+        print('\n',e,'\n')
         typed_e1 = typecheck_exp_and_convert(e.exp1, symbols)
         typed_e2 = typecheck_exp_and_convert(e.exp2, symbols)
         t1 = typed_e1.get_type()
         t2 = typed_e2.get_type()
+        # print(typed_e1)
+        # print(typed_e2)
+        # exit()
         if isinstance(t1,Double) or isinstance(t2,Double):
             raise TypeError("Subscript must have integral type.")
     

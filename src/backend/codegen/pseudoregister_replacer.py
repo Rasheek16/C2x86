@@ -216,12 +216,12 @@
     
 #     return assembly_program, stack_allocations,backend_Symbol_table
 
-from assembly_ast import * 
+from src.backend.codegen.assembly_ast import * 
 from typing import * 
 import sys
-from type_classes import *
+from src.backend.typechecker.type_classes import *
 import logging
-from _ast5 import Long, Int 
+from src.frontend.parser._ast5 import Long, Int 
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -264,16 +264,20 @@ def replace_pseudoregisters(
                 if name not in pseudo_map:
                     if name in backend_Symbol_table:
                         symbol = backend_Symbol_table[name]
+                        if name=='tmp.2':
+                            print(symbol)
+                            # exit()
                         if symbol.is_static:
                             return Data(name)
                         else:
                            
                             if symbol.assembly_type == AssemblyType.longWord:
+                              
                                 current_offset -= 4
-                                # current_offset = align_offset(current_offset, 4)
+                                current_offset = align_offset(current_offset, 4)
                             elif symbol.assembly_type== AssemblyType.byte:
                                 current_offset -= 1
-                                # current_offset = align_offset(current_offset, 8)
+                               
                             else:
                                 current_offset -= 8
                                 current_offset = align_offset(current_offset, 8)
@@ -287,40 +291,34 @@ def replace_pseudoregisters(
                 return Stack(pseudo_map[name])
 
             elif isinstance(operand, PseudoMem):
-                # print(operand.identifier)
-                # print(operand.size)
-                # print(symbols[operand.identifier])
+         
                 nonlocal cf
                 array_name = operand.identifier
-                offset =  operand.size  # Offset in bytes from the start of the array
-                # if offset > 4:
-                #     print(offset)
-                #     exit()
+                offset =  operand.size 
+     
                 if array_name in backend_Symbol_table:
                     print('Array name is pseudo map')
                     symbol = backend_Symbol_table[array_name]
-                    if symbol.is_static:
+                    if symbol.is_static :
                         if offset == 0:
+                            # exit()
                             return Data(array_name)
                         else:
                             raise ValueError(f"Cannot convert PseudoMem('{array_name}', {offset}) using Data operand.")
                     else:
-                        # print('Array is not static')
-                        # print('Pseudo map',pseudo_map)
+        
+                    
                         # If the array's base hasn't been allocated yet, allocate it now.
                         if array_name not in pseudo_map:
-                            # print('Array not in pseudo map',isinstance(symbol.assembly_type,AssemblyType.byteArray))
-                            # print('Alignment', symbol.assembly_type.alignment)
-                            # print('Size', symbol.assembly_type.size)
-                            # exit()
+                        
                             if isinstance(symbol.assembly_type ,AssemblyType.byteArray):
+                                
                                 current_offset -= symbol.assembly_type.size # Changed from += to -=
-                              
-                                current_offset = int (align_offset(current_offset,16))
+                                current_offset = int(align_offset(current_offset,16))
                             
                             elif symbol.assembly_type == AssemblyType.longWord:
                                 current_offset -= 4
-                                # current_offset = align_offset(current_offset, 4
+                                current_offset = align_offset(current_offset, 4)
                                 #
                             elif symbol.assembly_type == AssemblyType.byte:
                                 current_offset -= 1
@@ -332,13 +330,9 @@ def replace_pseudoregisters(
 
                         # print(symbol.assembly_type.size)
                         base_address = pseudo_map[array_name]
-                        
-                        # print(pseudo_map)
-                        # print(base_address)
-                        # exit()
-                        # Remove the -4 adjustment to make indexing zero based.
-                        # current_offset 
+                 
                         final_offset = base_address + offset
+                        # final_offset = align_offset(final_offset,)
 
                   
                         return Memory(Reg(Registers.BP), final_offset)
@@ -384,7 +378,7 @@ def replace_pseudoregisters(
                 instr.dst = replace_pseudo_with_operand(instr.dst)
             elif isinstance(instr, Memory):
                 instr.address = replace_pseudo_with_operand(instr.address)
-            elif isinstance(instr, (AllocateStack, Ret, Cdq, JmpCC, Jmp, Label, Call, DeallocateStack, Imm,MovZeroExtend)):
+            elif isinstance(instr, (AllocateStack, Ret, Cdq, JmpCC, Jmp, Label, Call, DeallocateStack, Imm)):
                 pass  # No changes required
             else:
                 print(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_func.name}'.", file=sys.stderr)
