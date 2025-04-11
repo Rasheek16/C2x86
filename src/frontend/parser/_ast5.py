@@ -5,6 +5,13 @@ from typing import List, Optional, Union
 class Type:
     pass 
 
+class Void(Type):
+    def __init__(self):
+       pass
+       
+    
+    def __repr__(self):
+        return f'Void()'
 
 class Int(Type):
     def __init__(self):
@@ -337,6 +344,19 @@ class Exp:
     def get_type(self):
         return self._type
     
+class SizeOf(Exp):
+    def __init__(self,exp,_type=None):
+        super().__init__(_type)
+        self.exp=exp
+    def __repr__(self):
+        return f'SizeOf(exp={repr(self.exp)},type={self._type})'
+
+class SizeOfT(Exp):
+    def __init__(self,exp,_type=None):
+        super().__init__(_type)
+        self.exp=exp
+    def __repr__(self):
+        return f'SizeOf(exp={repr(self.exp)},type={self._type})'    
     
 class String(Exp):
     def __init__(self,string,_type=None):
@@ -771,7 +791,7 @@ class Return(Statement):
     Attributes:
         exp (Exp): The expression to be returned.
     """
-    def __init__(self, exp: Exp):
+    def __init__(self, exp:Optional[Exp]=None):
         """
         Initializes a Return instance.
         
