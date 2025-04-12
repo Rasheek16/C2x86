@@ -139,9 +139,13 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
        
             
         if tokens[0] == ")":
-            next_token == Null()
             
-        list_params.append(Parameter(_type=_type,name=Identifier(next_token),declarator=declarator))
+            next_token = Null()
+        if not isinstance(declarator,Null):
+            print(declarator)
+            print(tokens)
+            # exit()
+            list_params.append(Parameter(_type=_type,name=Identifier(next_token),declarator=declarator))
         
         if tokens[0]==')':
             return list_params,tokens
