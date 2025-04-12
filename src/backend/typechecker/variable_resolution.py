@@ -181,6 +181,8 @@ def resolve_exp(expression, identifier_map: dict):
             new_func_name = identifier_map[func_name]['unique_name']
             # Resolve arguments
             new_args = [resolve_exp(arg, identifier_map) for arg in expression.args]
+            print(new_args)
+            # exit()
             # arg_type = [arg for arg in expression.args]
             return FunctionCall(Identifier(new_func_name), new_args)
         else:
@@ -216,8 +218,12 @@ def resolve_exp(expression, identifier_map: dict):
         resolved_exp1 = resolve_exp(expression.exp1,identifier_map)
         resolved_exp2 = resolve_exp(expression.exp2,identifier_map)
         return Subscript(exp1=resolved_exp1,exp2=resolved_exp2)
-    elif isinstance(expression,String):
+    elif isinstance(expression,(String,SizeOfT)):
         return expression
+    elif isinstance(expression,SizeOf):
+        expression.exp= resolve_exp(expression.exp,identifier_map)
+        return expression
+        
         
         
     else:
@@ -414,7 +420,7 @@ def label_statement(statement: Statement, current_label: Optional[str] = None) -
     elif isinstance(statement, (Return, Var, Constant)):
         pass  # no label needed
 
-    elif isinstance(statement, (Expression, Assignment, Binary, Unary,Cast,AddOf,Dereference,SingleInit,CompoundInit,String)):
+    elif isinstance(statement, (Expression, Assignment, Binary, Unary,Cast,AddOf,Dereference,SingleInit,CompoundInit,String,SizeOf,SizeOfT)):
         pass  # no label needed
 
     elif isinstance(statement, Null):
@@ -539,14 +545,11 @@ def resolve_param(param: Parameter, identifier_map: dict) -> Parameter:
     if not isinstance(param.name, Identifier):
         raise TypeError(f"Parameter name must be an Identifier, got {type(param.name)}")
 
-    # print('Here')
-    print(param.name.name.name)
-    # exit()
-    original_name = param.name.name.name
-    print(param._type)
-    # exit()
-    print(original_name)
-    # exit()
+    original_name = Null()
+    if not isinstance(param.name.name,Null):
+        original_name = param.name.name.name
+ 
+ 
     # Check duplicate param in the same scope
     if (original_name in identifier_map 
         and identifier_map[original_name]['from_current_scope']):
