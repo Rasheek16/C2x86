@@ -108,6 +108,13 @@ def convert_by_assignment(e, target_type):
         print('Exit convert by assignment')
         
         return convert_to(e, target_type)
+    
+    if (isinstance(target_type,Pointer) and isinstance(target_type.ref,Void)) and isinstance(e.get_type(),Pointer):
+        return convert_to(e,target_type)
+
+    if( isinstance(target_type,Pointer) and  isinstance(e.get_type(),Pointer) )and isinstance(e.get_type().ref,Void):
+        return convert_to(e,target_type)
+    
     else:
         raise SyntaxError("Cannot convert type for assignment")
 
@@ -137,11 +144,19 @@ def get_common_pointer_type(e1, e2):
     e2_t = e2.get_type()
 
 
+    if (isinstance(e1_t,Pointer) and isinstance(e1_t.ref,Void)) and isinstance(e2_t,Pointer):
+        return Pointer(Void())
+    if (isinstance(e2_t,Pointer) and isinstance(e2_t.ref,Void)) and isinstance(e1_t,Pointer):
+        return Pointer(Void())    
     if isinstance(e1_t,Pointer) and isinstance(e2_t,Pointer):
         
         if isinstance(e1_t.ref,type(e2_t.ref)):
             return e1_t
         else:
+            print(e1_t.ref)
+            print(e2_t.ref)
+            
+            # exit()
             raise SyntaxError("Pointer types are not compatible")
         
     if type(e1_t)==type(e2_t):
@@ -160,6 +175,14 @@ def isSigned(_type):
     return False
     
 
+def is_scalar(t):
+    if isinstance(t,Void):
+        return False
+    if isinstance(t,Array):
+        return False
+    if isinstance(t,FunType):
+        return False
+    return True     
 
 def get_common_type(type1, type2):
     
@@ -221,6 +244,7 @@ def typecheck_exp_and_convert(expression,symbols,_type=None):
     
     print('Typed expression',typed_e)
     if not isinstance(typed_e,Null) and isinstance(typed_e.get_type(),Array):
+        validate_type_specifier(typed_e.get_type())
         expression = AddOf(typed_e)
    
         expression.set_type(Pointer(typed_e.get_type()._type))
@@ -397,8 +421,11 @@ def to_signed_8bit(x) :
 
 
 def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
-    
+    if isinstance(decl.var_type,Void):
+        raise TypeError('cant declare void variables')
     # First, determine the initializer based on whether decl.init is null.
+    validate_type_specifier(decl.var_type)
+    
     if isinstance(decl.init, Null):
         # For a null initializer, extern variables get NoInitializer,
         # while others get a Tentative initializer.
@@ -407,8 +434,11 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
         else:
             new_init = Tentative()
     else:
+        if isinstance(decl.var_type,Void):
+            raise TypeError('cannot declare void variables')
         # When there is a non-null initializer, typecheck based on variable type.
         if isinstance(decl.var_type, Array):
+            validate_type_specifier(decl.var_type)
             # Handle array initialization (including string literals)
             if isinstance(decl.init, SingleInit) and isinstance(decl.init.exp, String):
             # exit()
@@ -497,6 +527,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
                 # Create pointer initializer pointing to the string constant
                 new_init = Initial([PointerInit(string_id)])
             elif isinstance(decl.var_type, Pointer) and isinstance(decl.var_type.ref, Array):
+                validate_type_specifier(decl.var_type.ref)
                 # Handle pointer-to-array initialization
                 if isinstance(decl.init, AddOf) and isinstance(decl.init.exp, String):
                     string_length = len(decl.init.exp.value) + 1  # +1 for null terminator
@@ -566,6 +597,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
         if not isinstance(old_decl['type'], Int):
             raise TypeError("Function redeclared as variable")
         if isinstance(old_decl['val_type'], Array) and isinstance(decl.var_type, Array): 
+            validate_type_specifier(decl.var_type)
             if old_decl['val_type']._int.value._int != decl.var_type._int.value._int:
                 raise TypeError('Array redeclared with different value')
         
@@ -692,6 +724,7 @@ x__=0
 def typecheck_init(target_type,init,symbols):
   
     if isinstance(target_type,Array) and isinstance(init,SingleInit) and isinstance(init.exp,String):
+        validate_type_specifier(target_type)
         if not isinstance(target_type._type,(Char,UChar,SChar)):
             raise TypeError("Can't initialize a non-character type with a string literal")
        
@@ -712,6 +745,7 @@ def typecheck_init(target_type,init,symbols):
         return init
        
     if isinstance(target_type,Array) and isinstance(init,CompoundInit):
+        validate_type_specifier(target_type)
         if len(init.initializer) > int(target_type._int.value._int):
             
             raise TypeError('Wrong no of valus in initializer')
@@ -750,6 +784,10 @@ def typecheck_init(target_type,init,symbols):
 
 def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
     try:
+        
+        if isinstance(decl.var_type,Void):
+            raise TypeError('cannot declare void variables')
+        validate_type_specifier(decl.var_type)
         # Handle extern declarations
         if isinstance(decl.storage_class, Extern):
             if not isinstance(decl.init, Null):
@@ -773,6 +811,7 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
         # Handle static declarations
         elif isinstance(decl.storage_class, Static):
             if isinstance(decl.var_type, Array) and isinstance(decl.init, SingleInit):
+                validate_type_specifier(decl.var_type)
                
                 if isinstance(decl.init.exp, String):
                     
@@ -918,7 +957,7 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                             
            
                 if isinstance(decl.var_type, Pointer) and isinstance(decl.var_type.ref, Array) and isinstance(decl.init,SingleInit):
-                   
+                    validate_type_specifier(decl.var_type.ref)
                     # Handle pointer-to-array initialization
                     if isinstance(decl.init.exp, AddOf) and isinstance(decl.init.exp.exp, String):
                         string_val = decl.init.exp.exp.string
@@ -947,6 +986,7 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
                         if string_length != array_size:
                             raise TypeError('Invalid string length')
                 if isinstance(decl.var_type, Pointer) and isinstance(decl.var_type.ref, Array):
+                    validate_type_specifier(decl.var_type.ref)
                     if isinstance(decl.init.exp, AddOf):
                         if isinstance(decl.init.exp.exp,Var):
                             if decl.init.exp.exp.identifier.name in symbols:
@@ -986,8 +1026,13 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
         raise e
 
 
+def is_complete(t):
+    return not isinstance(t,Void)
 
-
+def is_pointer_to_complete(t):
+    if isinstance(t,Pointer):
+        return is_complete(t.ref)
+    return False
 
 def check_fun_decl_compatibility(decl, old_decl):
 
@@ -1017,6 +1062,8 @@ def check_fun_decl_compatibility(decl, old_decl):
     for new_param, old_param in zip(new_fun_type.params, old_fun_type.params):
         # If the new parameter is declared as an Array, its outer dimension is ignored.
         if isinstance(new_param, Array):
+            
+            validate_type_specifier(new_param)
             # Adjust the new parameter: the effective type is the element type.
             new_adjusted = new_param._type  # For a parameter declared as int a[5],
                                             # new_adjusted is Int (or, in the multidimensional case, Array(...))
@@ -1027,6 +1074,7 @@ def check_fun_decl_compatibility(decl, old_decl):
             
             # For one-dimensional arrays, we ignore any size differences.
             if not isinstance(new_adjusted, Array):
+                
                 # Compare element types.
                 if not isinstance(new_adjusted,type(old_adjusted)):
                     raise SyntaxError("Function parameter type mismatch: "
@@ -1058,12 +1106,24 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
     for param in decl.params:
         # print(param)
         param_name = param.name.name
-
+        print(param._type)
+        # exit()
         if isinstance(param._type,Array):
-            adjusted_type = Pointer(param._type._type)
             
+            validate_type_specifier(param._type)
+            
+            adjusted_type = Pointer(param._type._type)
+        
             adjusted_params.append(Parameter(adjusted_type,name=Identifier(param_name)))
+        elif isinstance(param._type,Pointer):
+                validate_type_specifier(param._type)
+                # adjusted_params.append(Parameter(adjusted_type,name=Identifier(param_name)))
+            
+                adjusted_params.append(param)
+
         else:
+            if isinstance(param._type,Void):
+                raise TypeError('Void type parameter not allowed.')
             adjusted_params.append(param)
     decl.params=adjusted_params
 
@@ -1183,8 +1243,19 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope)
                         cast=convert_to(typed_return, decl.fun_type)
                         stmts.append(cast)
     
+def validate_type_specifier(t):
+    if isinstance(t,Array):
+        if not is_complete(t._type):
+            raise TypeError('Illegal array declaration of incomplete type')
+        validate_type_specifier(t._type)
+    if isinstance(t,Pointer):
+        validate_type_specifier(t.ref)
     
-                                          
+    if isinstance(t,FunType):
+        for param in t.params:
+            validate_type_specifier(param._type)
+        validate_type_specifier(t.base_type)        
+    return                 
 def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
     # print(e)
     # 
@@ -1208,6 +1279,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         for arg, param in zip(e.args, symbols[e.identifier.name]['fun_type'].params):
             print('Here')
             if isinstance(arg, AddOf) and isinstance(symbols[arg.exp.identifier.name]['val_type'], Array):
+                validate_type_specifier(symbols[arg.exp.identifier.name]['val_type'])
                 # print(param.)
                 # exit()
                 if isinstance(param._type, Pointer) and isinstance(param._type.ref, Pointer):
@@ -1222,6 +1294,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
             raise SyntaxError(f"Variable '{fun_name}' used as a function.")
 
         f_type: FunType = fun_entry['fun_type']
+       
         if f_type.param_count != len(e.args):
             raise SyntaxError(
                 f"Function '{fun_name}' called with wrong number of arguments. "
@@ -1251,7 +1324,8 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e 
     elif isinstance(e, Var):
         var_name = e.identifier.name
-
+        # print(var_name)
+        # print(symbols[e.identifier.name])
         if var_name not in symbols:
             raise NameError(f"Variable '{var_name}' is not defined.")
         var_entry = symbols[var_name]
@@ -1272,16 +1346,21 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         if x==1:
             print('\nReturn Expression',e,func_type)
         x+=1
+        if not isinstance(func_type,Void) and isinstance(e.exp,Null):
+            raise TypeError('none Void function must return a value')
+            
+        
+        if not isinstance(e.exp,Null) and isinstance(func_type,Void):
+            raise TypeError('Void function cannot return a value')
         if e.exp is not None and not isinstance(e.exp, Null):
             if func_type is not None:
-                # print('Here')
+               
                 e.exp=typecheck_exp_and_convert(e.exp, symbols, func_type) 
-                # print(e.exp)   
-                # 
+              
                 e.exp=convert_by_assignment(e.exp, func_type)
                 
                 return e
-   
+
         return e
 
     elif isinstance(e, Constant):
@@ -1311,9 +1390,23 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         typed_inner = typecheck_exp_and_convert(e.exp, symbols)
         e.exp = typed_inner
         
+        
         if( isinstance(e.target_type,Pointer) and isinstance(typed_inner.get_type(),Double))or ( 
             isinstance(e.target_type,Double) and isinstance(typed_inner.get_type(),Pointer)):
             raise SyntaxError('Cannot cast pointer to double / double to a pointer')
+        
+        if isinstance(e.target_type,Void):
+            e.set_type(Void())
+            
+            return e 
+        
+        if not is_scalar(e._type):
+            # print(e.target_type)
+            # print(e.exp.get_type())
+            raise TypeError('Can only cast to scalar type or void')
+        if not is_scalar(e.exp.get_type()):
+            raise TypeError('Cannot cast non-scalar expression to scalar type')
+
           
         e.set_type(e.target_type)
         return e
@@ -1326,12 +1419,16 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         
        
         left_type = type_left.get_type()
-        
+        if isinstance(type_right.get_type(),Void) and not isinstance(left_type,Void):
+            raise TypeError('cannot assign void type to scalar')
         if isinstance(type_left,AddOf) and isinstance(type_left.exp._type,Array) :
             raise ValueError('Cannot assign to array')    
         
         if  isinstance(type_left.get_type(),Pointer) and isinstance(type_right.get_type(),Pointer):
-            if type(type_left.get_type().ref)!=type(type_right.get_type().ref):
+            print()
+            if (type(type_left.get_type().ref)!=type(type_right.get_type().ref)) and (not isinstance(type_left.get_type().ref,Void) and not isinstance(type_right.get_type().ref,Void)):
+                print(type_left.get_type().ref)
+                print(type_right.get_type().ref)
                 raise SyntaxError('Cannot assign one pointer type to another')
     
         converted_right = convert_by_assignment(type_right, left_type)
@@ -1353,8 +1450,10 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
               
                 common_type = get_common_pointer_type(typed_e1, typed_e2)
             
-            else:
+            elif is_scalar(t1) and is_scalar(t2):
                 common_type = get_common_type(t1, t2)
+            else:
+                raise TypeError("Invalid operands to equality expression")
             converted_e1 = convert_to(typed_e1, common_type)
             converted_e2 = convert_to(typed_e2, common_type)
 
@@ -1370,9 +1469,12 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
             typed_e1 = typecheck_exp_and_convert(e.left, symbols)
             typed_e2 = typecheck_exp_and_convert(e.right, symbols)
             
-            
+            if not is_scalar(typed_e1.get_type()) or not is_scalar(typed_e2.get_type()):
+                    raise TypeError("Invalid operands to equality expression")
             
             if e.operator in (BinaryOperator.MULTIPLY, BinaryOperator.DIVIDE, BinaryOperator.REMAINDER):
+                if not is_scalar(typed_e1.get_type()) or not is_scalar(typed_e2.get_type()):
+                    raise TypeError("Invalid operands to equality expression")
                 if isinstance(typed_e1.get_type(),Pointer) or isinstance(typed_e2.get_type(),Pointer):
                     raise SyntaxError('Cannot perform mul, divide , modulo arithmetic operations on pointers')
             if e.operator in (BinaryOperator.EQUAL,BinaryOperator.GREATER_OR_EQUAL,
@@ -1402,16 +1504,16 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
                                                                                        BinaryOperator.GREATER_THAN,
                                                                                        BinaryOperator.LESS_OR_EQUAL,
                                                                                        BinaryOperator.LESS_THAN):
-                if isinstance(t1.ref,type(t2.ref)):
-                    
-                    e.set_type(Int())
-                    e.rel_flag=Int()
-                    return e 
-                else:
-                    raise ValueError('Pointer of two different types cannot be used for relational op')
+                    if isinstance(t1.ref,type(t2.ref)):
+                        
+                        e.set_type(Int())
+                        e.rel_flag=Int()
+                        return e 
+                    else:
+                        raise ValueError('Pointer of two different types cannot be used for relational op')
+                
             
-            
-            if (isinstance(t1,Pointer) and not isinstance(t2,Pointer) and e.operator in (BinaryOperator.ADD,BinaryOperator.SUBTRACT)):
+            if (((isinstance(t1,Pointer) and is_pointer_to_complete(t1)) and not isinstance(t2,Pointer)) and e.operator in (BinaryOperator.ADD,BinaryOperator.SUBTRACT)):
                 if isinstance(t2,Double):
                     raise ValueError('Cannot add / substract double form a pointer')
                
@@ -1420,14 +1522,14 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
                 e.set_type(t1)
                 e.rel_flag=Long()
                 return e
-            elif (not isinstance(t1,Pointer) and  isinstance(t2,Pointer) and e.operator == BinaryOperator.ADD):
+            elif ((not isinstance(t1,Pointer) and  (isinstance(t2,Pointer) and is_pointer_to_complete(t2))) and e.operator == BinaryOperator.ADD):
                 converted_e1 = convert_to(typed_e1, Long())
                 e=Binary(e.operator,converted_e1,typed_e2)
                 e.rel_flag=Long()
                 e.set_type(t2)
                 return e
-            elif ((isinstance(t1,Pointer) and  isinstance(t1.ref,type(t2.ref))) and e.operator == BinaryOperator.SUBTRACT):
-                print(t1)
+            elif (((isinstance(t1,Pointer) and is_pointer_to_complete(t1)) and isinstance(t1.ref,type(t2.ref))) and e.operator == BinaryOperator.SUBTRACT):
+                
                 print(isinstance(t2.ref,type(t2.ref)))
             
              
@@ -1468,10 +1570,11 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
                     return e
             else:
                 raise ValueError('Invalid value for operands')
-
-                
+    
     elif isinstance(e, Unary):
         inner = typecheck_exp_and_convert(e.expr, symbols)
+        if not is_scalar(inner.get_type()):
+            raise TypeError("Logical operators can only be applied to scalar expressions")
         e.expr = inner
         if e.operator == UnaryOperator.NOT:
             e.set_type(Int())
@@ -1499,17 +1602,25 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         typed_condition = typecheck_exp_and_convert(e.condition, symbols) if e.condition else None
         typed_exp2 = typecheck_exp_and_convert(e.exp2, symbols) if e.exp2 else None
         typed_exp3 = typecheck_exp_and_convert(e.exp3, symbols) if e.exp3 else None
-
+        if not is_scalar(typed_condition.get_type()):
+            raise TypeError('Condition in conditional operator must be scalar')
         if typed_exp2 is None or typed_exp3 is None:
             raise SyntaxError("Malformed Conditional expression")
 
         t2 = typed_exp2.get_type()
         t3 = typed_exp3.get_type()
-        if isinstance(t2,Pointer) or isinstance(t3,Pointer):
-            common_type = get_common_pointer_type(typed_exp2, typed_exp3)
-        else:
-            common_type = get_common_type(t2, t3)
+        # exit()
+        if isinstance(t2,Void) and isinstance(t3,Void):
+            common_type = Void()
+        elif isinstance(t2,Void) or isinstance(t3,Void):
+            raise TypeError("Cannot convert branches of conditional to a common type")
             
+        elif isinstance(t2,Pointer) or isinstance(t3,Pointer):
+            common_type = get_common_pointer_type(typed_exp2, typed_exp3)
+        elif not isinstance(t2,Pointer) and not isinstance(t3,Pointer):
+            common_type = get_common_type(t2, t3)
+        else:
+            raise TypeError("Cannot convert branches of conditional to a common type")
         # common_type = get_common_type(t2, t3)
         converted_e2 = convert_to(typed_exp2, common_type)
         converted_e3 = convert_to(typed_exp3, common_type)
@@ -1526,6 +1637,8 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         # 
         if not isinstance(typed_inner.get_type(), Pointer):
             raise SyntaxError("Dereference operator applied to non-pointer type")
+        if isinstance(typed_inner.get_type().ref,Void):
+            raise TypeError('Cannot derefence to void.')
         e.exp=typed_inner
         e.set_type(typed_inner.get_type().ref)
     
@@ -1568,17 +1681,18 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         typed_e2 = typecheck_exp_and_convert(e.exp2, symbols)
         t1 = typed_e1.get_type()
         t2 = typed_e2.get_type()
-        # print(typed_e1)
-        # print(typed_e2)
-        # exit()
-        if isinstance(t1,Double) or isinstance(t2,Double):
+        
+        if isinstance(t1,Double) or isinstance(t2,Double) :
             raise TypeError("Subscript must have integral type.")
-    
-        if isinstance(t1,Pointer) and not isinstance(t2,Pointer):
+
+        if isinstance(t1,Void) or isinstance(t2,Void) :
+            raise TypeError("Subscript must have integral type.")
+        
+        if (isinstance(t1,Pointer) and is_pointer_to_complete(t1)) and not isinstance(t2,Pointer):
         # 1 if t1 is a pointer type and t2 is an integer type:
             ptr_type = t1
             typed_e2 = convert_to(typed_e2, Long())
-        elif not isinstance(t1,Pointer) and isinstance(t2,Pointer):
+        elif not isinstance(t1,Pointer) and (isinstance(t2,Pointer))and is_pointer_to_complete(t2):
             ptr_type = t2
             typed_e1 = convert_to(typed_e1, Long())
         else:
@@ -1587,12 +1701,28 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         e.exp2=typed_e2
         e.set_type(ptr_type.ref)
         return e
+    
+    elif isinstance(e,SizeOf):
+        typed_inner =typecheck_exp(e.exp,symbols,func_type)
+        if not is_complete(typed_inner.get_type()):
+            raise TypeError("Can't get the size of an incomplete type")
+        e.exp = typed_inner 
+        e.set_type(ULong())
+        return e 
+    elif isinstance(e,SizeOfT):
+        validate_type_specifier(e.exp)
+        # typed_inner =typecheck_exp(e.exp,symbols,func_type)
+        if not is_complete(e.exp):
+            raise TypeError("Can't get the size of an incomplete type")
+        # e.exp = typed_inner 
+        e.set_type(ULong())
+        return e
+
     else:
         raise TypeError(f"Unsupported expression type for type checking: {type(e)}, {e}")
 
 def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[str]):
-    print(statement)
-    # #fun_type)
+ 
     if isinstance(statement, list):
         for stmt in statement:
             typecheck_statement(stmt, symbols, fun_type)
@@ -1619,6 +1749,9 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
     elif isinstance(statement, (While, For, DoWhile)):
         if isinstance(statement, While):
             typecheck_exp_and_convert(statement._condition, symbols, fun_type)
+            if isinstance(statement._condition.get_type(),Void):
+            
+                raise TypeError('cannot use void in while conditon exp')
             typecheck_statement(statement.body, symbols, fun_type)
         elif isinstance(statement, For):
             if isinstance(statement.init, InitDecl):
@@ -1628,20 +1761,35 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
                             raise SyntaxError('Loop initializer cannot have storage class')
                         else:
                             typecheck_statement(statement.init, symbols, fun_type)
+                            # if isinstance(statement.init.get_type(),Void):
+            
+                                    # raise TypeError('cannot use void in if conditon exp')
                             # print(s)
                             # 
             else:
-                typecheck_statement(statement.init, symbols, fun_type)
+                if not isinstance(statement.init,Null):
+                  
+                    typecheck_statement(statement.init, symbols, fun_type)
 
-            if statement.condition:
+            if not isinstance(statement.condition,Null):
+            
                 typecheck_exp_and_convert(statement.condition, symbols, fun_type)
-            if statement.post:
+                if isinstance(statement.condition.get_type(),Void):
+                    raise TypeError('cannot use void in for conditon exp')
+            if not isinstance(statement.post,Null):
                 typecheck_exp_and_convert(statement.post, symbols, fun_type)
+                # if isinstance(statement.post.get_type(),Void):
+            
+                #     raise TypeError('cannot use void in  conditon exp')
             typecheck_statement(statement.body, symbols, fun_type)
 
         elif isinstance(statement, DoWhile):
             typecheck_statement(statement.body, symbols, fun_type)
             typecheck_exp_and_convert(statement._condition, symbols, fun_type)
+            
+            if isinstance(statement._condition.get_type(),Void):
+            
+                    raise TypeError('cannot use void in do while conditon exp')
 
     elif isinstance(statement, Compound):
         for stmt in statement.block:
@@ -1662,7 +1810,11 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
         typecheck_exp_and_convert(statement, symbols, fun_type)
 
     elif isinstance(statement, If):
+        # print(statement.exp)
         typecheck_exp_and_convert(statement.exp, symbols, fun_type)
+        if isinstance(statement.exp.get_type(),Void):
+            
+            raise TypeError('cannot use void in if conditon exp')
         typecheck_statement(statement.then, symbols, fun_type)
         if statement._else:
             typecheck_statement(statement._else, symbols, fun_type)
