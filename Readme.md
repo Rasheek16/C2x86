@@ -131,6 +131,4 @@ Created by **Rasheek** — a systems programmer passionate about learning from t
 
 This project was built to explore how C programs are translated into machine code — through lexing, parsing, semantic analysis, IR generation, and final assembly. Every stage is handcrafted to provide insight into how real-world compilers operate.
 
-```
-
 ---
