@@ -9,7 +9,7 @@ PCC is a fully-featured C compiler for the **x86-64 architecture**, written enti
 
 ## 🚀 What’s Inside
 
-| Stage               | Description                                                       |
+| Stage               | Description                                                        |
 |---------------------|--------------------------------------------------------------------|
 | `Lexing`            | Custom handwritten lexer with token stream generation              |
 | `Parsing`           | Recursive-descent parser producing a complete AST                  |
