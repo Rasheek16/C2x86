@@ -6,7 +6,7 @@ from typing import Union, List ,Dict,Optional
 PARAMETER_REGISTERS = ['DI', 'SI', 'DX', 'CX', 'R8', 'R9']
 from src.backend.ir.tacky import * 
 from src.backend.codegen.assembly_ast import * 
-from src.frontend.parser._ast5 import  Parameter,Double,UInt,ULong,Int,Long ,Parameter,ConstDouble,ConstInt,ConstLong,ConstUInt,ConstULong,Pointer,Identifier,Null,Array,Char,SChar,UChar,ConstChar,ConstUChar
+from src.frontend.parser._ast5 import  Parameter,Double,UInt,Null,ULong,Int,Long ,Parameter,ConstDouble,ConstInt,ConstLong,ConstUInt,ConstULong,Pointer,Identifier,Null,Array,Char,SChar,UChar,ConstChar,ConstUChar
 from src.backend.typechecker.type_classes import * 
 from src.backend.codegen.instruction_fixer import is_signed_32_bit
 from src.backend.typechecker.typechecker import isSigned 
@@ -191,7 +191,7 @@ class Converter():
     def get_type(self, src):
         print('Inside get type')
         print(src)
-        # #
+        
         if isinstance(src, TackyConstant):
             print('tacky constant')
             if isinstance(src.value, (ConstInt,ConstUInt)):
@@ -207,6 +207,7 @@ class Converter():
               
 
         elif isinstance(src, TackyVar):
+            
             print('tackcy var')
             var_name = src.identifier
            
@@ -228,9 +229,7 @@ class Converter():
                 _type = val_type
                 element_size = self.get_element_size(_type._type)  # Recursively get base element size
                 total_size = element_size * _type._int.value._int  # Compute total array size
-                # new_type = AssemblyType.byteArray(size=total_size,alignment=element_size )
-                # # print(new_type)
-                # # #
+         
                 return AssemblyType.byteArray(size=total_size,alignment=_type._int.value._int ) 
             elif isinstance(val_type,(SChar,UChar,Char)):
                 return AssemblyType.byte
@@ -478,20 +477,24 @@ class Converter():
             if bytes_to_remove !=0:
                 # print('Bytes to remove',bytes_to_remove)
                 instructions.append(DeallocateStack(value=bytes_to_remove))
-                
-            assembly_dst = self.convert_to_assembly_ast(tacky_ast.dst)
-            print(self.symbols[tacky_ast.fun_name]['fun_type'].base_type,)
-            # #
-            if isinstance(self.symbols[tacky_ast.fun_name]['fun_type'].base_type, Double):
+            # exit()
+            if not isinstance(tacky_ast.dst,Null):
+                # exit()
+                # print(tacky_ast.dst)
+                assembly_dst = self.convert_to_assembly_ast(tacky_ast.dst)
                 # #
-                instructions.append(Mov(assembly_type=AssemblyType.double,src=Reg(Registers.XMM0),dest=assembly_dst))
-            else:
-                instructions.append(Mov(assembly_type=self.get_type(tacky_ast.dst),src=Reg(Registers.AX),dest=assembly_dst))
+                if isinstance(self.symbols[tacky_ast.fun_name]['fun_type'].base_type, Double):
+                    # #
+                    instructions.append(Mov(assembly_type=AssemblyType.double,src=Reg(Registers.XMM0),dest=assembly_dst))
+                else:
+                    instructions.append(Mov(assembly_type=self.get_type(tacky_ast.dst),src=Reg(Registers.AX),dest=assembly_dst))
             return instructions
+        
         # Handle Return instruction
         elif isinstance(tacky_ast, TackyReturn):
-            #TODO MOFIFICATION OVER HERE
-            # if isinstance(tacky_ast)
+            if isinstance(tacky_ast.val,TackyVar) and tacky_ast.val.identifier == 'DUMMY':
+                # exit()
+                return [Ret()]
             tacky_ast.val=tacky_ast.val
             #* Get type of value of a variable        
             if isinstance(tacky_ast.val , TackyVar):
@@ -499,8 +502,7 @@ class Converter():
             else:
                 #* Type of a constant
                 _type=self.get_type(tacky_ast.val)
-        
-       
+          
             #* CONVERSION OF DOUBLE TYPE TO RETURN 
             if isinstance(tacky_ast.val,TackyConstant) and isinstance(tacky_ast.val.value,ConstDouble):
                     return [
