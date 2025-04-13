@@ -106,7 +106,6 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None, li
             # Stop here. Do NOT assemble/link.
             print(f"Assembly code written to {output_s_path}")
             return  # Exit code 0
-
         # 10) Assemble -> produce object file (.o)
         object_file = output_s_path.with_suffix('.o')
         subprocess.run(
