@@ -94,6 +94,18 @@ def generate_zero_initializer(array_type):
 
     raise ValueError("Unsupported type for ZeroInit")
 
+def get_array_type_size(t):
+    if isinstance(t,(Char,UChar,SChar)):
+        return 1 
+    if isinstance(t,(Long,ULong,Double)):
+        return 8 
+    if isinstance(t,(Int,UInt)):
+        return 4 
+    if isinstance(t,Array):
+        return get_array_type_size(t._type)
+    if isinstance(t,Pointer):
+        return 8 
+
 def convert_symbols_to_tacky(symbols:dict):
     # print('Convert symbols to tacky')
     # #symbols)
@@ -150,12 +162,13 @@ def convert_symbols_to_tacky(symbols:dict):
                         # print(init)
                         array = entry['val_type']
                     
-                        _type = size(array._type)
+                        _type = get_array_type_size(array._type)
                        
                         ini = no_of_elements(array)
-                        
+                        print(ini)
+                        print(_type)
                         init.append(ZeroInit(ini * _type))
-                        # print(init)
+                        print(init)
                         # exit()
                     if type(entry['val_type'])==type(Long):
                         init.append(LongInit(0))
@@ -255,11 +268,9 @@ def convert_binop(operator_token: str) -> str:
 def emit_tacky_expr_and_convert(e, instructions, symbols):
   
     result = emit_tacky_expr(e, instructions,symbols)
-    print(result)
-    print('Result :',result)
+ 
     if isinstance(result,PlainOperand):
-        # exit()
-        # #'Returning',result.val)
+
         return result.val
     elif isinstance(result,DereferencedPointer):
         dst = make_temporary(symbols,e.get_type())
@@ -267,13 +278,14 @@ def emit_tacky_expr_and_convert(e, instructions, symbols):
         # #'Returning pointer def')
         
         return dst
-   
+    elif isinstance(result,Null):
+        pass 
     else:
         raise ValueError('Invalid operand',result)
 
 
 def emit_char_Array(exp,instructions,symbols):
-    exit()
+    # exit()
     print('EXPRESSION',exp.declaration.init.exp)
     for i in exp.declaration.init.exp.string:
         import ast
@@ -288,7 +300,16 @@ def emit_char_Array(exp,instructions,symbols):
         val = ord(decoded_string)
         instructions.append(TackyCopyToOffSet(TackyConstant(ConstChar(val)),dst = exp.declaration.name.name,offset=1))
     instructions.append(TackyCopyToOffSet(TackyConstant(ConstChar(0)),dst = exp.declaration.name.name,offset=1))
-   
+ 
+def is_void(t):
+    if isinstance(t,Void):
+        return True
+    if isinstance(t,Pointer):
+        return is_void(t.ref)
+    if isinstance(t,Array):
+        return is_void(t._type)
+    return False
+      
 def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None) -> Union[TackyConstant, TackyVar]:
   
     """
@@ -368,33 +389,40 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         end_label = get_end_label()
 
         instructions.append(TackyJumpIfZero(condition=condition_var, target=e2_label))
-
+     
+        if isinstance(expr.get_type(),Void):
+            
+            emit_tacky_expr_and_convert(expr.exp2, instructions, symbols)
+            instructions.extend(
+                [ TackyJump(end_label),
+                TackyLabel(e2_label) ])
+            emit_tacky_expr_and_convert(expr.exp3, instructions, symbols)
+            instructions.append(TackyLabel(end_label))
+            return PlainOperand(TackyVar("DUMMY"))
+        else:
         # True branch
-        e1_var = emit_tacky_expr_and_convert(expr.exp2, instructions,symbols)
-      
-        tmp_result = make_temporary(symbols,expr.get_type())
+            e1_var = emit_tacky_expr_and_convert(expr.exp2, instructions,symbols)
         
-        instructions.append(TackyCopy(source=e1_var, destination=tmp_result))
+            tmp_result = make_temporary(symbols,expr.get_type())
+            
+            instructions.append(TackyCopy(source=e1_var, destination=tmp_result))
 
-        instructions.append(TackyJump(target=end_label))
-        instructions.append(TackyLabel(e2_label))
+            instructions.append(TackyJump(target=end_label))
+            instructions.append(TackyLabel(e2_label))
 
-        # False branch
-        e2_var = emit_tacky_expr_and_convert(expr.exp3, instructions,symbols)
-        instructions.append(TackyCopy(source=e2_var, destination=tmp_result))
+            # False branch
+            e2_var = emit_tacky_expr_and_convert(expr.exp3, instructions,symbols)
+            instructions.append(TackyCopy(source=e2_var, destination=tmp_result))
 
-        instructions.append(TackyLabel(end_label))
-        return PlainOperand(tmp_result)
+            instructions.append(TackyLabel(end_label))
+            return PlainOperand(tmp_result)
     
     elif isinstance(expr,Cast):      
-        print('inside cast')
-        print(expr.exp)
-        print('Target_type',expr.target_type)
-        print('Inner type',expr.exp.get_type())
-        print('Target_size',size(expr.target_type))
-        print('inner_size',size(expr.exp.get_type()))
-        # exit()
+      
         result  = emit_tacky_expr_and_convert(expr.exp,instructions,symbols=symbols)
+        if isinstance(expr._type,Void):
+            return PlainOperand(TackyVar('DUMMY'))
+            
         inner_type = expr.exp._type
         
         t = expr.target_type
@@ -563,14 +591,13 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
             arg_vals.append(arg_val)
         
         # 2. Generate a new temporary to hold the function call's result
-        dst_var = make_temporary(symbols,expr.get_type())
-        #symbols[dst_var.identifier])
-        # exit()
-        # #'result of funcall',symbols[dst_var.identifier])
-        # #symbols)
-        # exit()
-        # 3. Emit the TackyFunCall instruction
-        instructions.append(TackyFunCall(
+        dst_var = Null()
+        # print(symbols[expr.identifier.name])
+        
+        if not isinstance(symbols[expr.identifier.name]['fun_type'].base_type,Void):
+        # if not isinstance(expr._type,Void):
+            dst_var = make_temporary(symbols,expr.get_type())
+            instructions.append(TackyFunCall(
             fun_name=expr.identifier.name,  # e.g., "foo"
             args=arg_vals,
             dst=dst_var
@@ -578,7 +605,30 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         
         # #'Here')
         # 4. Return the temporary holding the result
-        return PlainOperand(dst_var)
+            return PlainOperand(dst_var)
+        else:
+            instructions.append(TackyFunCall(
+            fun_name=expr.identifier.name,  # e.g., "foo"
+            args=arg_vals,
+            dst=dst_var))
+            # exit()
+            return Null()
+            
+        #symbols[dst_var.identifier])
+        # exit()
+        # #'result of funcall',symbols[dst_var.identifier])
+        # #symbols)
+        # exit()
+        # 3. Emit the TackyFunCall instruction
+        # instructions.append(TackyFunCall(
+        #     fun_name=expr.identifier.name,  # e.g., "foo"
+        #     args=arg_vals,
+        #     dst=dst_var
+        # ))
+        
+        # # #'Here')
+        # # 4. Return the temporary holding the result
+        # return PlainOperand(dst_var)
     elif isinstance(expr,Dereference):
         result = emit_tacky_expr_and_convert(expr.exp, instructions, symbols)
         #symbols[result.identifier])
@@ -683,8 +733,25 @@ def emit_tacky_expr(expr, instructions: list,symbols:Optional[dict],offset=None)
         #! CAN BE WRONG
         return DereferencedPointer(temp_dst)
     
-    
-
+    elif isinstance(expr,SizeOf):
+        t = expr.exp.get_type()
+        print('t',t)        # exit()
+        result  = size(t)
+        if isinstance(expr.exp.get_type(),Double):
+            result = 8
+        # exit()
+        return PlainOperand(TackyConstant(ConstULong(result)))
+    elif isinstance(expr,SizeOfT):
+        
+        result  = size(expr.exp)
+        if isinstance(expr.exp,Double):
+            result = 8
+        print(result)
+        print(expr.exp)
+        # exit()
+        return PlainOperand(TackyConstant(ConstULong(result)))
+    elif isinstance(expr,Null):
+        return Null() 
     else: 
         ##expr)
         raise TypeError(f"Unsupported expression type: {type(expr)}")
@@ -833,8 +900,15 @@ def emit_statement(stmt, instructions: List[TackyInstruction],symbols:Optional[d
         emit_if_statement(stmt, instructions,symbols)
     
     elif isinstance(stmt, Return):
-        ret_val = emit_tacky_expr_and_convert(stmt.exp, instructions,symbols)
-        instructions.append(TackyReturn(val=ret_val))
+      
+        if isinstance(stmt.exp,Null):
+          
+            instructions.append(TackyReturn(val=Null()))
+        else:
+            # exit()
+            ret_val = emit_tacky_expr_and_convert(stmt.exp, instructions,symbols)
+            instructions.append(TackyReturn(val=ret_val))
+            
     elif isinstance(stmt, (DoWhile, While, For)):
         ##'In Loop')
         ##stmt )
@@ -896,6 +970,8 @@ def emit_statement(stmt, instructions: List[TackyInstruction],symbols:Optional[d
         raise TypeError(f"Unsupported statement type: {type(stmt)}")
 
 def emit_if_statement(stmt: If, instructions: List[TackyInstruction],symbols):
+    # print(stmt)
+    # exit()
     #'Inside if')
     """
     Emits Tacky instructions for an If statement.
@@ -911,6 +987,7 @@ def emit_if_statement(stmt: If, instructions: List[TackyInstruction],symbols):
     # #symbols[condition_var.identifier])
     # exit()
     instructions.append(TackyJumpIfZero(condition=condition_var, target=else_label))
+    
 
     # Then branch
     emit_statement(stmt.then, instructions,symbols)
@@ -990,8 +1067,14 @@ def emit_s_statement(stmt: S, instructions: List[TackyInstruction],symbols):
         #node)
         emit_if_statement(node, instructions,symbols)
     elif isinstance(node, Return):
-        ret_val = emit_tacky_expr_and_convert(node.exp, instructions,symbols)
-        instructions.append(TackyReturn(val=ret_val))
+        if isinstance(node.exp,Null):
+            instructions.append(TackyReturn(TackyVar("DUMMY")))
+        else:
+            ret_val = emit_tacky_expr_and_convert(node.exp, instructions,symbols)
+            # print(node.exp)
+            # print(ret_val)
+            # exit()
+            instructions.append(TackyReturn(val=ret_val))
     elif isinstance(node, Compound):
         for inner_stmt in node.block:
             emit_statement(inner_stmt, instructions,symbols)
