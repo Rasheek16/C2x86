@@ -470,6 +470,8 @@ def parse_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclarator, Li
     <abstract-declarator>::= "*" [ <abstract-declarator> ] | <direct-abstract-declarator>
     """
     print('Inside parse absytacy declarator')
+    print(tokens)
+    # exit()
     if tokens[0] == "*":
         print('Inside parse abstract declaration',tokens[0])
         if tokens[0]=='*' or tokens[0]==')':
@@ -482,7 +484,7 @@ def parse_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclarator, Li
             return AbstractPointer(inner_declarator), tokens
         
         else:
-           
+            
             return AbstractPointer(AbstractBase()), tokens  # No inner declarator
     else:
       
@@ -498,12 +500,14 @@ def parse_direct_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclara
         print('here')
     
         expect('(', tokens)
-        abstract_declarator, tokens = parse_abstract_declarator(tokens)
-        print(abstract_declarator)
-   
-        expect(')', tokens)
-        
         base_type=None
+        abstract_declarator, tokens = parse_abstract_declarator(tokens)
+        if abstract_declarator:
+            base_type = abstract_declarator
+        print(abstract_declarator)
+        
+        # exit()
+        expect(')', tokens)
         while tokens and tokens[0] == '[':
             expect('[', tokens)
             const,tokens = parse_constant(tokens)
@@ -1206,7 +1210,8 @@ def parse_type_name(tokens:List[str]):
     if len(types)>0:
         _type,storage_class=parse_type_and_storage_class(types)
   
- 
+    # print(tokens)
+    # exit()
     if tokens[0] in ('*','(','['):
         while tokens and tokens[0] == '(' and tokens[1] == '(':
                 expect('(', tokens)
@@ -1214,11 +1219,14 @@ def parse_type_name(tokens:List[str]):
         if not isinstance(storage_class, Null):
             raise SyntaxError('a storage class cannot be specified while type conversion')
         print('going into parse abs decl')
+        # exit()
         abstract_declarator,tokens=parse_abstract_declarator(tokens)
         print('after decl')
         if tokens[0] == ')' and tokens[1]==')':
            
             expect(')', tokens)
+        print(abstract_declarator)
+        # exit()
         print('process decalrator')
         _type=process_abstract_declarator(abstract_declarator,_type)
         print('after process deccalrator')
