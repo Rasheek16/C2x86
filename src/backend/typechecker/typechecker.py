@@ -31,12 +31,12 @@ def size_compound_init(_type):
 def array_size(array_type):
     if isinstance(array_type,Pointer):
         if isinstance(array_type.ref,(Double,Pointer)):
-            return 8
+            return 8 
      
         
         return size(array_type.ref)        
     if isinstance(array_type,Double):
-        return 8
+        return 8 
     else:
         return size(array_type)
 
@@ -58,13 +58,14 @@ def size1(_type):
     elif isinstance(_type,Array):
        
         if isinstance(_type._type,Pointer):
-            return 8
+            return 8 * _type._int
         
         print(_type._type)
     
         return array_size(_type._type) * _type._int.value._int 
     
 def size(_type):
+    print(_type)
     if isinstance(_type,(UChar,Char,SChar)):
         return 1
     elif isinstance(_type,Long):
@@ -76,14 +77,20 @@ def size(_type):
     elif isinstance(_type,Double):
         return 16
     elif isinstance(_type,Pointer):
-        return array_size(_type.ref)
+        return 8
     elif isinstance(_type,Array):
         if isinstance(_type._type,Pointer):
-            return 8
+            if hasattr(_type._int,'value'):
+            
+                return 8 * _type._int.value._int
+            else:
+                return 8 * _type._int
+        if hasattr(_type._int,'value'):
         
-
-    
-        return array_size(_type._type) * _type._int.value._int
+            return array_size(_type._type) * _type._int.value._int
+        else:
+            return array_size(_type._type) * _type._int
+        # else:
     
 def is_null_pointer_constant(c):
     if isinstance(c,Constant):
@@ -242,14 +249,14 @@ def typecheck_exp_and_convert(expression,symbols,_type=None):
     typed_e = typecheck_exp(expression, symbols,_type)
    
     
-    print('Typed expression',typed_e)
+    
     if not isinstance(typed_e,Null) and isinstance(typed_e.get_type(),Array):
+        
         validate_type_specifier(typed_e.get_type())
         expression = AddOf(typed_e)
    
         expression.set_type(Pointer(typed_e.get_type()._type))
         return expression
-    print('return Typecheck and convert')
     return typed_e
 
 
@@ -383,6 +390,7 @@ def typecheck_array_init(decl, var_type=None):
                                 
                         else:
                             flattened.extend([ZeroInit(4)]*missing)
+                           
                     # Append the flattened row to the overall result.
                     result.extend(flattened)
                 else:
@@ -398,6 +406,7 @@ def typecheck_array_init(decl, var_type=None):
                                    
                         else:
                             result.extend([ZeroInit(4)]*missing)
+                        
                         result.append(ZeroInit(4))
             else:
                 # If no initializer is provided for this element:
@@ -431,8 +440,10 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
         # while others get a Tentative initializer.
         if isinstance(decl.storage_class, Extern):
             new_init = NoInitializer()
+           
         else:
             new_init = Tentative()
+            # exit()
     else:
         if isinstance(decl.var_type,Void):
             raise TypeError('cannot declare void variables')
@@ -468,7 +479,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict):
                
                 if pad_bytes > 0:
                     init_list.append(ZeroInit(pad_bytes))
-                
+
                 new_init = Initial(init_list)
             elif not isinstance(decl.init, CompoundInit):
                 raise ValueError("Array initializer must be a CompoundInit or StringLiteral")
@@ -885,6 +896,7 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict):
             elif isinstance(decl.init, Null):
                 if isinstance(decl.var_type, Array):
                     initial_value = Initial([ZeroInit(decl.var_type._int.value._int * size(decl.var_type._type))])
+                
                 else:
                     initial_value = Initial([Constant(IntInit(ConstInt(0)))])
             
@@ -1386,7 +1398,9 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
             raise SyntaxError('Invalid value const')
 
     elif isinstance(e, Cast):
-
+        # print(e.exp)
+        validate_type_specifier(e.target_type)
+        # exit()
         typed_inner = typecheck_exp_and_convert(e.exp, symbols)
         e.exp = typed_inner
         
@@ -1703,6 +1717,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         return e
     
     elif isinstance(e,SizeOf):
+     
         typed_inner =typecheck_exp(e.exp,symbols,func_type)
         if not is_complete(typed_inner.get_type()):
             raise TypeError("Can't get the size of an incomplete type")
@@ -1710,6 +1725,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional):
         e.set_type(ULong())
         return e 
     elif isinstance(e,SizeOfT):
+        # typecheck_exp(e.exp,symbols)
         validate_type_specifier(e.exp)
         # typed_inner =typecheck_exp(e.exp,symbols,func_type)
         if not is_complete(e.exp):
