@@ -1,89 +1,83 @@
-```markdown 
-# ⚙️ PCC — The Ultimate x86-64 C Compiler in Python
+```markdown
+# ⚙️ PCC — x86-64 C Compiler in Python
 
-> “They said building a C compiler is hard. I said: hold my stack frame.”
+PCC is a fully-featured C compiler for the **x86-64 architecture**, written entirely in Python. Designed for clarity and modularity, it implements the complete C compilation pipeline — from source to executable — without relying on parser generators like Yacc/Lex.
 
-Welcome to **PCC** — a fully-featured C compiler targeting the **x86-64 architecture**, written entirely in Python. From tokens to typed IR, all the way to raw, optimized assembly — this beast speaks fluent C. No toy project. No shortcuts. Just pure systems sorcery.
-
-📚 Inspired by *Nora Sandler’s Writing a C Compiler*, then taken 10 levels further with full semantic analysis, struct support, pointer arithmetic, memory allocation, optimizations, and custom code emission.
+📘 Inspired by *Writing a C Compiler* by Nora Sandler, this project extends it significantly by implementing robust semantic analysis, IR generation, optimizations, struct and pointer support, and full code generation.
 
 ---
 
-## 🚀 What It Does
+## 🚀 What’s Inside
 
-**This isn’t just a parser. This is a pipeline.**
-
-| Stage                  | Capability                                                        |
-|------------------------|-------------------------------------------------------------------|
-| `Lexing`               | Tokenizes raw C using a handcrafted lexer                         |
-| `Parsing`              | Constructs a full AST with recursive descent techniques           |
-| `Semantic Analysis`    | Type checking, scoping, storage class resolution, promotions      |
-| `IR Generation`        | Emits a typed, strongly-structured TACKY IR                       |
-| `Optimization`         | Includes constant folding, dead store elimination, cast reduction |
-| `Assembly Emission`    | Converts IR into real, platform-compliant x86-64                  |
-| `Pseudoreg Allocation` | Allocates stack space & resolves abstract registers               |
-| `Final Codegen`        | Emits and links GCC-ready `.s` / `.o` / executables               |
+| Stage               | Description                                                       |
+|---------------------|--------------------------------------------------------------------|
+| `Lexing`            | Custom handwritten lexer with token stream generation              |
+| `Parsing`           | Recursive-descent parser producing a complete AST                  |
+| `Semantic Analysis` | Type checking, scope resolution, storage class, and promotions     |
+| `IR Generation`     | Strongly-typed TACKY intermediate representation                   |
+| `Optimization`      | Constant folding, cast simplification, and dead store elimination  |
+| `Codegen`           | Converts IR into real x86-64 assembly conforming to SysV ABI       |
+| `Register Handling` | Stack allocation + pseudo register resolution                      |
+| `Assembly Emission` | GCC-compatible `.s` and `.o` files for final linking               |
 
 ---
 
-## 🧠 Supported Features
+## ✅ Supported C Features
 
-- 🔒 **All major C types**: `int`, `char`, `unsigned`, `long`, `float`, `double`, structs, arrays, pointers
-- 📐 **Correct type system** with integer promotion and size/align semantics
-- 🧠 **Symbol table**: full variable scope resolution, extern/static/auto class handling
-- 💡 **Static + dynamic memory** support (e.g., string literals, stack vars, heap pointers)
-- 🧰 **TACKY IR**: A custom intermediate representation designed for register-agnostic optimization
-- 💣 **Real Codegen**: Final `.s` files are optimized, comment-rich, and conform to `System V ABI`
-- 🎯 **Fully integrated** with `GCC` for preprocessing, assembling, and linking
-- 🧼 **Temporary file cleanup** on success
-- 🔍 **Modular frontend/backend split** for easy hacking and compiler passes
+- Primitive types: `int`, `char`, `unsigned`, `long`, `float`, `double`
+- Composite types: `struct`, `array`, `pointer`
+- Type system: size/alignment handling, integer promotions
+- Memory: stack variables, string literals, global/static storage
+- Control flow: `if`, `else`, `for`, `while`, `return`
+- Expression evaluation: arithmetic, pointer math, logical ops
+- Calling conventions: stack frame setup, argument passing (SysV ABI)
+- Integration with `gcc` for preprocessing, assembling, and linking
 
 ---
 
 ## 🗂️ Project Structure
 
-```
+
 .
-├── pcc.py          # 🚀 Entry point — run any compilation stage
+├── pcc.py             # Entry point — choose stage and compile
 ├── src/
-│   ├── frontend/        # Lexer, parser, type checker, resolver
-│   └── backend/         # IR generator, optimizer, assembly emitter
-├── test/            # ✅ C test cases for every supported feature
-```
+│   ├── frontend/      # Lexer, parser, type checker, AST
+│   └── backend/       # IR emission, optimizer, codegen
+├── test/              # Sample C test cases
+
 
 ---
 
-## 💻 How to Run
+## 💻 Usage
 
 ```bash
-python pcc.py [stage] <input_file> [<output_file>] [<libraries>]
+python pcc [stage] <input_file> [output_file] [libraries...]
 ```
 
-### ✅ Compilation Stages
+### Compilation Stages
 
-| Flag         | Description                        |
+| Flag         | Purpose                            |
 |--------------|------------------------------------|
-| `--lex`      | Print tokens                       |
-| `--parse`    | Parse and print AST                |
-| `--validate` | Semantic check & symbol resolution |
-| `--tacky`    | Emit intermediate TACKY IR         |
-| `--codegen`  | Generate assembly AST              |
-| `-S`         | Emit `.s` (assembly) and stop      |
-| `-c`         | Emit `.o` (object file)            |
-| `run`        | Full compile → link → executable   |
-| `--help`     | Show command usage                 |
+| `--lex`      | Token stream only                  |
+| `--parse`    | Parse and display AST              |
+| `--validate` | Run semantic analysis and scoping  |
+| `--tacky`    | Emit TACKY IR                      |
+| `--codegen`  | Generate Assembly AST              |
+| `-S`         | Emit `.s` file only (no link)      |
+| `-c`         | Emit object file `.o`              |
+| `run`        | Full compilation + linking         |
+| `--help`     | View command options               |
 
-### 🔥 Examples
+---
+
+## ✨ Example Commands
 
 ```bash
-python compiler.py --lex examples/hello.c
-python compiler.py --parse examples/hello.c
-python compiler.py --tacky examples/math.c
-python compiler.py --codegen examples/nested.c
-python compiler.py -S examples/main.c main.s
-python compiler.py run examples/main.c
+python pcc.py --lex examples/hello.c
+python pcc.py --parse examples/loop.c
+python pcc.py --tacky examples/math.c
+python pcc.py run examples/structs.c
 ```
-
 
 ---
 
@@ -99,52 +93,44 @@ main:
   ret
 ```
 
-Yes. That's real assembly code. You wrote C. You got x86-64. No middleman.
+---
+
+Here’s a **professional and ATS/resume-friendly "License & Credits" or "Acknowledgments" section** you can add to your `README.md` to give proper rights and attribution:
 
 ---
 
-Absolutely! Here's a clean, professional, and respectful **"References & Credits"** section you can drop into your `README.md`:
+## 🛡️ License & Credits
+
+This project is an educational and non-commercial compiler implementation.
+
+### 🔐 Intellectual Property & References
+
+- This project draws foundational inspiration from **Nora Sandler’s** excellent guide:  
+  📘 *Writing a C Compiler* — [https://github.com/nlsandler/nqcc2](https://github.com/nlsandler/nqcc2)  
+  The original work is © Nora Sandler. All structural credits go to her for the roadmap and pedagogical flow.
+
+- The **System V x86-64 ABI** documentation is referenced for architecture compliance.
+
+- While many concepts are informed by existing compiler design materials, all parsing, semantic logic, intermediate representations, and code generation in this repository were implemented manually, without external compiler toolchains.
+
+
+---
+## 🔗 Repository
+
+Source Code → [github.com/rasheek16/pcc](https://www.github.com/rasheek16/pcc)
 
 ---
 
-## 📚 References & Credits
+## 👨‍💻 Author
 
-This compiler was built as a hands-on learning project inspired by the incredible book:
-
-> 📘 **Writing a C Compiler** by Nora Sandler  
-> GitHub: [https://github.com/nsandler/writing-a-c-compiler](https://github.com/nsandler/writing-a-c-compiler)
-
-### Special Thanks
-- Nora Sandler, for the step-by-step breakdown of real-world compiler internals.
-- The **System V x86-64 ABI** documentation for helping structure calling conventions and stack discipline.
-- The **open-source community**, whose blog posts, GitHub discussions, and compiler designs served as inspiration.
-- All compiler devs who turned “segfaults” into “structure.”
-
-> This project is educational, personal, and written with a deep passion for low-level systems.  
-> All intellectual credit belongs to original authors and references where applicable.
+Created by **Rasheek** — a systems programmer passionate about learning from the ground up. This compiler was written with a focus on low-level correctness, language design, and educational clarity.
 
 ---
 
-## 🔗 GitHub
+## 📌 Final Note
 
-Source Code: [github.com/rasheek16/pcc](https://www.github.com/rasheek16/pcc)
-
----
-
-## 👑 Who Built This?
-
-Made with love, rage, and no void keywords.  
-By [@rasheek16](https://github.com/rasheek16) — systems nerd, Python whisperer, and a systems programmer obsessed with how things *really* work.  
-This project was an attempt to not just read a compiler book... but to *live* it.  
-From parsing and typechecking to register allocation and codegen, this was built with intention, curiosity, and plenty of debug printouts.
-
----
-
-## 💬 Final Words
-
-> “This isn't just a compiler. It's a flex.”
-
----
+This project was built to explore how C programs are translated into machine code — through lexing, parsing, semantic analysis, IR generation, and final assembly. Every stage is handcrafted to provide insight into how real-world compilers operate.
 
 ```
 
+---
