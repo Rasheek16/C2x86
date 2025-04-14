@@ -13,17 +13,17 @@ def isKeyword(token):
     '''
     
     '''
-    if token in ('int','return','void','int','extern','char','static','signed','unsigned','long','if','else','do','while','for','void','break','continue','double','char'):
+    if token in ('int','return','void','int','extern','char','static','signed','unsigned','long','if','else','do','while','for','void','break','continue','double','char','struct'):
         return True 
     return False
 
 def isSpecifier(token):
-    if token in ('int','extern','static','long','int','unsigned','signed','char','double','void'):
+    if token in ('int','extern','static','long','int','unsigned','signed','char','double','void','struct'):
         return True 
     return False
 
 def isType(token):
-    if token in ('int','long','unsigned','signed','double','char','void'):
+    if token in ('int','long','unsigned','signed','double','char','void','struct'):
         return True 
     return False
         
@@ -124,15 +124,18 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
             specifiers.append(tokens[0])     
             token,tokens=take_token(tokens)
         print('Inside parse param list')
+        
         _type,storage_class=parse_type_and_storage_class(specifiers)
-        print('_type',_type)
-        print('storage_class',storage_class)
+    
         if not isinstance(storage_class,Null):
             raise SyntaxError('Storage class cannot have specifier.')
         
+        if isinstance(_type,Structure):
+            _type.tag,tokens = take_token(tokens)
         next_token=tokens[0]
-        print('Next token',next_token)
+      
         if next_token!=')':
+           
             declarator, tokens = parse_declarator(tokens)
         else:
             declarator = Null()
@@ -153,6 +156,7 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
             
        
         while tokens:
+            
             expect(',',tokens)
             next_token=tokens[0]
             # ##next_token)
@@ -162,6 +166,8 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
                     specifiers.append(tokens[0])     
                     token,tokens=take_token(tokens)
                 _type,storage_class=parse_type_and_storage_class(specifiers)
+                if isinstance(_type,Structure):
+                    _type.tag,tokens = take_token(tokens)
                 next_token=tokens[0]
                 if next_token==')':
                     declarator=Null()
@@ -179,20 +185,22 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
         
         
     elif isSpecifier(next_token):
+        # exit()
         specifiers=[]
         while tokens and isSpecifier(tokens[0]):
             specifiers.append(tokens[0])     
             token,tokens=take_token(tokens)
         print('Inside parse param list')
+        # exit()
         _type,storage_class=parse_type_and_storage_class(specifiers)
         print('_type',_type)
         print('storage_class',storage_class)
         if not isinstance(storage_class,Null):
             raise SyntaxError('Storage class cannot have specifier.')
-        
+        if isinstance(_type,Structure):
+            _type.tag,tokens = take_token(tokens)
         next_token=tokens[0]
         print('Next token',next_token)
-       
      
         declarator, tokens = parse_declarator(tokens)
         
@@ -216,6 +224,8 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
                     specifiers.append(tokens[0])     
                     token,tokens=take_token(tokens)
                 _type,storage_class=parse_type_and_storage_class(specifiers)
+                if isinstance(_type,Structure):
+                    _type.tag,tokens = take_token(tokens)
                 next_token=tokens[0]
               
                 declarator, tokens = parse_declarator(tokens)
@@ -229,20 +239,27 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
                     pass 
             else:
                 raise SyntaxError('In parse param Expected identifier , got in loop ',next_token)
-          
+    
+
+      
                 
 def parse_args_list(tokens)->Tuple[List[Exp],str]:
     arg_body = []
     if tokens[0]!=')':
         exp,tokens=parse_exp(tokens)
+        
         arg_body.append(exp)
-    while tokens and tokens[0] != ")":
+    while tokens and tokens[0] not in(")",';'):
+        
         expect(',',tokens)
         block,tokens = parse_exp(tokens)
-        #(tokens)
+        print('Block',block)
+        print('Tokens',tokens)
+        # exit()
+       
         arg_body.append(block)
-        #(arg_body)
-    
+        
+    print('returning')
     return arg_body,tokens
     
 
@@ -598,7 +615,7 @@ def parse_block(tokens)->Tuple[List[BlockItem],str]:
 
 def parse_block_item(tokens):
     print('parse block item',tokens[0])
-    if tokens[0] in ('int','static','extern','long','unsigned','signed','double','char','void'):
+    if tokens[0] in ('int','static','extern','long','unsigned','signed','double','char','void','struct'):
         declaration,tokens = parse_declaration(tokens)
         ##'declaration')
         block_item = D(declaration)
@@ -622,7 +639,9 @@ def parse_specifier(tokens):
     
 def parse_types(types):
    try:
-        
+        print('inside parse types',types)
+        # if 'struct' in types:
+        #     exit()
         if len(types)==0:
             raise SyntaxError('No type specifier')
         sorted_types=sorted(types)
@@ -631,11 +650,18 @@ def parse_types(types):
                 raise SyntaxError('Duplicate type specifier')
         if types == ['double']:
             return Double() 
+        if 'struct' in types:
+            # if len(types)>1:
+            #     raise SyntaxError('Invalid type specifier combination')
+            # print('here')
+            print('returing strutc')
+            return Structure(tag=None) 
         if 'void' in types:
             # print('void in types',len(types))
             if len(types)>1:
                 raise SyntaxError('Invalid type specifier combination')
             # print('here')
+            
             return Void()
                 
             
@@ -670,22 +696,20 @@ def parse_types(types):
         
 def parse_type_and_storage_class(specifiers:List):
     print('Inside parse type and storage class')
+    # print(specifiers)
     try:
         types=[]
         storage_classes:List[str]=[]
         for specifier in specifiers:
-            if specifier in ('int','long','unsigned','signed','double','char','void'):
+            if specifier in ('int','long','unsigned','signed','double','char','void','struct'):
                 types.append(specifier)
             else:
                 storage_classes.append(specifier)
     
        
-        print(types)
-        # exit()
+      
         _type = parse_types(types)
-        print('types')
-        # exit()
-        # print(storage_class)
+        # print(_type)
         if len(types)==0 or _type==None:
             raise ValueError('Invalid type specifier.')
         if len(storage_classes)>1:
@@ -714,19 +738,55 @@ def parse_storage_class(storage_class):
 def parse_declaration(tokens: List[str]):
     """Parses a declaration (variable or function)."""
     print('Tokens',tokens)
+    if tokens[0]=='struct' and (tokens[1]=='extern' or tokens[1]=='static'):
+        raise SyntaxError('storage class cannot be between struct keyword and identifier')
+    if tokens[0]=='struct' and tokens[2]=='{':
+        _,tokens = take_token(tokens)
+        print(tokens)
+        # exit()
+        next_token = tokens[0]
+        if isIdentifier(next_token) and not isKeyword(next_token):
+          
+            if not isIdentifier(next_token) or isKeyword(next_token):
+                raise SyntaxError('expected identifier got',next_token)
+            name = Identifier(next_token)
+            _,tokens = take_token(tokens)
+        else:
+            raise SyntaxError('Expected identifier after struct keyword')
+        
+        members=[]
+        if tokens[0]=='{':
+            _,tokens = take_token(tokens)
+            while tokens and tokens[0]!='}':
+                member,tokens=parse_member_declaration(tokens)
+                members.append(member)
+               
+                expect(';',tokens)
+            if len(members)==0:
+                raise SyntaxError('Struct members cannot be empty')
+            expect('}',tokens)
+        expect(';',tokens)
+        return StructDecl(tag=name,members=members),tokens 
     specifiers =[]
     while tokens and isSpecifier(tokens[0]): #checks if token exists and if it is a specifier
         specifier, tokens = take_token(tokens)
         specifiers.append(specifier)
     print('Specifier_list',specifiers)
-    base_type, storage_class = parse_type_and_storage_class(specifiers)
-    print('Base type',base_type)
-    declarator, tokens = parse_declarator(tokens)
-    print('declarator',declarator)
-    identifier, decl_type, params = process_declarator(declarator, base_type)
     # exit()
-    print('decl_type',decl_type)
-    print('Tokens',tokens)
+    base_type, storage_class = parse_type_and_storage_class(specifiers)
+    if isinstance(base_type,Structure):
+        if not isIdentifier(tokens[0]) or isKeyword(tokens[0]):
+       
+            raise SyntaxError(f'expected identifier got {tokens[0]}')
+        base_type.tag ,tokens = take_token(tokens)
+       
+    declarator = Null()
+    decl_type = base_type
+    identifier = Null()
+    if tokens[0]!=';':
+        declarator, tokens = parse_declarator(tokens)
+        identifier, decl_type, params = process_declarator(declarator, base_type)
+
     if isinstance(decl_type, FunType):  # Function declaration
         if tokens and tokens[0] == ';': #checks if token exists and if it is;
             _, tokens = take_token(tokens)
@@ -741,7 +801,7 @@ def parse_declaration(tokens: List[str]):
             raise SyntaxError(f"Expected ';' or '{{' after function declarator, got '{tokens if tokens else 'end of input'}'") #more informative error message
 
     else:  # Variable declaration
-        print('Variable declaration')
+       
         init = Null()
         print("Tokens",tokens)
         if tokens and tokens[0] == "=": #checks if token exists and if it is =
@@ -752,6 +812,35 @@ def parse_declaration(tokens: List[str]):
         expect(";", tokens)
         return VarDecl(name=identifier, init=init, var_type=decl_type, storage_class=storage_class), tokens
 
+def parse_member_declaration(tokens):
+    spec_lis = []
+    print(tokens)
+    while tokens and isSpecifier(tokens[0]):
+        specifier , tokens = parse_specifier(tokens)
+        spec_lis.append(specifier)
+    
+    _type,storage_class=parse_type_and_storage_class(spec_lis)
+    if isinstance(_type,Structure):
+        # exit()
+        tag,tokens =take_token(tokens)
+        _type.tag = tag 
+        exp,tokens = parse_declarator(tokens)
+    else:
+        
+        exp,tokens = parse_declarator(tokens)
+    if isinstance(exp,FunDeclarator):
+        raise SyntaxError('Structures cannot have funtion declarations')
+    identifier,_type,[]  =process_declarator(exp,_type)
+
+    if not isinstance(storage_class,Null):
+        raise SyntaxError('Struct members cannot have storage classes')
+    
+    # if isinstance(_type,Structure):
+    #     # exit()
+    #     tag,tokens =take_token(tokens)
+    #     _type.tag = tag 
+    
+    return Member(identifier,_type),tokens
 
 def parse_func_decl(tokens, func_name: Identifier, _type, storage_class) -> Tuple[FunDecl, List[str]]:
     """Parses a function declaration (including parameters and body)."""
@@ -940,7 +1029,7 @@ def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
         Tuple[Statement, List[str]]: The initialization statement and the remaining tokens.
     """
     # print(tokens)
-    if tokens[0] in ('int','extern','static','long','unsigned','signed','double','char','void'):
+    if tokens[0] in ('int','extern','static','long','unsigned','signed','double','char','void','struct'):
    
         if tokens[2]=='(':
             raise SyntaxError('Function not permitted in loop headers')
@@ -1004,17 +1093,21 @@ def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
         elif next_token == 'sizeof' and tokens[1]=='(' and isType(tokens[2]):
             print('found size of')
             _,tokens=take_token(tokens)
+            # print(tokens)
+            # exit()
             if tokens and tokens[0] =='(':
                 expect('(',tokens)
             _type,tokens=parse_type_name(tokens)
+        
+           
             if tokens and tokens[0] ==')':
                 expect(')',tokens)
-            print(tokens)
-            # exit()
+            
             return SizeOfT(_type),tokens
         elif next_token=='sizeof':
             _,tokens=take_token(tokens)
             exp,tokens=parse_unary_exp(tokens)    
+            
             return SizeOf(exp),tokens
         else:
             print('Found postfix expr')
@@ -1028,23 +1121,45 @@ def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
 def parse_postfix_expr(tokens):
     print('Inside parse posftfix expr',tokens[0])
     expr=Null()
-    if tokens[0]=='[':
-        expr,tokens=parse_primary_expr(tokens)
-    else:
-        print('Going to parse primary expr')
-        expr,tokens=parse_primary_expr(tokens)
-        
-
-        while tokens and tokens[0] == '[':  
-            print('Subscript')
-            expect('[', tokens)
-            exp, tokens = parse_exp(tokens)
-        
-            expr = Subscript(expr, exp)
-            
-            expect(']', tokens)
+    
+    expr,tokens=parse_primary_expr(tokens)
+    if tokens[0] in ('[','.','->'):
+        return parse_postfix_op(tokens,expr)
+ 
  
     return expr,tokens
+
+def parse_postfix_op(tokens,expr):
+    try:
+        while tokens:
+            if tokens[0]=='[':
+                while tokens and tokens[0] == '[':  
+                    print('Subscript')
+                    expect('[', tokens)
+                    exp, tokens = parse_exp(tokens)
+                    expr = Subscript(expr, exp)
+                    expect(']', tokens)
+                
+            if tokens[0]=='.':
+                while tokens and tokens[0] == '.':  
+                
+                    expect('.',tokens)
+                    if tokens[0]=='(':
+                        raise SyntaxError('cant follow dot with paranthesis')
+                    name,tokens = parse_exp(tokens)
+                    expr = Dot(structure=expr,member = Identifier(name))
+            if tokens[0]=='->':
+                while tokens and tokens[0] == '->':      
+                    expect('->',tokens)
+                    name,tokens = parse_postfix_expr(tokens)
+                    expr = Arrow(pointer=expr,member = Identifier(name))   
+            else:
+                break 
+        return expr,tokens
+    except SyntaxError as e:
+        raise e
+    
+    
    
 def parse_primary_expr(tokens):
     print('inside parse primary expr',tokens[0])
@@ -1070,7 +1185,13 @@ def parse_primary_expr(tokens):
         args=[]
         if tokens[0] != ')':
             args,tokens=parse_args_list(tokens)
-        expect(')',tokens)
+        if len(args)>0:
+            if not (isinstance( args[-1],SizeOfT) and tokens[0] ==';'): 
+                expect(')',tokens)
+        else:
+            expect(')',tokens)
+            
+        
         return FunctionCall(identifier=ident,args=args),tokens
     
     if isIntegerConstant(next_token) or isCharConstant(next_token):
@@ -1182,9 +1303,9 @@ def parse_cast_expr(tokens:List[str])->Tuple[Exp,List[str]]:
         print('before typename')
         print(tokens)
         _type,tokens=parse_type_name(tokens)
-        print('after typename')
-        print(tokens)
-        # if tokens[0]==')':
+        print(_type)
+        # if isinstance(_type,Structure):
+            # _type.tag = take_token(tokens)
         expect(')',tokens)
         exp,tokens=parse_cast_expr(tokens)
         return Cast(target_type=_type,exp=exp),tokens
@@ -1209,9 +1330,10 @@ def parse_type_name(tokens:List[str]):
     storage_class = Null()
     if len(types)>0:
         _type,storage_class=parse_type_and_storage_class(types)
-  
-    # print(tokens)
-    # exit()
+    
+    if isinstance(_type,Structure):
+            _type.tag = take_token(tokens)
+ 
     if tokens[0] in ('*','(','['):
         while tokens and tokens[0] == '(' and tokens[1] == '(':
                 expect('(', tokens)
