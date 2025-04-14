@@ -1,13 +1,12 @@
 patterns = [
+     ('static',r'\bstatic\b'),
+     ('extern',r'\bextern\b'),
+     ('long_keyword',r'\blong\b'),
+     ('signed_keyword',r'\bsigned\b'),
+     ('unsigned_keyword',r'\bunsigned\b'),
     ('struct_keyword',r'\bstruct\b'),
-    (
-    'arrow',r'->',
-    
-    
-    ),
-    (
-        'dot',r'\.(?!\d)'
-    ),
+    ('arrow',r'->'),
+    ('dot',r'\.(?!\d)'),
     ('sizeof_keyword',r'\bsizeof\b'),
     ('char',r'\bchar\b'),
     ('string',r'\bstring\b'),
@@ -53,11 +52,6 @@ patterns = [
      ('break',r'\bbreak\b'),
      ('continue',r'\bcontinue\b'),
      ('comma',r','),
-     ('static',r'\bstatic\b'),
-     ('extern',r'\bextern\b'),
-     ('long_keyword',r'\blong\b'),
-     ('signed_keyword',r'\bsigned\b'),
-     ('unsigned_keyword',r'\bunsigned\b'),
      ('unsigned_int_constant',r'([0-9]+[uU])[^\w.]'),
      ('long_int_constant',r'([0-9]+[lL])[^\w.]'),
      ('signed_long_constant',r'([0-9]+([lL][uU]|[uU][lL]))[^\w.]'),
