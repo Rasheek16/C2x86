@@ -98,6 +98,14 @@ class UChar(Type):
     
     
 
+class Structure():
+    def __init__(self,tag):
+        self.tag = tag 
+    
+    def __repr__(self):
+        return f'Structure(tag={self.tag})'    
+
+
 class Array(Type):
     def __init__(self,_type:Type,_int):
         self._type = _type
@@ -356,7 +364,7 @@ class SizeOfT(Exp):
         super().__init__(_type)
         self.exp=exp
     def __repr__(self):
-        return f'SizeOf(exp={repr(self.exp)},type={self._type})'    
+        return f'SizeOfT(exp={repr(self.exp)},type={self._type})'    
     
 class String(Exp):
     def __init__(self,string,_type=None):
@@ -694,6 +702,21 @@ class  AddOf(Exp):
         self.exp = exp 
     def __repr__(self):
         return f'AddOf(exp={self.exp},type={self._type})'
+class Dot(Exp):
+    def __init__(self,structure,member):
+        self.structure = structure
+        self.member = member 
+    
+    def __repr__(self):
+        return f'Dot(structure={self.structure} , member={self.member})'
+
+class Arrow(Exp):
+    def __init__(self,pointer,member):
+        self.pointer = pointer
+        self.member = member 
+    
+    def __repr__(self):
+        return f'Arrow(pointer={self.pointer} , member={self.member})'
     
     
 # --------------------------
@@ -768,10 +791,33 @@ class VarDecl():
     def __repr__(self):
         return f'VarDecl(name={self.name},,var_type={self.var_type},init={self.init},storage_class={self.storage_class})'
 
+class Member():
+    def __init__(self,member_name,member_type):
+        self.member_name = member_name
+        self.member_type = member_type 
+    
+    def __repr__(self):
+        return f'Member(name={self.member_name} , type ={self.member_type})'
+        
+
+    
+
+class StructDecl():
+    def __init__(self,tag,members:list):
+        self.tag = tag 
+        self.members = members 
+    
+    def __repr__(self):
+        members_str = ', '.join(str(member) for member in self.members)
+        return f"StructDecl(\n  tag={self.tag},\n  members=[{members_str}]\n)"
+        # return f'StructDecl(tag={self.tag},members={[  i for i in self.members]})'
+        
+    
 
 class Declaration:
     FuncDecl=FunDecl
     VarDecl=VarDecl
+    StructDecl=StructDecl 
     
 # --------------------------
 # Statement Classes
