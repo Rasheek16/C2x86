@@ -34,7 +34,7 @@ def resole_file_scope_var(decl:VarDecl,identifier_map) -> VarDecl:
     return decl
     
 
-def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)-> VarDecl:
+def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False,structure_map=None)-> VarDecl:
     # print(declaration,is_file_scope)
     """
     Resolves a single declaration (either VarDecl or FunDecl).
@@ -53,14 +53,10 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)->
 
             original_name = declaration.name.name
             print(original_name)
-            # exit()
-            # print()
+ 
             # Check for duplicates in the current scope
             if original_name in identifier_map and identifier_map[original_name]['from_current_scope']==True:
-                # print(original_name)
-                # print(identifier_map[original_name])
-                # print(declaration.storage_class)
-                # print(isinstance(declaration.storage_class,Extern))
+              
                 if not (identifier_map[original_name]['has_linkage'] and  isinstance(declaration.storage_class,Extern)):
                     raise ValueError(f"Duplicate variable declaration: '{original_name}' / Conflicting local declarations.")
 
@@ -84,7 +80,7 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)->
                 # Resolve the initialization if present
                 init = None
                 if declaration.init is not None:
-                    init = resolve_exp(declaration.init, identifier_map)
+                    init = resolve_exp(declaration.init, identifier_map,structure_map)
 
                 # Return a VarDecl with the new unique name
                 return VarDecl(name=Identifier(unique_name),var_type=declaration.var_type, init=init,storage_class=declaration.storage_class)
@@ -92,10 +88,15 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)->
     elif isinstance(declaration, FunDecl):
         # If there's no body, raise an error or handle differently as needed
         if isinstance(declaration.body, Null) and not declaration.storage_class=='static':
-            return resolve_function_declaration(declaration, identifier_map)
+            return resolve_function_declaration(declaration, identifier_map,structure_map)
         else:
             raise SyntaxError("Nested Functions are not supported")
         # Otherwise, handle a function declaration
+
+    elif isinstance(declaration, StructDecl):
+        
+        resolved = resolve_structure_declaration(declaration, structure_map)
+        return resolved
 
     else:
         raise SyntaxError(f"Unknown declaration type: {type(declaration)}")
@@ -104,33 +105,33 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False)->
 # -------------------------------------------------------------------------
 # 3) Resolve Expressions
 # -------------------------------------------------------------------------
-def resolve_exp(expression, identifier_map: dict):
+def resolve_exp(expression, identifier_map: dict,structure_map=
+                None):
     """
     Resolves an expression by mapping variable/function identifiers
     to their unique names. Preserves names for items with has_linkage=True.
     """
     if isinstance(expression, Assignment):
-        if not isinstance(expression.left,(Var,Dereference,Subscript,String)):
+        if not isinstance(expression.left,(Var,Dereference,Subscript,String,Arrow)):
             raise ValueError(f"Invalid lvalue in assignment: {expression.left}")
         if isinstance(expression.left,Unary):
-            resolved_left = resolve_exp(expression.left.expr,identifier_map)
+            resolved_left = resolve_exp(expression.left.expr,identifier_map,structure_map)
         else:
-            resolved_left = resolve_exp(expression.left, identifier_map)
-        resolved_right = resolve_exp(expression.right, identifier_map)
+            resolved_left = resolve_exp(expression.left, identifier_map,structure_map)
+        resolved_right = resolve_exp(expression.right, identifier_map,structure_map)
         return Assignment(left=resolved_left, right=resolved_right)
     elif isinstance(expression,Cast):
-        resolved_exp=resolve_exp(expression.exp,identifier_map)
+        resolved_exp=resolve_exp(expression.exp,identifier_map,structure_map)
         return Cast(target_type=expression.target_type,exp = resolved_exp)      
     elif isinstance(expression, Conditional):
         # Resolve condition and both branches
-        resolved_condition = resolve_exp(expression.condition, identifier_map)
-        resolved_exp2 = resolve_exp(expression.exp2, identifier_map)
-        resolved_exp3 = resolve_exp(expression.exp3, identifier_map)
+        resolved_condition = resolve_exp(expression.condition, identifier_map,structure_map)
+        resolved_exp2 = resolve_exp(expression.exp2, identifier_map,structure_map)
+        resolved_exp3 = resolve_exp(expression.exp3, identifier_map,structure_map)
         return Conditional(condition=resolved_condition, exp2=resolved_exp2, exp3=resolved_exp3)
     elif isinstance(expression, Var):
         # A variable usage => check the identifier_map
-        # print(expression)
-        
+   
         if not isinstance(expression.identifier, Identifier):
             raise TypeError(f"Expected Identifier, got {type(expression.identifier)}")
         original_identifier = expression.identifier.name
@@ -139,15 +140,16 @@ def resolve_exp(expression, identifier_map: dict):
             unique_name = identifier_map[original_identifier]['unique_name']
             return Var(identifier=Identifier(unique_name))
         else:
+            print(identifier_map)
+            print(structure_map)
             raise ValueError(f"Undeclared variable usage: '{original_identifier}'")
     elif isinstance(expression, Unary):
         if expression.operator == UnaryOperator.DEREFERENCE and isinstance(expression.expr,Constant):
             raise SyntaxError("Invalid dereference of a constant")
             
             
-        resolved_expr = resolve_exp(expression.expr, identifier_map)
+        resolved_expr = resolve_exp(expression.expr, identifier_map,structure_map)
         return Unary(operator=expression.operator, expr=resolved_expr)
-
     elif isinstance(expression, Binary):
         # if expression.operator in (BinaryOperator.MULTIPLY,BinaryOperator.DIVIDE):
             
@@ -166,11 +168,11 @@ def resolve_exp(expression, identifier_map: dict):
             #     raise SyntaxError("Invalid binary operation on pointers")
             
             
-        print('Binary')
-        resolved_left = resolve_exp(expression.left, identifier_map)
-        resolved_right = resolve_exp(expression.right, identifier_map)
+        
+        resolved_left = resolve_exp(expression.left, identifier_map,structure_map)
+        resolved_right = resolve_exp(expression.right, identifier_map,structure_map)
+      
         return Binary(operator=expression.operator, left=resolved_left, right=resolved_right)
-
     elif isinstance(expression, FunctionCall):
         # Resolve function name
         # print(expression.identifier.name)
@@ -180,52 +182,52 @@ def resolve_exp(expression, identifier_map: dict):
         if func_name in identifier_map:
             new_func_name = identifier_map[func_name]['unique_name']
             # Resolve arguments
-            new_args = [resolve_exp(arg, identifier_map) for arg in expression.args]
+            new_args = [resolve_exp(arg, identifier_map,structure_map) for arg in expression.args]
             print(new_args)
             # exit()
             # arg_type = [arg for arg in expression.args]
             return FunctionCall(Identifier(new_func_name), new_args)
         else:
             raise SyntaxError(f"Function '{func_name}' is not declared")
-
     elif isinstance(expression, (Constant, Null)):
         return expression
-    # elif isinstance(expression,Identifier):
-    #     # print('Here')
-    #     resolved_expr = resolve_exp(expression.name,identifier_map)
-    #     return Identifier(resolved_expr)
     elif isinstance(expression, AddOf):
-        resolved_expr = resolve_exp(expression.exp, identifier_map)
+        resolved_expr = resolve_exp(expression.exp, identifier_map,structure_map)
         return AddOf(resolved_expr)
     elif isinstance(expression, Dereference):
-        resolved_expr = resolve_exp(expression.exp, identifier_map)
+        resolved_expr = resolve_exp(expression.exp, identifier_map,structure_map)
         return Dereference(resolved_expr)
     elif isinstance(expression,CompoundInit):
         i=0
         l=[]
         while (i<len(expression.initializer)):
-            resolved_exp = resolve_exp(expression.initializer[i],identifier_map)
+            resolved_exp = resolve_exp(expression.initializer[i],identifier_map,structure_map)
             l.append(resolved_exp)
             i+=1
         return CompoundInit(l)
     elif isinstance(expression,SingleInit):
-        resolved_exp=resolve_exp(expression.exp,identifier_map)
-        return SingleInit(resolved_exp)
-            
-        
+        resolved_exp=resolve_exp(expression.exp,identifier_map,structure_map)
+        return SingleInit(resolved_exp)     
     elif isinstance(expression,Subscript):
         print('Subscript')
-        resolved_exp1 = resolve_exp(expression.exp1,identifier_map)
-        resolved_exp2 = resolve_exp(expression.exp2,identifier_map)
+        resolved_exp1 = resolve_exp(expression.exp1,identifier_map,structure_map)
+        resolved_exp2 = resolve_exp(expression.exp2,identifier_map,structure_map)
         return Subscript(exp1=resolved_exp1,exp2=resolved_exp2)
     elif isinstance(expression,(String,SizeOfT)):
         return expression
     elif isinstance(expression,SizeOf):
-        expression.exp= resolve_exp(expression.exp,identifier_map)
-        return expression
+        expression.exp= resolve_exp(expression.exp,identifier_map,structure_map)
+        return expression   
+    elif isinstance(expression,Dot):
+        resolved_str = resolve_exp(expression.structure,identifier_map,structure_map)
+        # resolved_mem = Identifier(resolve_exp(expression.member,identifier_map,structure_map))
         
+        return Dot(structure=resolved_str,member=expression.member)
+    elif isinstance(expression,Arrow):
+        resolved_str = resolve_exp(expression.pointer,identifier_map,structure_map)
+        # resolved_mem = Identifier(resolve_exp(expression.member.name,identifier_map,structure_map))
         
-        
+        return Arrow(pointer=resolved_str,member=expression.member)  
     else:
         raise SyntaxError(f"Unknown expression type: {type(expression)}")
 
@@ -233,7 +235,7 @@ def resolve_exp(expression, identifier_map: dict):
 # -------------------------------------------------------------------------
 # 4) Resolve Block Items
 # -------------------------------------------------------------------------
-def resolve_block_items(block_items: List[BlockItem], identifier_map: dict) -> List[BlockItem]:
+def resolve_block_items(block_items: List[BlockItem], identifier_map: dict,structure_map) -> List[BlockItem]:
     """
     Resolves a list of block items (D, S, Compound) in a given scope.
     """
@@ -242,21 +244,25 @@ def resolve_block_items(block_items: List[BlockItem], identifier_map: dict) -> L
         if isinstance(block_item, D):
             # print('here')
             # Declaration node: could be VarDecl or FunDecl
-            resolved_decl = resolve_declaration(block_item.declaration, identifier_map)
+            resolved_decl = resolve_declaration(block_item.declaration, identifier_map,structure_map=structure_map)
             resolved_body.append(D(declaration=resolved_decl))
 
         elif isinstance(block_item, S):
             # Statement node
-            resolved_stmt = resolve_statement(block_item.statement, identifier_map)
+            resolved_stmt = resolve_statement(block_item.statement, identifier_map,structure_map=structure_map)
             resolved_body.append(S(statement=resolved_stmt))
 
         elif isinstance(block_item, Compound):
             # Nested block => create a new scope
             new_map = copy_identifier_map(identifier_map)
+            
+            new_structure_map = copy_structure_map_for_new_scope(structure_map)
             resolved_compound = Compound(
-                block=resolve_block_items(block_item.block, new_map)
+                block=resolve_block_items(block_item.block, new_map,new_structure_map)
             )
             resolved_body.append(resolved_compound)
+        
+
 
         else:
             raise SyntaxError(f"Unknown block item type: {type(block_item)}")
@@ -281,7 +287,7 @@ def copy_identifier_map(identifier_map: Dict[str, Dict[str, Any]]) -> Dict[str, 
 # -------------------------------------------------------------------------
 # 6) Resolve Statements
 # -------------------------------------------------------------------------
-def resolve_statement(statement: Statement, identifier_map: dict):
+def resolve_statement(statement: Statement, identifier_map: dict,structure_map=None):
     """
     Resolves variables and sub-statements within a given Statement.
     """
@@ -291,32 +297,34 @@ def resolve_statement(statement: Statement, identifier_map: dict):
 
     elif isinstance(statement, For):
         new_map = copy_identifier_map(identifier_map)
-        init = resolve_for_init(statement.init, new_map)
-        condition = resolve_optional_exp(statement.condition, new_map)
-        post = resolve_optional_exp(statement.post, new_map)
-        body = resolve_statement(statement.body, new_map)
+        new_structure_map = copy_structure_map_for_new_scope(structure_map)
+        init = resolve_for_init(statement.init, new_map,new_structure_map)
+        condition = resolve_optional_exp(statement.condition, new_map,new_structure_map)
+        post = resolve_optional_exp(statement.post, new_map,new_structure_map)
+        body = resolve_statement(statement.body, new_map,new_structure_map)
         # Label the loop
         labeled_for = label_statement(For(init, condition, post, body))
         return labeled_for
 
     elif isinstance(statement, Expression):
-        resolved_exp = resolve_exp(statement.exp, identifier_map)
+        resolved_exp = resolve_exp(statement.exp, identifier_map,structure_map)
         return Expression(exp=resolved_exp)
 
     elif isinstance(statement, Compound):
         new_map = copy_identifier_map(identifier_map)
-        resolved_block = resolve_block_items(statement.block, new_map)
+        new_structure_map = copy_structure_map_for_new_scope(structure_map)
+        resolved_block = resolve_block_items(statement.block, new_map,structure_map)
         return Compound(block=resolved_block)
 
     elif isinstance(statement, While):
-        resolved_condition = resolve_exp(statement._condition, identifier_map)
-        resolved_body = resolve_statement(statement.body, identifier_map)
+        resolved_condition = resolve_exp(statement._condition, identifier_map,structure_map)
+        resolved_body = resolve_statement(statement.body, identifier_map,structure_map)
         labeled_while = label_statement(While(_condition=resolved_condition, body=resolved_body))
         return labeled_while
 
     elif isinstance(statement, DoWhile):
-        resolved_condition = resolve_exp(statement._condition, identifier_map)
-        resolved_body = resolve_statement(statement.body, identifier_map)
+        resolved_condition = resolve_exp(statement._condition, identifier_map,structure_map)
+        resolved_body = resolve_statement(statement.body, identifier_map,structure_map)
         labeled_do = label_statement(DoWhile(body=resolved_body, _condition=resolved_condition))
         return labeled_do
 
@@ -327,10 +335,10 @@ def resolve_statement(statement: Statement, identifier_map: dict):
         return Continue()
 
     elif isinstance(statement, If):
-        resolved_exp = resolve_exp(statement.exp, identifier_map)
-        resolved_then = resolve_statement(statement.then, identifier_map)
+        resolved_exp = resolve_exp(statement.exp, identifier_map,structure_map)
+        resolved_then = resolve_statement(statement.then, identifier_map,structure_map)
         if statement._else is not None:
-            resolved_else = resolve_statement(statement._else, identifier_map)
+            resolved_else = resolve_statement(statement._else, identifier_map,structure_map)
             return If(exp=resolved_exp, then=resolved_then, _else=resolved_else)
         else:
             return If(exp=resolved_exp, then=resolved_then)
@@ -435,15 +443,15 @@ def label_statement(statement: Statement, current_label: Optional[str] = None) -
 # -------------------------------------------------------------------------
 # 9a) Resolve For-Init
 # -------------------------------------------------------------------------
-def resolve_for_init(stmt, identifier_map):
+def resolve_for_init(stmt, identifier_map,structure_map):
     """
     Resolves either an InitDecl or an InitExp in a for-loop initializer.
     """
     if isinstance(stmt, InitDecl):
-        new_decl = resolve_declaration(stmt.declaration, identifier_map)
+        new_decl = resolve_declaration(stmt.declaration, identifier_map,structure_map=structure_map)
         return InitDecl(D(new_decl))
     elif isinstance(stmt, InitExp):
-        resolved_expr = resolve_exp(stmt.exp, identifier_map)
+        resolved_expr = resolve_exp(stmt.exp, identifier_map,structure_map)
         return InitExp(Expression(resolved_expr))
     elif isinstance(stmt, Null):
         return stmt
@@ -454,12 +462,12 @@ def resolve_for_init(stmt, identifier_map):
 # -------------------------------------------------------------------------
 # 9b) Resolve Optional Expression
 # -------------------------------------------------------------------------
-def resolve_optional_exp(stmt, identifier_map):
+def resolve_optional_exp(stmt, identifier_map,structure_map):
     """
     If stmt exists, resolve it as an expression. Otherwise, do nothing.
     """
     if stmt is not None:
-        return resolve_exp(stmt, identifier_map)
+        return resolve_exp(stmt, identifier_map,structure_map)
     else:
         return None
 
@@ -487,7 +495,7 @@ def label_program(program: Program):
 # -------------------------------------------------------------------------
 # 11) Resolve a Function Declaration
 # -------------------------------------------------------------------------
-def resolve_function_declaration(decl: FunDecl, identifier_map: dict) -> FunDecl:
+def resolve_function_declaration(decl: FunDecl, identifier_map: dict,structure_map) -> FunDecl:
     # print(decl.name.identifier.name)
     # exit()
     """
@@ -519,7 +527,7 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict) -> FunDecl
 
     # Create an inner map for parameters & function body
     inner_map = copy_identifier_map(identifier_map)
-
+    structure_map_new = copy_structure_map_for_new_scope(structure_map)
     # Resolve parameters
     new_params = []
     # print([name.name.name for name in decl.params])
@@ -530,7 +538,7 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict) -> FunDecl
     # Resolve the function body (if it's a Block) => block_items
     if isinstance(decl.body, Block):
         # print('here')
-        new_body = resolve_block_items(decl.body.block_items, inner_map)
+        new_body = resolve_block_items(decl.body.block_items, inner_map,structure_map_new)
     else:
         new_body = decl.body  # or raise error if needed
 
@@ -566,6 +574,68 @@ def resolve_param(param: Parameter, identifier_map: dict) -> Parameter:
     # Return a new Parameter node with the unique name
     return Parameter(name=Identifier(unique_name), _type=param._type)
 
+def copy_structure_map_for_new_scope(structure_map):
+    """Creates a new structure_map for a new scope with from_current_scope set to False."""
+    new_map = {}
+    print(structure_map)
+    for tag, entry in structure_map.items():
+        new_map[tag] = {
+            'new_tag':entry['new_tag'],
+            'from_current_scope':False
+            }
+    return new_map
+
+def resolve_structure_declaration(decl, structure_map):
+    prev_entry = structure_map.get(decl.tag)
+    print(structure_map)
+    if (prev_entry is None) or (not prev_entry.from_current_scope):
+        unique_tag = make_temporary_var()
+        structure_map[decl.tag.name] = {
+            'new_tag':unique_tag,
+            'from_current_scope':True
+            }
+    else:
+        unique_tag = prev_entry['new_tag']
+    processed_members = []
+    for member in decl.members:
+       
+        processed_type = resolve_type(member.member_type, structure_map)
+        processed_member = Member(member_name=member.member_name,member_type=processed_type)
+       
+        processed_members.append(processed_member)
+
+    print('here')
+    # resolved_decl = {
+    #     'tag': unique_tag,
+    #     'members': processed_members
+    # }
+    print('REturning')
+    print(structure_map)
+    return StructDecl(tag=unique_tag,members=processed_members)
+
+def resolve_type(type_specifier,structure_map):
+    if isinstance(type_specifier,Structure):
+        print(structure_map)
+        print(type_specifier.tag )
+        if type_specifier.tag in structure_map:
+            unique_tag = structure_map[type_specifier.tag]['new_tag']
+            return Structure(unique_tag)
+        else:
+            raise TypeError('Specified an undeclared structure type')
+    elif isinstance(type_specifier,Pointer):
+        resolved_t = resolve_type(type_specifier.ref, structure_map)
+        return Pointer(resolved_t)
+
+    elif isinstance(type_specifier,FunType):
+        resolved_t = resolve_type(type_specifier.base_type, structure_map)
+        
+        return FunType(param_count=type_specifier.param_count,params=type_specifier.params,base_type=resolved_t)
+    elif isinstance(type_specifier,Array):
+        resolved_t = resolve_type(type_specifier._type,structure_map)
+        return Array(_type=resolve_type,_int = type_specifier._int)
+    else:
+        return type_specifier
+            
 
 # -------------------------------------------------------------------------
 # 12) The Top-Level Variable Resolution Pass
@@ -579,22 +649,24 @@ def variable_resolution_pass(program: Program) :
     """
     identifier_map = {}
     resolved_funcs = []
+    structure_map = {}
     # program.function_definition might be a list of FunDecl or a single FunDecl
     for decl in program.function_definition:
         if isinstance(decl,FunDecl):
             # print('New func')
-            new = resolve_function_declaration(decl, identifier_map)
+            new = resolve_function_declaration(decl, identifier_map,structure_map)
         elif isinstance(decl,VarDecl):
             # print('New var')
-            new = resolve_declaration(decl, identifier_map,is_file_scope=True)
-            
+            new = resolve_declaration(decl, identifier_map,is_file_scope=True,structure_map=structure_map)
+        elif isinstance(decl,StructDecl):
+            new = resolve_structure_declaration(decl,structure_map)
             
         resolved_funcs.append(new)
 
     new_program = Program(function_definition=resolved_funcs)
-    labeled_program,symbols = typecheck_program(label_program(new_program))
+    labeled_program = label_program(new_program)
   
-    return labeled_program ,symbols
+    return labeled_program ,[]
 
 
     
