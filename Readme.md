@@ -97,11 +97,6 @@ main:
   ret
 ```
 
----
-
-Here’s a **professional and ATS/resume-friendly "License & Credits" or "Acknowledgments" section** you can add to your `README.md` to give proper rights and attribution:
-
----
 
 ## 🛡️ License & Credits
 
