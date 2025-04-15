@@ -28,11 +28,11 @@ and full code generation.
 
 ## ✅ Supported C Features
 
-- Primitive types: `int`, `char`, `unsigned`, `long`, `float`, `double`
+- Primitive types: `int`, `char`, `unsigned`, `long`,`double` ,`signed` ,`ulong`
 - Composite types: `struct`, `array`, `pointer`
-- Type system: size/alignment handling, integer promotions
+- Type system: size/alignment handling, integer promotions, cast expressions
 - Memory: stack variables, string literals, global/static storage
-- Control flow: `if`, `else`, `for`, `while`, `return`
+- Control flow: `if`, `else`, `for`, `while`,`do while`, `ternary`, `return`
 - Expression evaluation: arithmetic, pointer math, logical ops
 - Calling conventions: stack frame setup, argument passing (SysV ABI)
 - Integration with `gcc` for preprocessing, assembling, and linking
@@ -47,7 +47,7 @@ and full code generation.
 ├── src/
 │   ├── frontend/      # Lexer, parser, type checker, AST
 │   └── backend/       # IR emission, optimizer, codegen
-├── test/              # Sample C test cases
+├── examples/          # Sample C test cases
 
 
 ---
