@@ -163,3 +163,20 @@ class ConstantAttr(IdentifierAttr):
     def __repr__(self):
         return f"ConstantAttr(init={self.init})"
 
+class StructEntry():
+    def __init__(self,alignment,size,members):
+        self.alignment = alignment 
+        self.size= size 
+        self.members = members 
+        
+    def __repr__(self):
+        return f'StructEntry(alignment={self.alignment},size={self.size},members={self.members})'
+    
+class MemberEntry():
+    def __init__(self,member_name,member_type,offset):
+        self.member_name = member_name
+        self.member_type = member_type 
+        self.offset = offset 
+    
+    def __repr__(self):
+        return f'MemberEntry(member_name={self.member_name},type={self.member_type},offset={self.offset})'
