@@ -554,7 +554,7 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict,structure_m
         new_params.append(resolve_param(param, inner_map,structure_map))
     # Resolve the function body (if it's a Block) => block_items
     if isinstance(decl.body, Block):
-        # print('here')
+        
         new_body = resolve_block_items(decl.body.block_items, inner_map,structure_map_new)
     else:
         new_body = decl.body  # or raise error if needed
