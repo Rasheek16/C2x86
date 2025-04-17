@@ -1152,8 +1152,8 @@ def parse_postfix_op(tokens, expr):
                     raise SyntaxError('Cannot follow dot with parentheses')
                 name, tokens = take_token(tokens)
                 expr = Dot(structure=expr, member=Identifier(name))
-                print(expr)
-                # exit()
+           
+                
 
             elif tokens[0] == '->':
                 expect('->', tokens)
