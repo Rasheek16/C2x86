@@ -595,6 +595,9 @@ def parse_declarations(tokens):
 
 def parse_block(tokens)->Tuple[List[BlockItem],str]:
     print('inside block')
+    
+    print(tokens[:5])
+    # exit()
     expect("{", tokens)
     # #('block')
         # Parse zero or more block-items until "}"
@@ -795,13 +798,15 @@ def parse_declaration(tokens: List[str]):
             print('Found function body')
             print(params)
             # exit()
+            # exit()
             list_block_items, tokens = parse_block(tokens)
+            
             return FunDecl(name=identifier, params=params, fun_type=decl_type, body=Block(list_block_items), storage_class=storage_class), tokens
         else:
             raise SyntaxError(f"Expected ';' or '{{' after function declarator, got '{tokens if tokens else 'end of input'}'") #more informative error message
 
     else:  # Variable declaration
-       
+    
         init = Null()
         print("Tokens",tokens)
         if tokens and tokens[0] == "=": #checks if token exists and if it is =
@@ -835,11 +840,7 @@ def parse_member_declaration(tokens):
     if not isinstance(storage_class,Null):
         raise SyntaxError('Struct members cannot have storage classes')
     
-    # if isinstance(_type,Structure):
-    #     # exit()
-    #     tag,tokens =take_token(tokens)
-    #     _type.tag = tag 
-    
+ 
     return Member(identifier,_type),tokens
 
 def parse_func_decl(tokens, func_name: Identifier, _type, storage_class) -> Tuple[FunDecl, List[str]]:
@@ -881,6 +882,7 @@ def parse_variable_declaration(tokens: List[str], var_name: Identifier, _type, s
 
 def parse_statement(tokens: List[str]) -> Statement:
     print('parse statement',tokens[0])
+    # exit()
     """
     Parses the <statement> ::= "return" <exp> ";" | <exp> ";" | ";" rule.
     
@@ -941,11 +943,11 @@ def parse_statement(tokens: List[str]) -> Statement:
         elif next_token=='break':
             _,tokens=take_token(tokens)
             expect(';',tokens)
-            temp_label= get_temp_label()
+            # temp_label= get_temp_label()
             return Break()
         elif next_token=='continue':
             _,tokens=take_token(tokens)
-            temp_label= get_temp_label()
+            # temp_label= get_temp_label()
             expect(';',tokens)
             return Continue()
         elif next_token=='while':
@@ -955,7 +957,7 @@ def parse_statement(tokens: List[str]) -> Statement:
             expect(')',tokens)
             # exp2,tokens=parse_exp(tokens)
             statement=parse_statement(tokens)
-            temp_label=get_temp_label()
+            # temp_label=get_temp_label()
             return While(exp,statement)
         elif next_token=='do':
             # ##'here')
@@ -1009,6 +1011,7 @@ def parse_statement(tokens: List[str]) -> Statement:
             return For(init=init, condition=condition, post=post, body=body)
         
         else:
+            # exit()
             # Parse expression statement
             exp_node, tokens = parse_exp(tokens)
             expect(";", tokens)
@@ -1073,7 +1076,8 @@ def parse_optional_parameter(tokens: List[str]) -> Tuple[Statement, List[str]]:
 
 def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
     try:
-        
+        print(tokens[:5])
+        # exit()
         next_token = tokens[0]
         print('Parsinf unary expre', next_token)
         print(tokens)
@@ -1119,46 +1123,50 @@ def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
         raise e
      
 def parse_postfix_expr(tokens):
-    print('Inside parse posftfix expr',tokens[0])
+    print('Inside parse posftfix expr',tokens[:5])
+    # exit()
     expr=Null()
     
     expr,tokens=parse_primary_expr(tokens)
-    if tokens[0] in ('[','.','->'):
-        return parse_postfix_op(tokens,expr)
- 
- 
+    while tokens[0] in ('[','.','->'):
+        expr,tokens= parse_postfix_op(tokens,expr)
+    # print(expr)
+    # exit()
     return expr,tokens
 
-def parse_postfix_op(tokens,expr):
+def parse_postfix_op(tokens, expr):
+    print(tokens[:5])
+    # exit()
     try:
         while tokens:
-            if tokens[0]=='[':
-                while tokens and tokens[0] == '[':  
-                    print('Subscript')
-                    expect('[', tokens)
-                    exp, tokens = parse_exp(tokens)
-                    expr = Subscript(expr, exp)
-                    expect(']', tokens)
-                
-            if tokens[0]=='.':
-                while tokens and tokens[0] == '.':  
-                
-                    expect('.',tokens)
-                    if tokens[0]=='(':
-                        raise SyntaxError('cant follow dot with paranthesis')
-                    name,tokens = parse_exp(tokens)
-                    expr = Dot(structure=expr,member = Identifier(name))
-            if tokens[0]=='->':
-                while tokens and tokens[0] == '->':      
-                    expect('->',tokens)
-                    name,tokens = parse_postfix_expr(tokens)
-                    expr = Arrow(pointer=expr,member = Identifier(name))   
+            if tokens[0] == '[':
+                print('Subscript')
+                expect('[', tokens)
+                exp, tokens = parse_exp(tokens)
+                expr = Subscript(expr, exp)
+                expect(']', tokens)
+
+            elif tokens[0] == '.':
+                expect('.', tokens)
+                if tokens[0] == '(':
+                    raise SyntaxError('Cannot follow dot with parentheses')
+                name, tokens = take_token(tokens)
+                expr = Dot(structure=expr, member=Identifier(name))
+                print(expr)
+                # exit()
+
+            elif tokens[0] == '->':
+                expect('->', tokens)
+                name, tokens = take_token(tokens)
+                expr = Arrow(pointer=expr, member=Identifier(name))
+
             else:
-                break 
-        return expr,tokens
+                break
+
+        return expr, tokens
     except SyntaxError as e:
         raise e
-    
+
     
    
 def parse_primary_expr(tokens):
@@ -1214,7 +1222,8 @@ def parse_primary_expr(tokens):
         raise SyntaxError('Invalid token in primary expression',tokens[0])
 
 def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
-    print('parse expr')
+    print('parse expr',tokens[:5])
+    # exit()
     
     
     #(
@@ -1291,9 +1300,9 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
         raise e
 
 def parse_cast_expr(tokens:List[str])->Tuple[Exp,List[str]]:
-    print('parse cast expr',tokens[0])
-    print('next token',tokens[1])
-    print('is specifier',isSpecifier(tokens[1]))
+    print('parse cast expr',tokens[:5])
+
+    # exit()
     next_token=tokens[0]
   
     if next_token=='(' and isSpecifier(tokens[1]):

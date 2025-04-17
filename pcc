@@ -55,7 +55,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None, li
             return  # Done, exit code 0
 
         # 4) Variable Resolution Pass 
-        ast, symbols = variable_resolution_pass(ast)
+        ast, symbols,type_table = variable_resolution_pass(ast)
         if stage == '--validate':
             print(ast)
             print('Symbols after validation:', symbols)
