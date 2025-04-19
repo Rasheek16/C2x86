@@ -743,13 +743,14 @@ def parse_declaration(tokens: List[str]):
     print('Tokens',tokens)
     if tokens[0]=='struct' and (tokens[1]=='extern' or tokens[1]=='static'):
         raise SyntaxError('storage class cannot be between struct keyword and identifier')
-    if tokens[0]=='struct' and tokens[2]=='{':
+    if (tokens[0]=='struct' and tokens[2]=='{') or (tokens[2]==';' and tokens[0]=='struct'):
         _,tokens = take_token(tokens)
         print(tokens)
-        # exit()
+   
         next_token = tokens[0]
         if isIdentifier(next_token) and not isKeyword(next_token):
-          
+            # print(tokens)
+        
             if not isIdentifier(next_token) or isKeyword(next_token):
                 raise SyntaxError('expected identifier got',next_token)
             name = Identifier(next_token)
@@ -768,7 +769,10 @@ def parse_declaration(tokens: List[str]):
             if len(members)==0:
                 raise SyntaxError('Struct members cannot be empty')
             expect('}',tokens)
+        print('error here',tokens[:3])
         expect(';',tokens)
+       
+            
         return StructDecl(tag=name,members=members),tokens 
     specifiers =[]
     while tokens and isSpecifier(tokens[0]): #checks if token exists and if it is a specifier
@@ -1341,7 +1345,7 @@ def parse_type_name(tokens:List[str]):
         _type,storage_class=parse_type_and_storage_class(types)
     
     if isinstance(_type,Structure):
-            _type.tag = take_token(tokens)
+            _type.tag,tokens = take_token(tokens)
  
     if tokens[0] in ('*','(','['):
         while tokens and tokens[0] == '(' and tokens[1] == '(':
