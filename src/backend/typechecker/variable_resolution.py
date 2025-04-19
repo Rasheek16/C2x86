@@ -30,34 +30,47 @@ def get_label():
 # -------------------------------------------------------------------------
 
 def resole_file_scope_var(decl:VarDecl,identifier_map) -> VarDecl:
+    if  isinstance(decl.name,Null):
+        decl.name.name = Null()    
     identifier_map[decl.name.name]={'unique_name':decl.name.name,'from_current_scope':True,'has_linkage':True}
+    # else:
+        
     return decl
     
 
 def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False,structure_map=None)-> VarDecl:
     # resolve_type(declaration,structure_map)
-    # print(declaration,is_file_scope)
+    # #(declaration,is_file_scope)
     """
     Resolves a single declaration (either VarDecl or FunDecl).
     - VarDecl => create a unique name for local variables.
     - FunDecl => preserve the original name (has_linkage=True).
     """
     if isinstance(declaration, VarDecl):
+       
         declaration.var_type = resolve_type(declaration.var_type,structure_map)
+        print(structure_map)
         print(declaration.var_type)
         # exit()
         
-        # print(is_file_scope)
+        # #(is_file_scope)
         if is_file_scope:
             return resole_file_scope_var(declaration,identifier_map)
         # Ensure we have an Identifier for the name 
         else:
-            # print(is_file_scope)
-            if not isinstance(declaration.name, Identifier):
+            # #(is_file_scope)
+            #(declaration)
+            
+            if not isinstance(declaration.name,Null) and not isinstance(declaration.name, Identifier):
                 raise TypeError(f"Declaration name must be an Identifier, got {type(declaration.name)}")
 
-            original_name = declaration.name.name
-            print(original_name)
+            if not isinstance(declaration.name,Null):
+                original_name = declaration.name.name
+            else:
+                original_name = Null()
+                
+            #(original_name)
+            
  
             # Check for duplicates in the current scope
             if original_name in identifier_map and identifier_map[original_name]['from_current_scope']==True:
@@ -101,8 +114,7 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False,st
     elif isinstance(declaration, StructDecl):
         
         resolved = resolve_structure_declaration(declaration, structure_map)
-        print(resolved)
-        # exit()
+     
         return resolved
 
     else:
@@ -112,16 +124,29 @@ def resolve_declaration(declaration, identifier_map: dict,is_file_scope=False,st
 # -------------------------------------------------------------------------
 # 3) Resolve Expressions
 # -------------------------------------------------------------------------
+def check_dot_lvalue(expr:Dot):
+    if isinstance(expr.structure,Dot):
+        check_dot_lvalue(expr.structure)
+    if isinstance(expr.structure,Identifier):
+        return True 
+    return False
+    
 def resolve_exp(expression, identifier_map: dict,structure_map=
                 None):
     
-    print('\nResolvinf expr',expression)
+    #('\nResolvinf expr',expression)
     """
     Resolves an expression by mapping variable/function identifiers
     to their unique names. Preserves names for items with has_linkage=True.
     """
+    # expression._type=resolve_type(expression._type,structure_map)
     if isinstance(expression, Assignment):
+        # expression._type = resolve_type(expression._type,structure_map)
+        print(expression)
+        # exit()
         if not isinstance(expression.left,(Var,Dereference,Subscript,String,Arrow,Dot)):
+            if isinstance(expression.left,Dot):
+                check_dot_lvalue(expression.left)
             raise ValueError(f"Invalid lvalue in assignment: {expression.left}")
         if isinstance(expression.left,Unary):
             resolved_left = resolve_exp(expression.left.expr,identifier_map,structure_map)
@@ -130,6 +155,7 @@ def resolve_exp(expression, identifier_map: dict,structure_map=
         resolved_right = resolve_exp(expression.right, identifier_map,structure_map)
         return Assignment(left=resolved_left, right=resolved_right)
     elif isinstance(expression,Cast):
+        expression.target_type = resolve_type(expression.target_type,structure_map)
         resolved_exp=resolve_exp(expression.exp,identifier_map,structure_map)
         return Cast(target_type=expression.target_type,exp = resolved_exp)      
     elif isinstance(expression, Conditional):
@@ -144,16 +170,16 @@ def resolve_exp(expression, identifier_map: dict,structure_map=
         if not isinstance(expression.identifier, Identifier):
             raise TypeError(f"Expected Identifier, got {type(expression.identifier)}")
         original_identifier = expression.identifier.name
-
+        
         if original_identifier in identifier_map:
             unique_name = identifier_map[original_identifier]['unique_name']
             return Var(identifier=Identifier(unique_name))
-        elif original_identifier in structure_map:
-            unique_name = identifier_map[original_identifier]['unique_name']
-            return Var(identifier=Identifier(unique_name))
-        # else:
-        #     print(original_identifier)
-        #     print(structure_map)
+       
+        else:
+            # #('Identifeir map',identifier_map)
+            # #('expression',expression)
+            # #('structure map',structure_map)
+     
             raise ValueError(f"Undeclared variable usage: '{original_identifier}'")
     elif isinstance(expression, Unary):
         if expression.operator == UnaryOperator.DEREFERENCE and isinstance(expression.expr,Constant):
@@ -173,7 +199,7 @@ def resolve_exp(expression, identifier_map: dict,structure_map=
         #                            BinaryOperator.GREATER_THAN,
         #                            BinaryOperator.LESS_OR_EQUAL,
         #                            BinaryOperator.LESS_THAN,BinaryOperator.NOT_EQUAL):
-        #     # print(expression)
+        #     # #(expression)
             # exit()
             # if (isinstance(expression.left,AddOf) and not isinstance(expression.right,AddOf)) or (
             #     not isinstance(expression.left,AddOf) and isinstance(expression.right,AddOf)):
@@ -187,13 +213,14 @@ def resolve_exp(expression, identifier_map: dict,structure_map=
         return Binary(operator=expression.operator, left=resolved_left, right=resolved_right)
     elif isinstance(expression, FunctionCall):
         # Resolve function name
-        # print(expression.identifier.name)
-        # print(identifier_map)
+        # #(expression.identifier.name)
+        # #(identifier_map)
         # exit()
         func_name = expression.identifier.name
         if func_name in identifier_map:
             new_func_name = identifier_map[func_name]['unique_name']
             # Resolve arguments
+            
             new_args = [resolve_exp(arg, identifier_map,structure_map) for arg in expression.args]
             print(new_args)
             # exit()
@@ -221,22 +248,25 @@ def resolve_exp(expression, identifier_map: dict,structure_map=
         resolved_exp=resolve_exp(expression.exp,identifier_map,structure_map)
         return SingleInit(resolved_exp)     
     elif isinstance(expression,Subscript):
-        print('Subscript')
+        #('Subscript')
         resolved_exp1 = resolve_exp(expression.exp1,identifier_map,structure_map)
         resolved_exp2 = resolve_exp(expression.exp2,identifier_map,structure_map)
         return Subscript(exp1=resolved_exp1,exp2=resolved_exp2)
-    elif isinstance(expression,(String,SizeOfT)):
+    elif isinstance(expression,String):
         return expression
+    elif isinstance(expression,SizeOfT):
+        expression.exp= resolve_type(expression.exp,structure_map)
+        return expression 
     elif isinstance(expression,SizeOf):
         expression.exp= resolve_exp(expression.exp,identifier_map,structure_map)
-        return expression   
+        return expression 
     elif isinstance(expression,Dot):
         resolved_str = resolve_exp(expression.structure,identifier_map,structure_map=structure_map)
-        # print(expression.member.name)
+        # #(expression.member.name)
         # resolved_mem = Identifier(resolve_exp(expression.member.name,identifier_map,structure_map=structure_map))
-        print(structure_map)
-        print(resolved_str)
-        print(expression.member)
+        #(structure_map)
+        #(resolved_str)
+        #(expression.member)
         # exit()
         return Dot(structure=resolved_str,member=expression.member)
     elif isinstance(expression,Arrow):
@@ -258,7 +288,7 @@ def resolve_block_items(block_items: List[BlockItem], identifier_map: dict,struc
     resolved_body = []
     for block_item in block_items:
         if isinstance(block_item, D):
-            # print('here')
+            # #('here')
             # Declaration node: could be VarDecl or FunDecl
             resolved_decl = resolve_declaration(block_item.declaration, identifier_map,structure_map=structure_map)
             resolved_body.append(D(declaration=resolved_decl))
@@ -269,9 +299,9 @@ def resolve_block_items(block_items: List[BlockItem], identifier_map: dict,struc
             resolved_body.append(S(statement=resolved_stmt))
 
         elif isinstance(block_item, Compound):
+            # exit()
             # Nested block => create a new scope
             new_map = copy_identifier_map(identifier_map)
-            
             new_structure_map = copy_structure_map_for_new_scope(structure_map)
             resolved_compound = Compound(
                 block=resolve_block_items(block_item.block, new_map,new_structure_map)
@@ -308,7 +338,7 @@ def resolve_statement(statement: Statement, identifier_map: dict,structure_map=N
     Resolves variables and sub-statements within a given Statement.
     """
     if isinstance(statement, Return):
-        resolved_exp = resolve_exp(statement.exp, identifier_map)
+        resolved_exp = resolve_exp(statement.exp, identifier_map,structure_map)
         return Return(exp=resolved_exp)
 
     elif isinstance(statement, For):
@@ -327,9 +357,12 @@ def resolve_statement(statement: Statement, identifier_map: dict,structure_map=N
         return Expression(exp=resolved_exp)
 
     elif isinstance(statement, Compound):
+        print(statement)
+        print(structure_map)
+        # exit()
         new_map = copy_identifier_map(identifier_map)
         new_structure_map = copy_structure_map_for_new_scope(structure_map)
-        resolved_block = resolve_block_items(statement.block, new_map,structure_map)
+        resolved_block = resolve_block_items(statement.block, new_map,new_structure_map)
         return Compound(block=resolved_block)
 
     elif isinstance(statement, While):
@@ -511,8 +544,12 @@ def label_program(program: Program):
 # -------------------------------------------------------------------------
 # 11) Resolve a Function Declaration
 # -------------------------------------------------------------------------
+_t = 0 
 def resolve_function_declaration(decl: FunDecl, identifier_map: dict,structure_map) -> FunDecl:
-    # print(decl.name.identifier.name)
+    
+
+   
+    # #(decl.name.identifier.name)
     # exit()
     """
     Resolves a function declaration (parameters + body).
@@ -520,9 +557,13 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict,structure_m
     - Then copy the map for parameters, rename them, and resolve the body.
     """
     
-    # print(func_name)
-    # print(decl.name)
+    # #(func_name)
+    # #(decl.name)
     func_name = decl.name.name
+    # exit()
+    #('resolve func')
+    #(decl)
+    
     # exit()
     decl.fun_type =resolve_type(decl.fun_type,structure_map)
     
@@ -547,23 +588,30 @@ def resolve_function_declaration(decl: FunDecl, identifier_map: dict,structure_m
     structure_map_new = copy_structure_map_for_new_scope(structure_map)
     # Resolve parameters
     new_params = []
-    # print([name.name.name for name in decl.params])
+    # #([name.name.name for name in decl.params])
     # exit()
     for param in decl.params:
-      
         new_params.append(resolve_param(param, inner_map,structure_map))
+        print(new_params)
+        # exit()
+        # param._type = resolve_type(param._type,structure_map)
     # Resolve the function body (if it's a Block) => block_items
     if isinstance(decl.body, Block):
         
         new_body = resolve_block_items(decl.body.block_items, inner_map,structure_map_new)
     else:
         new_body = decl.body  # or raise error if needed
-
+ 
     return FunDecl(name=decl.name, params=new_params, fun_type=decl.fun_type,body=new_body,storage_class=decl.storage_class)
 
 
+
 def resolve_param(param: Parameter, identifier_map: dict,structure_map) -> Parameter:
+
     param._type = resolve_type(param._type,structure_map)
+    
+    # print(param._type)
+    # exit()
     """
     Resolves a function parameter. Generates a unique name for it (local variable).
     """
@@ -595,7 +643,7 @@ def resolve_param(param: Parameter, identifier_map: dict,structure_map) -> Param
 def copy_structure_map_for_new_scope(structure_map):
     """Creates a new structure_map for a new scope with from_current_scope set to False."""
     new_map = {}
-    print(structure_map)
+    #(structure_map)
     for tag, entry in structure_map.items():
         new_map[tag] = {
             'new_tag':entry['new_tag'],
@@ -603,10 +651,12 @@ def copy_structure_map_for_new_scope(structure_map):
             }
     return new_map
 
+i = 1
 def resolve_structure_declaration(decl, structure_map):
-    prev_entry = structure_map.get(decl.tag)
-    print(structure_map)
-    if (prev_entry is None) or (not prev_entry.from_current_scope):
+  
+    prev_entry = structure_map.get(decl.tag.name)
+    #(structure_map)
+    if (prev_entry is None) or (not prev_entry['from_current_scope']):
         unique_tag = make_temporary_var()
         structure_map[decl.tag.name] = {
             'new_tag':unique_tag,
@@ -615,24 +665,28 @@ def resolve_structure_declaration(decl, structure_map):
     else:
         unique_tag = prev_entry['new_tag']
     processed_members = []
+    if decl.members is None:
+        return StructDecl(tag=unique_tag,members=None)
+        
+    
     for member in decl.members:
-        print(member)
+        
         processed_type = resolve_type(member.member_type, structure_map)
-        print(processed_type)
-        # exit()
+       
         processed_member = Member(member_name=member.member_name,member_type=processed_type)
        
         processed_members.append(processed_member)
 
-
+    #(structure_map)
     return StructDecl(tag=unique_tag,members=processed_members)
 
 def resolve_type(type_specifier,structure_map):
     if isinstance(type_specifier,Structure):
-      
+        #(structure_map)
+        #(type_specifier)
         if type_specifier.tag in structure_map:
             unique_tag = structure_map[type_specifier.tag]['new_tag']
-            # exit()
+         
             return Structure(unique_tag)
         else:
             raise TypeError('Specified an undeclared structure type')
@@ -667,21 +721,23 @@ def variable_resolution_pass(program: Program) :
     # program.function_definition might be a list of FunDecl or a single FunDecl
     for decl in program.function_definition:
         if isinstance(decl,FunDecl):
-            # print('New func')
+            #('New func')
             new = resolve_function_declaration(decl, identifier_map,structure_map)
         elif isinstance(decl,VarDecl):
-            # print('New var')
+            # #('New var')
             new = resolve_declaration(decl, identifier_map,is_file_scope=True,structure_map=structure_map)
         elif isinstance(decl,StructDecl):
             new = resolve_structure_declaration(decl,structure_map)
-            print(new)
-            print(structure_map)
+            #(new)
+            #(structure_map)
             # exit()
         resolved_funcs.append(new)
 
     new_program = Program(function_definition=resolved_funcs)
-    labeled_program,s,tt=typecheck_program(label_program(new_program))
     print('var exit')
-    return labeled_program ,s,tt
+    s=[]
+    t=[]
+    labeled_program,s,t=typecheck_program(label_program(new_program))
+    return labeled_program ,s,t
 
     
