@@ -703,20 +703,24 @@ class  AddOf(Exp):
     def __repr__(self):
         return f'AddOf(exp={self.exp},type={self._type})'
 class Dot(Exp):
-    def __init__(self,structure,member):
+    def __init__(self,structure,member,_type=None):
+        super().__init__(_type)
+        
         self.structure = structure
         self.member = member 
     
     def __repr__(self):
-        return f'Dot(structure={self.structure} , member={self.member})'
+        return f'Dot(structure={self.structure} , member={self.member}, type={self._type})'
 
 class Arrow(Exp):
-    def __init__(self,pointer,member):
+    def __init__(self,pointer,member,_type=None):
+        super().__init__(_type)
+        
         self.pointer = pointer
         self.member = member 
     
     def __repr__(self):
-        return f'Arrow(pointer={self.pointer} , member={self.member})'
+        return f'Arrow(pointer={self.pointer} , member={self.member} , type={self._type})'
     
     
 # --------------------------
@@ -803,14 +807,14 @@ class Member():
     
 
 class StructDecl():
-    def __init__(self,tag,members:list):
+    def __init__(self,tag,members=None):
         self.tag = tag 
         self.members = members 
     
     def __repr__(self):
-        members_str = ', '.join(str(member) for member in self.members)
-        return f"StructDecl(\n  tag={self.tag},\n  members=[{members_str}]\n)"
-        # return f'StructDecl(tag={self.tag},members={[  i for i in self.members]})'
+     
+        return f"StructDecl(\n  tag={self.tag},\n  members={self.members}\n)"
+       
         
     
 
@@ -924,7 +928,7 @@ class Conditional(Exp):
         Returns:
             str: The string representation.
         """
-        return f"Condition(condition={self.condition},exp2 = {self.exp2}, exp3 = {self.exp3})"
+        return f"Conditional(condition={self.condition},exp2 = {self.exp2}, exp3 = {self.exp3})"
 
 
 class Null(Statement):
