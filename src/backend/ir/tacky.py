@@ -147,6 +147,15 @@ class TackyCopyToOffSet(TackyInstruction):
         return f'TackyCopyToOffSet(src={self.src},dst={self.dst},offset={self.offset})'
 
 
+class TackyCopyFromOffSet(TackyInstruction):
+    def __init__(self,src,offset,dst):
+        self.src=src
+        self.dst=dst
+        self.offset=offset
+    
+    def __repr__(self):
+        return f'TackyCopyFromOffSet(src={self.src},offset={self.offset},dst={self.dst})'
+
 class TackyZeroExtend(TackyInstruction):
     """
     instruction = Unary(unary_operator, val src, val dst)
@@ -402,13 +411,21 @@ class PlainOperand():
         self.val=val
     def __repr__(self):
         return f'PlainOperand(val={self.val})'
-        super(CLASS_NAME, self).__init__(*args, **kwargs)
+        # super(CLASS_NAME, self).__init__(*args, **kwargs)
 
 class DereferencedPointer():
     def __init__(self, val):
         self.val=val
     def __repr__(self):
         return f'DereferencedPointer(val={self.val})'
+    
+class  SubObject():
+        def __init__(self, base, offset):
+            self.base = base 
+            self.offset = offset 
+        
+        def __repr__(self):
+            return f'SubObject(base={self.base} , offset={self.offset})'
 
 class TackyExpResult():
     PlainOperand=PlainOperand
