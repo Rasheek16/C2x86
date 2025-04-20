@@ -4,8 +4,7 @@ from src.backend.typechecker.type_classes import *
 import sys
 
 x =0
-def size_compound_init(_type):
-   
+def size_compound_init(_type,type_table):
     if isinstance(_type,(Char,UChar,SChar)):
         return 1 
     elif type(_type)==type(Int()):
@@ -25,6 +24,8 @@ def size_compound_init(_type):
             return 1
         else:
             return _type._type
+    elif isinstance(_type,Structure):
+        return size(_type,type_table)
         
         
 
@@ -2442,9 +2443,12 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
                     found = True 
             if found==False :
                 raise TypeError('Member not found with the same name')
-            member_exp = Arrow(typed_pointer,e.member)
-            member_exp.set_type(member_def.member_type)
-            return member_exp
+            e.pointer = typed_pointer 
+            
+            # member_exp = Arrow(typed_pointer,e.member)
+            e.set_type(member_def.member_type)
+          
+            return e
         else:
             raise TypeError("Tried to get member of non-structure")
         
