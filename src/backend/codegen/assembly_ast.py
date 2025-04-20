@@ -519,6 +519,8 @@ class BinaryOperator():
     OR='Or'
     SHR='Shr'
     XOR='Xor'
+    SHL='Shl'
+    ShrTwoOp='ShrTwoOp'
     # Additional binary operators can be defined here as needed.
     # For example:
     # DIVIDE = 'Divide'      # Represents the division operation, e.g., x / y
