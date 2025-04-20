@@ -62,7 +62,7 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None, li
             return
 
         # 5) Emit Tacky IR
-        tacky_ir, symbols1 = emit_tacky(ast, symbols)
+        tacky_ir, symbols1 = emit_tacky(ast, symbols,type_table)
         if stage == '--tacky':
             print("Tacky IR:")
             print(tacky_ir)
