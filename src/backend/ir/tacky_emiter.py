@@ -1289,4 +1289,4 @@ def emit_tacky(program_ast: Program,symbols,type_table) :
     # #symbols)
     # exit()
     # exit(program_ast)
-    return emit_tacky_program(program_ast,symbols,type_table),symbols
+    return emit_tacky_program(program_ast,symbols,type_table),symbols,type_table
