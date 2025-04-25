@@ -527,6 +527,14 @@ class BinaryOperator():
     # REMAINDER = 'Remainder' # Represents the modulo operation, e.g., x % y
 
 
+class StructMemory:
+    
+    MEMORY='Memory'
+    SSE='Sse'
+    INTEGER='Integer'
+    
+
+
 class Registers:
     """
     Represents the set of CPU registers used in the compiler's intermediate representation.
