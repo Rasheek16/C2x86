@@ -53,7 +53,7 @@ and full code generation.
 ---
 
 ## 💻 Usage
-
+```
 ```bash
 python pcc [stage] <input_file> [output_file] [libraries...]
 ```
