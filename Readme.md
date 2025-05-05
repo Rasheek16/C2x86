@@ -1,4 +1,4 @@
-```markdown
+
 # ⚙️ PCC — x86-64 C Compiler in Python
 
 PCC is a fully-featured C compiler for the **x86-64 architecture**, written entirely in Python. 
@@ -51,7 +51,6 @@ and full code generation.
 
 
 ---
-```
 ## 💻 Usage
 ```bash
 python pcc [stage] <input_file> [output_file] [libraries...]
