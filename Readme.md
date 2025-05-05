@@ -41,14 +41,14 @@ and full code generation.
 
 ## 🗂️ Project Structure
 
-
+```
 .
 ├── pcc.py             # Entry point — choose stage and compile
 ├── src/
 │   ├── frontend/      # Lexer, parser, type checker, AST
 │   └── backend/       # IR emission, optimizer, codegen
 ├── examples/          # Sample C test cases
-
+```
 
 ---
 ## 💻 Usage
