@@ -8,18 +8,19 @@ from src.backend.typechecker.type_classes import *
 
 tracker = 0
 class CodeEmitter:
-    def __init__(self, file_name, symbols, platform="linux"):
+    def __init__(self, file_name, symbols, da, platform="linux"):
         self.file_name = file_name
         self.platform = platform
         self.symbols = symbols
         self.output = []
+        self.temp_table = da 
 
     def emit_line(self, line=""):
         """Adds a line to the assembly output."""
         self.output.append(line)
 
     def emit_program(self, program):
-        # #print(program)
+        # ##program)
         """Emit the program."""
         if not isinstance(program, AssemblyProgram):
             raise ValueError("The input program is not an instance of Program.")
@@ -27,10 +28,10 @@ class CodeEmitter:
             if isinstance(func, AssemblyFunction):
                 self.emit_function(func)
             elif isinstance(func, AssemblyStaticVariable):
-                print('self emit static var')
+                #'self emit static var')
                 self.emit_static_var(func)
             elif isinstance(func, AssemblyStaticConstant):
-                print('self emit static const')
+                #'self emit static const')
                 
                 self.emit_static_const(func)
             else:
@@ -42,20 +43,21 @@ class CodeEmitter:
             self.emit_line('.section .note.GNU-stack,"",@progbits')
 
     def emit_static_var(self, instruction):
-        print(instruction)
+        #instruction)
         try:
             if isinstance(instruction, AssemblyStaticVariable):
-                # print('here')
+                # #'here')
                 for init in instruction.init:
-                    print(init)
-                    print(instruction.name)
-                    print(instruction.alignment)
+                    #init)
+                    #instruction.name)
+                    #instruction.alignment)
                 #   
                     # if not isinstance(init,StringInit) and init.value != 0:
-                    #     print(init)
-                    #     exit()
-                    if (isinstance(init,StringInit) and init.string != 0 ) or init.value != '0' or isinstance(
+                    #     #init)
+                    #isinstance(init,PointerInit))
+                    if (isinstance(init,StringInit) and init.string != 0 ) or ( hasattr(init,'value') and init.value != '0' or hasattr(init,'name')) or isinstance(
                         init, DoubleInit):
+                    
                     # )  or init.value!=0 :
                         global tracker 
                         if tracker == 0:
@@ -71,7 +73,7 @@ class CodeEmitter:
                         )
                     else:
                      
-                        print('emitting')
+                        #'emitting')
                         if tracker == 0:
                             if instruction._global == True:
                                 self.emit_line(f"   .globl {instruction.name}")
@@ -106,20 +108,25 @@ class CodeEmitter:
         self.emit_line(f"   pushq   %rbp")
         self.emit_line(f"   movq    %rsp, %rbp")
         # self.emit_line(f'   subq    $8{}, %rsp')  # Allocate space for local variables
-
+        #self.temp_table)
+        # 
+        if self.temp_table[function.name].return_on_stack == True:
+            self.emit_line(f"   movq    %rdi, -8(%rbp)")
+            
+  
         for instruction in function.instructions:
             self.emit_instruction(instruction)
 
     def emit_instruction(self, instruction):
-        print('Emitting ',instruction)
+        #'Emitting ',instruction)
         """Emit an assembly instruction."""
         if isinstance(instruction, Mov):
             if isinstance(instruction._type,ByteArray):
                 instruction._type  = calculate_type(instruction._type)
         
             if instruction._type == AssemblyType.byte:
-                # print(instruction)
-                # exit()
+                # #instruction)
+                # 
                 src = convertOperandToAssemblySETCC(instruction.src)
                 dest = convertOperandToAssemblySETCC(instruction.dest)
                 self.emit_line(f"   mov{convert_type(instruction._type)} {src}, {dest}")
@@ -129,7 +136,7 @@ class CodeEmitter:
                 and instruction.dest.value == Registers.SP
                 
             ):
-                # exit()
+                # 
                 self.emit_line(
                     f"   movsd   {Convert8BYTEoperand(instruction.src)}  (%rsp)"
                 )
@@ -172,16 +179,16 @@ class CodeEmitter:
                 dest = convertOperandToAssembly(instruction.dest)
                 self.emit_line(f"   mov{convert_type(instruction._type)} {src}, {dest}")
             else:
-                # exit()
-                # print(instruction)
-                # exit()
+                # 
+                # #instruction)
+                # 
                 src = Convert8BYTEoperand(instruction.src)
                 dest = Convert8BYTEoperand(instruction.dest)
                 self.emit_line(f"   mov{convert_type(instruction._type)} {src}, {dest}")
-            # #print('done')
+            # ##'done')
 
         elif isinstance(instruction,Indexed):
-            # exit()
+            # 
             if instruction._type == AssemblyType.longWord:
                 operand1 = convertOperandToAssembly(instruction.base)
                 operand2= convertOperandToAssembly(instruction.index)
@@ -241,7 +248,8 @@ class CodeEmitter:
                 )
 
         elif isinstance(instruction, Binary):
-
+            if isinstance(instruction._type,ByteArray):
+                instruction._type = calculate_type(instruction._type)
             if instruction._type == AssemblyType.longWord:
                 src = convertOperandToAssembly(instruction.src1)
                 dest = convertOperandToAssembly(instruction.src2)
@@ -251,9 +259,9 @@ class CodeEmitter:
             else:
                 src = Convert8BYTEoperand(instruction.src1)
                 dest = Convert8BYTEoperand(instruction.src2)
-            # print(instruction.operator)
-            # print(BinaryOperator.SUBTRACT)
-            # exit()
+            # #instruction.operator)
+            # #BinaryOperator.SUBTRACT)
+            # 
             if (
                 instruction._type == AssemblyType.double
                 and instruction.operator == BinaryOperator.XOR
@@ -282,8 +290,8 @@ class CodeEmitter:
                 )
 
         elif isinstance(instruction, Cmp):
-            print(instruction._type)
-            # exit()
+            #instruction._type)
+            # 
             if isinstance(instruction._type ,ByteArray):
                     instruction._type = calculate_type(instruction._type)
             if instruction._type == AssemblyType.longWord:
@@ -312,8 +320,8 @@ class CodeEmitter:
         elif isinstance(instruction, SetCC):
             code = convert_code_to_assembly(instruction.cond_code)
             label = convertOperandToAssemblySETCC(instruction.operand)
-            # #print('label',label)
-            # #print(label)
+            # ##'label',label)
+            # ##label)
             self.emit_line(f"   set{code}    {label}")
 
         elif isinstance(instruction, Lea):
@@ -324,13 +332,13 @@ class CodeEmitter:
             if isinstance(instruction.src,Indexed):
                 # arr = 
                 src = Convert8BYTEoperand(instruction.src)
-            # print(s)
+            # #s)
                 self.emit_line(f"   leaq ({src[0]},{src[1]},{src[2]}),  {dst}")
             else:
-                print('here')
+                #'here')
                 self.emit_line(f' leaq {src},{dst}')
         elif isinstance(instruction, Cvtsi2sd):
-            # print(instruction._type)
+            # #instruction._type)
            
             # operator = convertOperatorToAssembly(instruction.)
             if instruction._type == AssemblyType.longWord:
@@ -375,8 +383,8 @@ class CodeEmitter:
             self.emit_line(f"   addq    ${instruction.value}, %rsp")
         elif isinstance(instruction, Push):
             operand = Convert8BYTEoperand(instruction.operand)
-            print(instruction)
-            # exit()
+            #instruction)
+            # 
             self.emit_line(f"   pushq {operand}")
         elif isinstance(instruction, Call):
             defined = self.symbols[instruction.identifier]["attrs"].defined
@@ -386,7 +394,7 @@ class CodeEmitter:
                 self.emit_line(f"   call {instruction.identifier}@PLT")
 
         elif isinstance(instruction, Idiv):
-            # #print(instruction)
+            # ##instruction)
             if instruction._type == AssemblyType.longWord:
                 op = convertOperandToAssembly(instruction.operand)
             else:
@@ -396,15 +404,15 @@ class CodeEmitter:
             )  # Perform division
 
         elif isinstance(instruction, Div):
-            # #print(instruction)
+            # ##instruction)
             if instruction._type == AssemblyType.longWord:
                 op = convertOperandToAssembly(instruction.operand)
             else:
                 op = Convert8BYTEoperand(instruction.operand)
-            # print(op)
-            # exit()
-            # print('idiv',instruction)
-            # exit()
+            # #op)
+            # 
+            # #'idiv',instruction)
+            # 
             # self.emit_line(f'   movl {op}, %eax')  # Move operand to %eax
             # self.emit_line('   cdq')  # Sign-extend into %edx:%eax
             self.emit_line(
@@ -418,23 +426,25 @@ class CodeEmitter:
                 self.emit_line("   cqo")  # Sign-extend into %edx:%eax
 
         elif isinstance(instruction, AllocateStack):
-            # #print()
+            # ##)
             self.emit_line(
                 f"   subq    ${instruction.value}, %rsp"
             )  # Allocate stack space
         elif isinstance(instruction,MovZeroExtend):
-            src_type = convert_type(instruction.assembly_type_src)
-            dst_type = convert_type(instruction.assembly_type_dst)
-            src = Convert8BYTEoperand(instruction.src)
-            dst = Convert8BYTEoperand(instruction.dest)
-            
-            
+            # src_type = calculate_type(instruction.assembly_type_src) 
+            # 
             if isinstance(instruction.assembly_type_src,ByteArray):
                src_type = calculate_type(instruction.assembly_type_src) 
                src_type = convert_type(src_type)
         
             else:
                 src_type = convert_type(instruction.assembly_type_src)
+            # src_type = convert_type(instruction.assembly_type_src)
+            dst_type = convert_type(instruction.assembly_type_dst)
+            src = Convert8BYTEoperand(instruction.src)
+            dst = Convert8BYTEoperand(instruction.dest)
+            
+            
             dst_type = convert_type(instruction.assembly_type_dst)
 
             src = convertOperandToAssembly(instruction.src)
@@ -463,7 +473,7 @@ class CodeEmitter:
             
             
         else:
-            print(isinstance(instruction, Push))
+            #isinstance(instruction, Push))
             raise ValueError(f"Unsupported instruction type: {type(instruction)}")
 
     def save(self):
@@ -499,17 +509,21 @@ def convertOperatorToAssembly(operator: str) -> str:
         return "and"
     elif operator == "Or":
         return "or"
+    elif operator == 'Shl':
+        return 'shl'
+    elif operator == 'ShrTwoOp':
+        return 'shr'
     else:
         raise ValueError(f"Invalid operator: {operator}")
 
 
 def convertOperandToAssembly(operand: Operand) -> str:
     # DEFAULT 4 BYTE
-    # #print(operand)
+    # ##operand)
     if isinstance(operand, Reg):
         # Map to 32-bit registers based on the register type
         operand = operand.value
-        # #print(operand)
+        # ##operand)
         if operand == Registers.AX:
             return "%eax"
         elif operand == Registers.DX:
@@ -533,27 +547,34 @@ def convertOperandToAssembly(operand: Operand) -> str:
         elif operand == Registers.BP:
             return "%rbp"
         elif isinstance(operand, Memory):
+            if operand._int == 0:
+                return f'({Convert8BYTEoperand(operand.reg)})'
             return f"{operand._int}({Convert8BYTEoperand(operand.reg)})"
         else:
             raise ValueError(f"Unsupported register : {operand}")
     elif isinstance(operand, Memory):
+        if operand._int == 0:
+                return f'({Convert8BYTEoperand(operand.reg)})'
         return f"{operand._int}({Convert8BYTEoperand(operand.reg)})"
     elif isinstance(operand,Indexed):
-        # print('Inside indexed')
-        # print(type(operand.base))
+        # #'Inside indexed')
+        # #type(operand.base))
         operand1 = convertOperandToAssembly(operand.base)
         operand2 = convertOperandToAssembly(operand.index)
         return operand1,    operand2,   operand.scale
         
     elif isinstance(operand, Stack):
         # Stack operands with 4-byte alignment
-        # #print(operand.value)
+        # ##operand.value)
         return f"{operand.value}(%rbp)"
     elif isinstance(operand, Imm):
         # Immediate values
         return f"${operand.value}"
     elif isinstance(operand, Data):
-        return f"{operand.identifier}(%rip)"
+        if operand.val ==0 or operand.val is None:
+            return f"{operand.identifier}(%rip)"
+            
+        return f"{operand.identifier}+{operand.val}(%rip)"
     elif isinstance(operand, str):
         if operand.startswith('string'):
             return f'{operand}(%rip)'
@@ -565,7 +586,7 @@ def convertOperandToAssembly(operand: Operand) -> str:
 
 def convertOperandToAssemblySETCC(operand: Operand) -> str:
     
-    # #print(operand.value)
+    # ##operand.value)
     if isinstance(operand, Reg):
         operand = operand.value
         if operand == Registers.AX:
@@ -595,28 +616,34 @@ def convertOperandToAssemblySETCC(operand: Operand) -> str:
         else:
             raise ValueError(f"Unsupported register: {operand.reg}")
     elif isinstance(operand, Memory):
+        if operand._int == 0:
+                return f'({Convert8BYTEoperand(operand.reg)})'
         return f"{operand._int}({Convert8BYTEoperand(operand.reg)})"
     elif isinstance(operand, Stack):
         # Stack operands with 4-byte alignment
-        # #print(operand.value)
+        # ##operand.value)
         return f"{operand.value}(%rbp)"
     elif isinstance(operand, Imm):
         # Immediate values
         return f"${operand.value}"
     elif isinstance(operand, Data):
-        return f"{operand.identifier}(%rip)"
+        if operand.val ==0  or operand.val is None:
+            return f"{operand.identifier}(%rip)"
+            
+        return f"{operand.identifier}+{operand.val}(%rip)"
+        # return f"{operand.identifier}(%rip)"
     else:
         raise ValueError(f"Invalid operand type: {type(operand).__name__}")
 
 def Convert8BYTEoperand(operand) -> str:
     # global i 
     # if i==2:
-    #     print(operand)
-    #     exit()
+    #     #operand)
+    #     
     # i+=1
-    # #print(operand.value)
+    # ##operand.value)
     if isinstance(operand, Reg):
-        # print(operand)
+        # #operand)
         operand = operand.value
         if operand == Registers.AX:
             return "%rax"
@@ -661,10 +688,14 @@ def Convert8BYTEoperand(operand) -> str:
         elif operand == Registers.BP:
             return "%rbp"
         elif isinstance(operand, Memory):
+            if operand._int == 0:
+                return f'({Convert8BYTEoperand(operand.reg)})'
             return f"{operand._int}(%{Convert8BYTEoperand(operand.reg)})"
         else:
             raise ValueError(f"Unsupported register: {operand}")
     elif isinstance(operand, Memory):
+        if operand._int == 0:
+                return f'({Convert8BYTEoperand(operand.reg)})'
         return f"{operand._int}({Convert8BYTEoperand(operand.reg)})"
     elif isinstance(operand,Indexed):
         operand1 = Convert8BYTEoperand(operand.base)
@@ -672,19 +703,23 @@ def Convert8BYTEoperand(operand) -> str:
         return [operand1,    operand2,   operand.scale]
     elif isinstance(operand, Stack):
         # Stack operands with 4-byte alignment
-        # #print(operand.value)
+        # ##operand.value)
         return f"{operand.value}(%rbp)"
     elif isinstance(operand, Imm):
         # Immediate values
         return f"${operand.value}"
     elif isinstance(operand, Data):
-        return f"{operand.identifier}(%rip)"
+        if operand.val == 0 or operand.val is None:
+            return f"{operand.identifier}(%rip)"
+            
+        return f"{operand.identifier}+{operand.val}(%rip)"
+        # return f"{operand.identifier}(%rip)"
     elif isinstance(operand, str):
-        print(operand)
-        # exit()
+        #operand)
+        # 
         return operand
     else:
-        print(operand)
+        #operand)
         raise ValueError(f"Invalid operand type: {type(operand).__name__}")
 
 
@@ -697,20 +732,20 @@ def convert_static_init(instr, alignment):
     if isinstance(instr, DoubleInit):
         if instr.value == float("inf"):
             return ".double Inf"
-        # exit()
+        # 
         val = f".double {instr.value}"
         
         return val
     elif isinstance(instr,CharInit):
-        # print(instr.value)
-        # exit()
+        # #instr.value)
+        # 
         if instr.value == 0:
             return '.zero 1'
         else:
             return f'.byte {instr.value}'
     elif isinstance(instr,UCharInit):
-        print(instr.value)
-        # exit()
+        #instr.value)
+        # 
         if instr.value == 0:
             return '.zero 1'
         else:
@@ -719,8 +754,8 @@ def convert_static_init(instr, alignment):
         import codecs
         st=escape_for_gas(instr.string)
         st = codecs.decode(st, 'unicode_escape')
-        print(st)
-        # exit()
+        #st)
+        # 
         
 
 
@@ -734,6 +769,7 @@ def convert_static_init(instr, alignment):
             return  f'.asciz "{st}"'
                 
     elif isinstance(instr,PointerInit):
+        # #'fuiahfliuahfhsadi')
         return f'.quad {instr.name}'
     elif isinstance(instr,ZeroInit):
         return f' .zero {instr.value}'
@@ -753,7 +789,7 @@ def convert_static_init(instr, alignment):
         else:
             return f".long {instr.value}"
     elif isinstance(instr, LongInit):
-        # exit()
+        # 
         if instr.value == 0:
             return f".zero 8"
         else:
