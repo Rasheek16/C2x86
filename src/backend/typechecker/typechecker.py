@@ -16,7 +16,7 @@ def size_compound_init(_type,type_table):
     elif type(_type)==type(ULong()):
         return 8
     elif type(_type)==type(Double()):
-        return 8
+        return 16
     elif isinstance(_type,Pointer):
         return 8
     elif isinstance(_type,Array):
@@ -34,7 +34,7 @@ def array_size(array_type,type_table):
     if isinstance(array_type,Pointer):
         if isinstance(array_type.ref,(Double,Pointer)):
             return 8 
-     
+    
         
         return size(array_type.ref,type_table)        
     if isinstance(array_type,Double):
@@ -94,6 +94,9 @@ def size(_type,type_table=None):
             return array_size(_type._type,type_table) * _type._int
     
     if isinstance(_type,Structure):
+        # #'found structure')
+        # #type_table[_type.tag])
+        # 
         if type_table is not None:
             return type_table[_type.tag].size
         else:
@@ -123,10 +126,10 @@ def verify_pointer_struct(t1,t2):
     
         
 def convert_by_assignment(e, target_type):
-    # print('inside convert by assignment',target_type)
-    print('\n')
-    print(e.get_type())
-    print(target_type)
+    # #'inside convert by assignment',target_type)
+    #'\n')
+    #e.get_type())
+    #target_type)
     if isinstance(e.get_type(),Pointer) and isinstance(target_type,Pointer):
         verify_pointer_struct(e.get_type(),target_type)
     
@@ -143,7 +146,7 @@ def convert_by_assignment(e, target_type):
         return convert_to(e, target_type)
     
     if (isinstance(target_type,Pointer) and isinstance(target_type.ref,Void)) and isinstance(e.get_type(),Pointer):
-        print('here')
+        #'here')
         
         return convert_to(e,target_type)
 
@@ -280,11 +283,11 @@ def convert_to(e: Exp, t: any):
 
 
 def typecheck_exp_and_convert(expression,symbols,_type=None,type_table=None):
-    # print(expression)
+    # #expression)
   
     typed_e = typecheck_exp(expression, symbols,_type,type_table=type_table)
     
-    # print(typed_e)
+    # #typed_e)
     #(typed_e.get_type())
     
     # if isinstance(typed_e,Subscript):
@@ -305,22 +308,44 @@ def typecheck_exp_and_convert(expression,symbols,_type=None,type_table=None):
     return typed_e
 
 
-def flat_val(var_type,val):
+def flat_val(var_type,val,type_table):
     #(var_type)
     decl = var_type
     if isinstance(var_type,Array):
         a=[]
         for i in val:
             i=ord(i)
-            x=flat_val(var_type._type,i)
+            x=flat_val(var_type._type,i,type_table)
             a.extend(x)
             #(a)
             # #
         return a 
+    # if isinstance(decl,Structure):
+    #     a=[]
+    #     struct = type_table[var_type.tag]
+    #     #struct)
+    #     
+    #     # for 
         
    
-    elif isinstance(var_type,Pointer):
-        decl = var_type.ref
+    # elif isinstance(var_type,Pointer):
+    #     if isinstance(var_type.ref,Structure):
+    #         new_init = Constant(StaticInit.LongInit(Const.constLong(int(val))))
+    #         new_init.set_type(var_type)
+    #         return [new_init]
+        
+    #     decl = var_type.ref
+        
+        
+    if isinstance(decl,Structure):
+        a=[]
+        struct = type_table[decl.tag]
+        #val)
+        
+        for i in struct.members:
+            a.extend(flat_val(i.member_type,0,type_table))
+        
+        return a 
     
     if isinstance(decl,Int):
         new_init = Constant(StaticInit.IntInit(Const.constInt(int(val))))
@@ -333,7 +358,7 @@ def flat_val(var_type,val):
         new_init = Constant(StaticInit.LongInit(Const.constLong(int(val))))
         new_init.set_type(var_type)
         
-    elif isinstance(decl,ULong):
+    elif isinstance(decl,(ULong,Pointer)):
         new_init = Constant(StaticInit.ULongInit(Const.constULong(int(val))))
         new_init.set_type(var_type)
         
@@ -341,12 +366,14 @@ def flat_val(var_type,val):
         new_init = Constant(StaticInit.DouleInit(Const.constDouble(float(val))))
         new_init.set_type(var_type)
     elif isinstance(decl,(Char,SChar)):
-        new_init = Constant(StaticInit.charInit(Const.constChar(val)))
+        new_init = Constant(StaticInit.charInit(Const.constChar(int(val))))
         new_init.set_type(var_type)
     elif isinstance(decl,UChar):
-        new_init = Constant(StaticInit.uCharInit(Const.constUChar(val)))
+        new_init = Constant(StaticInit.uCharInit(Const.constUChar(int(val))))
         new_init.set_type(var_type)
- 
+    else:
+        #'error here')
+        raise TypeError(f'invald flat val {decl}')
     return [new_init]
     
 
@@ -358,7 +385,7 @@ def get_type(_Type):
     return _Type
 
 
-def typecheck_array_init(decl, var_type=None,type_table=None):
+def typecheck_array_init(decl, var_type=None,type_table=None,symbols = None):
     #('array init',decl)
 
     """
@@ -386,9 +413,10 @@ def typecheck_array_init(decl, var_type=None,type_table=None):
     # if (isinstance(decl,CompoundInit) and not isinstance(decl.initializer[0],CompoundInit)) and isinstance(var_type._type,Array):
     #     raise ValueError('Multidim Array initializer must be a compound initializer')
     # Base case: SingleInit returns its flattened value.
+    
     if isinstance(var_type, Structure) and isinstance(decl, CompoundInit):
-        print('struct and compound')
-        # #
+        #'struct and compound')
+        # 
         struct_def = type_table[var_type.tag]
         init_list = decl
         
@@ -400,32 +428,44 @@ def typecheck_array_init(decl, var_type=None,type_table=None):
         current_offset = 0
         static_inits = []
         i = 0
-        
+        #struct_def.members)
+        # #('error here')
         for init_elem in init_list.initializer:
           
             member = struct_def.members[i]
             
             # Step 2: Insert padding zeroes if needed
-            if member.offset != current_offset:
+            if int(member.offset) > int(current_offset):
                 static_inits.append(ZeroInit(member.offset - current_offset))
+                current_offset = member.offset
 
+            # if isinstance(member.member_type,Pointer) and isinstance(member.member_type.ref,(Char,UChar,SChar)):
+            #     member.member_type = Array(_type = member.member_type.ref ,_int = len(init_elem.exp.string) +1 )
+            # else:
+                # _type = member.member_type
             # Step 3: Recursively build the init list for this member
-            more_static_inits = typecheck_array_init(init_elem,member.member_type, type_table)
-            print('more static inits',more_static_inits)
-            print('member type',member.member_type)
-            print('element',init_elem)
-            print('i',i)
+            more_static_inits = typecheck_array_init(init_elem,member.member_type, type_table,symbols)
             static_inits.extend(more_static_inits)
+        
+            # exit()
 
-            current_offset = member.offset + size(member.member_type, type_table)
+            _s  = size(member.member_type, type_table)
+            if _s >=8 and isinstance(member.member_type,Double):
+                _s = 8
+       
+            current_offset =member.offset +_s 
             i += 1
-            # #(static_inits)
-            # #
+            
+           
         # Step 4: Pad to full struct size if necessary
-        if struct_def.size != current_offset:
+
+        
+        if struct_def.size > current_offset:
             static_inits.append(ZeroInit(struct_def.size - current_offset))
-        #('exit')
-        print('returning',static_inits)
+        #('')
+        #'returning',static_inits)
+        #(static_inits)
+        # exit()/
         return static_inits
     if isinstance(var_type,Structure) and isinstance(decl,SingleInit):
         raise TypeError("Cannot initialize static structure with scalar expression")
@@ -435,15 +475,50 @@ def typecheck_array_init(decl, var_type=None,type_table=None):
         if isinstance(decl.exp,Cast):
             decl.exp.exp.set_type(var_type)
          
-            return flat_val(var_type, decl.exp.exp.value._int)
-        decl.exp.set_type(var_type)
-      
-        if isinstance(decl.exp,String):
-            #('here string')
+            return flat_val(var_type, decl.exp.exp.value._int,type_table)
+        
+   
+        # decl.exp.set_type(var_type)
+        
+
+        if isinstance(decl.exp,String) :
+            # exit()
+            #'here string')
+            #decl.exp)
+            decl.exp.string = decl.exp.string
+            #flat_val(var_type,decl.exp.string,type_table))
+            # 
+            
             decl.exp.set_type(var_type)
-            return flat_val(var_type,decl.exp.string)
+            decl.set_type(var_type)
+            if isinstance(var_type,Pointer):
+                string_id = get_string_id()
+                # #(decl.exp.string)
+                string_val = decl.exp.string
+                # #(symbols)
+                symbols[string_id] = {
+                    'type': Array(Char(), len(string_val) + 1),
+                    'val_type': Array(Char(), len(string_val) + 1),
+                    'attrs': ConstantAttr(StringInit(string_val, True)),
+                    'ret': None,
+                    'Double': None
+                }
+                # #('jere')
+                
+                # Create pointer initializer pointing to the string constant
+                new_init =PointerInit(string_id)
+            #     return [PointerInit()]
+                return [new_init]
+            return flat_val(var_type,decl.exp.string,type_table)
+        if isinstance(var_type,Pointer):
+            #('here')
+            
+            return [Constant(StaticInit.ULongInit(Const.constULong(int(decl.exp.value._int))))]
+        
+        
         decl.exp.set_type(var_type)
-        return flat_val(var_type, decl.exp.value._int)
+        
+        return flat_val(var_type, decl.exp.value._int,type_table)
     
     # Recursive case: CompoundInit.
     elif isinstance(decl, CompoundInit):
@@ -467,7 +542,7 @@ def typecheck_array_init(decl, var_type=None,type_table=None):
                 # If we expect nested initializers (i.e. an array of arrays)
                 if expected_inner is not None:
                     # Recursively flatten the row using the sub-type.
-                    flattened = typecheck_array_init(elem, var_type._type,type_table)
+                    flattened = typecheck_array_init(elem, var_type._type,type_table,symbols)
                     # If the row has fewer elements than expected, pad with ZeroInit(4) per element.
                   
                     if len(flattened) < expected_inner:
@@ -487,10 +562,10 @@ def typecheck_array_init(decl, var_type=None,type_table=None):
                 else:
                     # Scalar element case.
                     if isinstance(elem, CompoundInit):
-                        flattened = typecheck_array_init(elem, var_type._type,type_table)
+                        flattened = typecheck_array_init(elem, var_type._type,type_table,symbols)
                         result.extend(flattened)
                     elif isinstance(elem, SingleInit):
-                        result.extend(typecheck_array_init(elem, var_type._type,type_table))
+                        result.extend(typecheck_array_init(elem, var_type._type,type_table,symbols))
                     else:
                         # if isinstance(get_type(var_type),(Char,SChar,UChar)):
                         #     result.extend([Constant(CharInit(ConstChar(0)))])
@@ -508,10 +583,10 @@ def typecheck_array_init(decl, var_type=None,type_table=None):
                     if isinstance(get_type(var_type),(Char,SChar,UChar)):
                         result.extend([Constant(CharInit(ConstChar(0)))])
                     else:
-                            result.extend([ZeroInit(4)]*missing)
+                            result.extend([ZeroInit(4)])
                     # result.append(ZeroInit(4))
         return result
-    print('errror')
+    #'errror')
     return []
 
     
@@ -569,13 +644,13 @@ def round_up(offset, alignment):
     return ( (offset + alignment - 1) // alignment ) * alignment
 
 def check_for_incomplete(_type,type_table,current_structure = None):
-    print(_type)
+    #_type)
     if isinstance(_type,Pointer):
         check_for_incomplete(_type.ref,type_table,current_structure)
     if isinstance(_type,Array):
         check_for_incomplete(_type._type,type_table,current_structure)
     if isinstance(_type,Structure):
-        print('its a struct')
+        #'its a struct')
         if _type.tag in type_table:
             if len(type_table[_type.tag].members)==0:
                     raise TypeError(f'Structure is incompelete ')
@@ -594,16 +669,16 @@ def typecheck_structure_decl(struct_decl:StructDecl,type_table):
     # #(str_table)
     # #
     # struct_decl.tag =
-    # exit()
+    # 
     if len(struct_decl.members)==0 :
-        # exit()
+        # 
         return 
     # if len(struct_decl.members) ==0 :
-    #     print(struct_decl)
-    #     # exit()
+    #     #struct_decl)
+    #     # 
     #     return 
     validate_struct_definition(struct_decl,type_table)
-    #('exit valid struct defn')
+    #(' valid struct defn')
     member_entries = []
     names=set()
     struct_size = 0 
@@ -611,16 +686,16 @@ def typecheck_structure_decl(struct_decl:StructDecl,type_table):
 
     for member in struct_decl.members:
         # if isinstance(member.member_type,Structure):
-        print(struct_decl.tag)
-        # print(member.member_type._type)
+        #struct_decl.tag)
+        # #member.member_type._type)
         
         check_for_incomplete(member.member_type,type_table,struct_decl.tag)
-        # exit()       
+        #        
         if member.member_name.name in names:
             raise TypeError('duplicate member declaration')
         else:
             names.add(member.member_name.name)
-        print('after')
+        #'after')
         # names.append(member.member_name)
         member_alignment = alignment(member.member_type, type_table)
         member_offset = round_up(struct_size, member_alignment)
@@ -628,15 +703,36 @@ def typecheck_structure_decl(struct_decl:StructDecl,type_table):
         member_entries.append(m)
 
         s = size(member.member_type , type_table)
+        if isinstance(member.member_type,Double):
+            s = 8 
+        
+        
+        # #member)
+        # #'size of member',s)
+        # s = round(s,member_offset)
         struct_alignment = max(struct_alignment, member_alignment)
         struct_size = member_offset + s
+        # def align_offset( offset, align):
+        #         return (offset + align - 1) & ~(align - 1)
+            
+        # struct_size = align_offset(struct_size,8)
+        # if struct_alignment == 1:
+        #     struct_size = round_up(struct_size,8)
+        
+        #struct_size)
+        #struct_alignment)
+        # exit()
+    
    
         
         
     struct_size = round_up(struct_size,struct_alignment)
+    # if len(member_entries)==1:
+    #     struct_size = round_up(struct_size,8)
+        
     struct_def = StructEntry(struct_alignment,struct_size,member_entries)
     type_table[struct_decl.tag]=struct_def
-    # print('return struct')
+    # #'return struct')
     # return 
 
 def to_signed_8bit(x) :
@@ -680,9 +776,18 @@ def to_signed_8bit(x) :
 #             static_inits.append(ZeroInit(struct_def.size - current_offset))
 #         #('returning')
 #         return static_inits
+tmp_string_id = 0
+def get_string_id():
+    global tmp_string_id
+    tmp_string_id+=1
+    return f'string.{tmp_string_id}'
+    # if string_value not in self.string_to_id:
+    #     label = f".LC{self.counter}"
+    #     self.string_to_id[string_value] = label
+    #     self.counter += 1
 
 def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict,type_table:dict):
-    # print(decl)
+    # #decl)
     # #
     if isinstance(decl.var_type,Structure) and not isinstance(decl.storage_class,Extern):
         check_for_incomplete(decl.var_type,type_table)
@@ -756,12 +861,16 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict,type_
                 raise ValueError("Array initializer must be a CompoundInit or StringLiteral")
     
             else:
-                print(decl.var_type)
+                #decl.var_type)
                 # #
+                # 
+                # #decl.init)
+                #'going into typecheck itnit')
                 typecheck_init(decl.var_type, decl.init, symbols,type_table)
-                print('typed')
-                # #
-                new_init = Initial(typecheck_array_init(decl.init, decl.var_type,type_table))
+                # 
+                # #'typed')
+                # 
+                new_init = Initial(typecheck_array_init(decl.init, decl.var_type,type_table,symbols))
 
         
         elif isinstance(decl.var_type, Pointer):
@@ -795,7 +904,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict,type_
                     raise TypeError('String literal can only initialize char*')
                 
                 # Generate unique name for the string constant
-                string_id = f"string.{len([k for k in symbols if k.startswith('string.')])}"
+                string_id = get_string_id()
                 string_val = decl.init.exp.string
                 
                 # Add string constant to symbol table
@@ -835,11 +944,16 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict,type_
                 new_init = Initial(typecheck_init(decl.var_type, decl.init, symbols,type_table))
         
         elif isinstance(decl.var_type,Structure) and isinstance(decl.init,CompoundInit):
-            print('found struct')
+            #'found struct')
             # typecheck_init(decl.var_type,decl.init,symbols,type_table)
-            new_init = Initial(typecheck_array_init(decl.init,decl.var_type,type_table))
-            print(new_init)
-            print('typechecked')
+            typecheck_init(decl.var_type,decl.init,symbols,type_table)
+            new_init = Initial(typecheck_array_init(decl.init,decl.var_type,type_table,symbols))
+            #(decl.init)
+            #(new_init)
+            # exit()
+            #new_init)
+            #'typechecked')
+            # 
             # #
             # #/
         elif hasattr(decl.init, 'exp') and isinstance(decl.init.exp, Constant):
@@ -935,6 +1049,7 @@ def typecheck_file_scope_variable_declaration(decl: VarDecl, symbols: dict,type_
         'ret': decl.var_type,
         'Double': decl.var_type,
     }
+    # exit()
     return decl
 
 
@@ -1007,119 +1122,237 @@ def zero_initializer(_type,type_table=None):
     #    #
        return e
     elif isinstance(_type,Structure):
+        a = []
+        b=type_table[_type.tag]
+        for i in b.members:
+            e = zero_initializer(i.member_type,type_table)
+            if isinstance(e,SingleInit):
+                e.exp.set_type(i.member_type)
+            e.set_type(_type)
+            a.append(e)
         
-        b=type_table[_type.tag].size
-        e = ZeroInit(b)
-        # e.set_type(_type)
-        return e
+        # #(a)
+        
+        return CompoundInit(a,_type)
     else:
         raise TypeError(f"Unsupported type for zero initialization: {_type}")
 
 x__=0 
-
-def typecheck_init(target_type,init,symbols,type_table):
-    print('Inside typecheck init',init)
-    #(init)
-    if isinstance(target_type,Structure) and isinstance(init,CompoundInit):
-        # print('structure')
+def typecheck_init(target_type, init, symbols, type_table):
+    '''
+    Typecheck and normalize initializers (SingleInit and CompoundInit) for arrays and structs.
+    '''
+    # Struct initialization
+    if isinstance(target_type, Structure) and isinstance(init, CompoundInit):
         struct_def = type_table[target_type.tag]
-        if len(struct_def.members)==0:
-            raise TypeError('Incomplete struct decl')
-        if len(init.initializer) > len(struct_def.members): 
-         
-            raise TypeError("Too many elements in structure initializer")
-        i = 0
-        typechecked_list = []
-        init_list = init.initializer
-        # print([init_elem for init_elem in init_list])
-        # #
-        for init_elem in init_list: 
-            t = struct_def.members[i].member_type
-            print(t)
-            typechecked_elem = typecheck_init(t, init_elem, symbols, type_table)
-            if isinstance(typechecked_elem,SingleInit) and isinstance(typechecked_elem.exp,AddOf) and isinstance(typechecked_elem.exp.exp._type,Array) and isinstance(t,Pointer):
-                type_elem = typechecked_elem.exp.exp._type._type
-                
-                if not isinstance(type_elem,type(t.ref)):
-                    raise TypeError('cant assign members do to incompatible type')
-            # print(typechecked_elem)
-                    # #
-            
-            typechecked_list.append(typechecked_elem)
-           
-            i+=1
-            
-        while i < len(struct_def.members): 
-            t = struct_def.members[i].member_type
-           
-        
-            typechecked_list.append(zero_initializer(t,type_table))
-            i+=1
-        exp = CompoundInit(typechecked_list)
-        exp.set_type(target_type)
-        #('Exit typevheck init')
-        return exp 
-   
-    if isinstance(target_type,Array) and isinstance(init,SingleInit) and isinstance(init.exp,String):
-        validate_type_specifier(target_type,type_table)
-        if not isinstance(target_type._type,(Char,UChar,SChar)):
-            raise TypeError("Can't initialize a non-character type with a string literal")
-       
-       
-     
-   
-        if init.exp.string.startswith('"'):
-            init.exp.string=init.exp.string[1:-1]
-     
+        if not struct_def.members:
+            raise TypeError('Incomplete struct declaration')
+        if len(init.initializer) > len(struct_def.members):
+            raise TypeError('Too many elements in structure initializer')
 
-        if len(init.exp.string)>target_type._int.value._int:
-            raise TypeError("Too many characters in string literal")
-        
-        init.exp.string= init.exp.string+''.join(['\0'*(target_type._int.value._int - len(init.exp.string) -1)])
-        init.exp.set_type(target_type._type)
+        # Typecheck explicit initializers
+        checked = []
+        for idx, init_elem in enumerate(init.initializer):
+            member_type = struct_def.members[idx].member_type
+            #(member_type)
+            tc_elem = typecheck_init(member_type, init_elem, symbols, type_table)
+            if isinstance(tc_elem,SingleInit) and isinstance(tc_elem.exp,AddOf) and isinstance(tc_elem.exp.exp,String) and isinstance(member_type,Pointer):
+                if not isinstance(tc_elem.exp.exp._type._type,type(member_type.ref)):
+                    raise TypeError('tried to assign an array to pointer of different types')
+            # #(tc_elem.exp.exp._type)
+            # exit()
+            # Preserve ZeroInit wrappers
+            if not isinstance(tc_elem, ZeroInit):
+                tc_elem.set_type(member_type)
+            checked.append(tc_elem)
+
+        # Zero-fill any omitted members
+        for member in struct_def.members[len(checked):]:
+            zi = zero_initializer(member.member_type, type_table)
+            checked.append(zi)
+
+        # Return a fresh CompoundInit for the struct
+        result = CompoundInit(checked)
+        result.set_type(target_type)
+        return result
+
+    # Array-of-char and string literal
+    if isinstance(target_type, Array) and isinstance(init, SingleInit) and isinstance(init.exp, String):
+        validate_type_specifier(target_type, type_table)
+        base_t = target_type._type
+        if not isinstance(base_t, (Char, UChar, SChar)):
+            raise TypeError("Can't initialize non-char array with string literal")
+        s = init.exp.string
+        if s.startswith('"') and s.endswith('"'):
+            s = s[1:-1]
+        if len(s) > target_type._int.value._int:
+            raise TypeError('String literal too long')
+        # pad and set types
+        s = s + '\0' * (target_type._int.value._int - len(s))
+        init.exp.string = s
+        init.exp.set_type(base_t)
         init.set_type(target_type)
-        
-        #('Exit if isinstance(target_type,Array) and isinstance(init,SingleInit) and isinstance(init.exp,String):')
-        #('Exit typevheck init')
-        
         return init
-    if isinstance(target_type,Array) and isinstance(init,CompoundInit):
-        validate_type_specifier(target_type,type_table)
+
+    # Array initialization
+    if isinstance(target_type, Array) and isinstance(init, CompoundInit):
+        validate_type_specifier(target_type, type_table)
+    # validate_type_specifier(target_type,type_table)
         if len(init.initializer) > int(target_type._int.value._int):
             
             raise TypeError('Wrong no of valus in initializer')
-        typechecked_list = []
-        for init_elem in init.initializer:
-        
-            typechecked_elem = typecheck_init(target_type._type,init_elem,symbols,type_table)
-            typechecked_list.append(typechecked_elem)
-
-        while len(typechecked_list)<target_type._int.value._int:
-            typechecked_list.append(zero_initializer(target_type._type,type_table)) 
-            init.initializer = typechecked_list
+        max_elems = int(target_type._int.value._int)
+        new_list = []
+        # Typecheck each element
+        for elem in init.initializer:
+            tc = typecheck_init(target_type._type, elem, symbols, type_table)
+            new_list.append(tc)
+        # Zero-fill remaining
+        while len(new_list) < max_elems:
+            new_list.append(zero_initializer(target_type._type, type_table))
+        init.initializer = new_list
         init.set_type(target_type)
-       
-        
         return init
-    if isinstance(init,SingleInit):
-        print(target_type)
-        
-        typechecked_exp = typecheck_exp_and_convert(init.exp, symbols,None,type_table=type_table)
-        
-        cast_exp = convert_by_assignment(typechecked_exp, target_type)
-        init.exp=cast_exp
+
+    # Single scalar or pointer init
+    if isinstance(init, SingleInit):
+        tc_exp = typecheck_exp_and_convert(init.exp, symbols, None, type_table=type_table)
+        casted = convert_by_assignment(tc_exp, target_type)
+        init.exp = casted
         init.exp.set_type(target_type)
         init.set_type(target_type)
+        return init
+
+    # Fallback: pass through
+    return init
+
+
+# def typecheck_init(target_type,init,symbols,type_table):
+#     #'Inside typecheck init',init)
+#     #(init)
+#     if isinstance(target_type,Structure) and isinstance(init,CompoundInit):
+#         # #'structure')
+#         #('inside')
+#         struct_def = type_table[target_type.tag]
+#         if len(struct_def.members)==0:
+#             raise TypeError('Incomplete struct decl')
+#         if len(init.initializer) > len(struct_def.members): 
+#             raise TypeError("Too many elements in structure initializer")
+#         i = 0
+#         typechecked_list = []
+#         init_list = init.initializer
+#         # #[init_elem for init_elem in init_list])
+#         # #
+#         init.set_type(target_type)
+#         for init_elem in init_list: 
+#             t = struct_def.members[i].member_type
+
+#             typechecked_elem = typecheck_init(t, init_elem, symbols, type_table)
+#             # typechecked_elem.set_type(t)
+#             if not isinstance(typechecked_elem,ZeroInit):
+#                 typechecked_elem.set_type(t)
+#             # typechecked_elem.exp.set_type(t)
+            
+#             if isinstance(typechecked_elem,SingleInit) and isinstance(typechecked_elem.exp,AddOf) and isinstance(typechecked_elem.exp.exp._type,Array) and isinstance(t,Pointer):
+#                 type_elem = typechecked_elem.exp.exp._type._type
+                
+#                 if not isinstance(type_elem,type(t.ref)):
+#                     raise TypeError('cant assign members do to incompatible type')
+#             # #typechecked_elem)
+#                     # #
+            
+#             typechecked_list.append(typechecked_elem)
+#             #typechecked_list)
+#             # 
+#             i+=1
+            
+#         while i < len(struct_def.members): 
+#             t = struct_def.members[i].member_type
+#             x = zero_initializer(t,type_table)
+#             if isinstance(x,List):
+#                 typechecked_list.extend(x)
+#             else:
+#                 typechecked_list.append(x)
+#             i+=1
+#         exp = CompoundInit(typechecked_list)
+#         # exp._type = 
+#         #'error here')
+#         # #exp)
+        
+#         exp.set_type(target_type)
+#         # #'exp2')
+#         #('Exit typevheck init')
+#         #(exp)
+#         # exit()
+#         #('exit')
+#         return exp 
+   
+#     if isinstance(target_type,Array) and isinstance(init,SingleInit) and isinstance(init.exp,String):
+#         # #('array and tring')
+        
+#         validate_type_specifier(target_type,type_table)
+#         if not isinstance(target_type._type,(Char,UChar,SChar)):
+#             raise TypeError("Can't initialize a non-character type with a string literal")
        
-        return init
+       
+     
+   
+#         if init.exp.string.startswith('"'):
+#             init.exp.string=init.exp.string[1:-1]
+     
+
+#         if len(init.exp.string)>target_type._int.value._int:
+#             raise TypeError("Too many characters in string literal")
+#         #'dsadsa')
+#         init.exp.string= init.exp.string+''.join(['\0'*(target_type._int.value._int - len(init.exp.string) -1)])
+#         init.exp.set_type(target_type._type)
+#         init.set_type(target_type)
+        
+#         #('Exit if isinstance(target_type,Array) and isinstance(init,SingleInit) and isinstance(init.exp,String):')
+#         #('Exit typevheck init')
+        
+#         return init
+#     if isinstance(target_type,Array) and isinstance(init,CompoundInit):
+#         #('array and cmpd')
+#         validate_type_specifier(target_type,type_table)
+#         if len(init.initializer) > int(target_type._int.value._int):
+            
+#             raise TypeError('Wrong no of valus in initializer')
+#         typechecked_list = []
+#         for init_elem in init.initializer:
+        
+#             typechecked_elem = typecheck_init(target_type._type,init_elem,symbols,type_table)
+#             typechecked_list.append(typechecked_elem)
+
+#         while len(typechecked_list)<target_type._int.value._int:
+#             typechecked_list.append(zero_initializer(target_type._type,type_table)) 
+#             init.initializer = typechecked_list
+#         init.set_type(target_type)
+       
+        
+#         return init
+#     if isinstance(init,SingleInit):
+#         #target_type)
+        
+#         typechecked_exp = typecheck_exp_and_convert(init.exp, symbols,None,type_table=type_table)
+        
+#         cast_exp = convert_by_assignment(typechecked_exp, target_type)
+#         # #'da')
+#         init.exp=cast_exp
+#         init.exp.set_type(target_type)
+#         init.set_type(target_type)
+       
+#         return init
     
-    else:
-        return init
+#     else:
+        
+#         return init
     
 
 _x = 0 
 def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict,type_table):
     try:
+        #'vardecl')
         # global _x 
         if isinstance(decl.var_type,Structure) and isinstance(decl.init,SingleInit) and isinstance(decl.init.exp,Constant):
             raise TypeError('cant init a sigle var for struct')
@@ -1175,9 +1408,14 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict,type_table
                 if isinstance(decl.var_type, Array):
                     initial_value = Initial([ZeroInit(decl.var_type._int.value._int * size(decl.var_type._type,type_table))])
                 
-                else:
+                elif not isinstance(decl.var_type,Structure):
                     # #('returning')
                     initial_value = Initial([Constant(IntInit(ConstInt(0)))])
+                else:
+                    #'here')
+                    size_ = type_table[decl.var_type.tag].size
+                    # 
+                    initial_value = Initial([ZeroInit(size_)])
      
             elif isinstance(decl.var_type, Array) and isinstance(decl.init, SingleInit):
                 validate_type_specifier(decl.var_type,type_table)
@@ -1224,7 +1462,7 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict,type_table
                         raise TypeError('String literal can only initialize char*')
                     
                     # Generate unique name for the string constant
-                    string_id = f"string.{len([k for k in symbols if k.startswith('string.')])}"
+                    string_id = get_string_id()
                     string_val = decl.init.exp.string
                     if string_val.startswith('"'):
                         string_val = string_val[1:-1]
@@ -1247,13 +1485,15 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict,type_table
                     typecheck_init(decl.var_type, decl.init, symbols,type_table)
               
                     # #
-                    initial_value = Initial(typecheck_array_init(decl.var_type,decl.init,type_table))
-                
+                    initial_value = Initial(typecheck_array_init(decl.init,decl.var_type,type_table,symbols))
+                    #initial_value)
+                    # 
+                # 
             elif isinstance(decl.init, CompoundInit):
-                # print('exit')
+                # #'')
                 typecheck_init(decl.var_type, decl.init, symbols,type_table)
             
-                initial_value = Initial(typecheck_array_init(decl.init, decl.var_type))
+                initial_value = Initial(typecheck_array_init(decl.init, decl.var_type,symbols))
                 #(initial_value)
              
                     
@@ -1378,8 +1618,13 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict,type_table
                         val_type = symbols[decl.init.exp.identifier.name]['val_type']
                         if isinstance(val_type,Pointer) and not isinstance(decl.var_type.ref,type(val_type.ref)):
                             raise TypeError("cannot convert char * to a signed char *")
+                # #('init')
+                # #(decl.init)
                 x = typecheck_init(decl.var_type, decl.init, symbols,type_table)
-               
+                #x)
+                # exit()
+                # 
+                # #(x)
                 if isinstance(decl.var_type, Pointer) and (
                     (isinstance(x, Constant) or isinstance(x, Var)) and
                     not isinstance(x.get_type(), Pointer)):
@@ -1392,7 +1637,8 @@ def typecheck_local_variable_declaration(decl: VarDecl, symbols: dict,type_table
                     raise ValueError('Invalid l value')
                 decl.init = x
                 decl.init = convert_to(decl.init, decl.var_type)
-               
+                # #(decl.init)
+                # exit()
             return decl
                 
     except Exception as e:
@@ -1413,7 +1659,7 @@ def is_complete(t, type_table=None):
         return not isinstance(t,Void)
 
 def is_pointer_to_complete(t,type_table):
-    print('is pointer to complete')
+    #'is pointer to complete')
     if isinstance(t,Pointer):
         return is_complete(t.ref,type_table)
     return False
@@ -1425,8 +1671,8 @@ def check_param_types(t1,t2):
     if isinstance(t1,Pointer) and isinstance(t2,Pointer):
         check_param_types(t1.ref,t2.ref)
     if isinstance(t1,Array) and isinstance(t2,Array):
-        # print()
-        # print(t2)
+        # #)
+        # #t2)
         if t1._int.value._int !=t2._int.value._int:
             raise SyntaxError('wrong array passed in param')
         check_param_types(t1._type,t2._type)
@@ -1464,8 +1710,8 @@ def check_fun_decl_compatibility(decl, old_decl,type_table=None):
       int nested_array_param(int a[2][3]);    // adjusted to int (*a)[3]
       int nested_array_param(int (*a)[3]);      // must match inner dimension (3)
     """
-    print(decl.params)
-    print(old_decl)
+    #decl.params)
+    #old_decl)
     # #
     new_fun_type = decl.fun_type
     old_fun_type = old_decl['fun_type']
@@ -1476,10 +1722,10 @@ def check_fun_decl_compatibility(decl, old_decl,type_table=None):
     
     for new_param, old_param in zip(decl.params, old_fun_type.params):
         # new_param = resolve_type(new_param)
-        # print(new_param)
+        # #new_param)
         # #
-        print(new_param)
-        print(old_param)
+        #new_param)
+        #old_param)
         # #
         # if not isinstance(new_param,type(old_param._type)):
             
@@ -1488,8 +1734,8 @@ def check_fun_decl_compatibility(decl, old_decl,type_table=None):
         
         if isinstance(new_param._type,Structure) and isinstance(old_param._type,Structure):
             if new_param._type.tag != old_param._type.tag:
-                print('new parameters',new_param)
-                print('old prams',old_param)
+                #'new parameters',new_param)
+                #'old prams',old_param)
                 # #
                 raise SyntaxError("Function parameter type mismatch")
 
@@ -1543,14 +1789,14 @@ def check_fun_decl_compatibility(decl, old_decl,type_table=None):
       
 
 def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope,type_table:dict):
-    print('func start')
+    #'func start')
     if isinstance(decl.fun_type.base_type,Structure) and not isinstance(decl.body,Null):
-        # print(decl.fun_type)
+        # #decl.fun_type)
         check_for_incomplete(decl.fun_type.base_type,type_table) 
     # #
     # if isinstance(decl.body,Null):
     # check_for_incomplete(decl.fun_type.base_type,type_table)
-    # print(decl.fun_type)
+    # #decl.fun_type)
     # #
     #     #
     if isinstance(decl.fun_type,FunType) and isinstance(decl.fun_type.base_type,Array):
@@ -1570,7 +1816,7 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope,
         
         param_name = param.name.name
         if isinstance(param._type,Structure):
-            # print(decl.body)
+            # #decl.body)
             # #
             if not isinstance(decl.body,Null):
                 check_for_incomplete(param._type,type_table)
@@ -1693,10 +1939,10 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope,
                 
             for stmt in decl.body:
                 if not isinstance(stmt, Return):
-                    print('body')
-                    # print
+                    #'body')
+                    # #
                     typecheck_statement(stmt, symbols, fun_type.base_type,type_table)
-                    print('body exit')
+                    #'body ')
                 else:
                     if stmt.exp is not None and not isinstance(stmt.exp, Null):
                         typed_return = typecheck_exp_and_convert(stmt.exp, symbols, fun_type.base_type,type_table) 
@@ -1713,7 +1959,7 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope,
         }
 
         if has_body:
-            print('func body')
+            #'func body')
            
             for param in decl.params:
                 #(param.name)
@@ -1727,7 +1973,7 @@ def typecheck_function_declaration(decl: FunDecl, symbols: dict, is_block_scope,
             # decl.params=adjusted_params
             stmts=[]
             for stmt in decl.body:
-                print('\nSTMT',stmt)
+                #'\nSTMT',stmt)
                 if not isinstance(stmt, Return):
                     #('\nType checking statement',stmt,decl.fun_type.base_type)  
                     
@@ -1757,7 +2003,7 @@ def validate_type_specifier(t,type_table=None):
         for param in t.params:
             validate_type_specifier(param._type,type_table)
         validate_type_specifier(t.base_type,type_table)        
-    #('exit validate type specifier')
+    #(' validate type specifier')
     return   
 
 def validate_dot_l_value(expr:Dot):
@@ -1792,7 +2038,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
             #('Here params')
             # validate_type_specifier(arg,type_table)
             
-            # print(arg)
+            # #arg)
             # #
             
             # if isinstance(arg._type,Structure):
@@ -1809,7 +2055,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
                        
                         raise ValueError('Invalid pointer type')
 
-        #('exit param for loop')
+        #(' param for loop')
       
         if not isinstance(fun_entry.get('fun_type'), FunType):
             raise SyntaxError(f"Variable '{fun_name}' used as a function.")
@@ -1835,7 +2081,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
             if isinstance(typed_arg._type,Structure) and not isinstance(paramType,Structure):
                 
                 raise TypeError(f'Cannot pass struct arg to {paramType} type.')
-            # print('errpr here')
+            # #'errpr here')
             
             if not isinstance(typed_arg._type,Structure) and  isinstance(paramType,Structure):
                 raise TypeError(f'Cannot pass {typed_arg._type} to struct type.')
@@ -1843,18 +2089,18 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
                 converted_args.append(convert_by_assignment(typed_arg, paramType))
             else:
                 converted_args.append(convert_by_assignment(typed_arg, paramType))
-            # print(converted_args)
+            # #converted_args)
             
             #(arg,params)
             # #('Converted args',converted_args)
         # #('error over here ')
         e.args = converted_args
         e.set_type(f_type.base_type)
-        # print(e)
+        # #e)
         if isinstance(e._type,Structure):
             check_for_incomplete(e._type,type_table)
         
-        print('Type checked function call')
+        #'Type checked function call')
         return e
     elif isinstance(e,String):
         if e.string.startswith('"'):
@@ -1880,7 +2126,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
         return e
 
     elif isinstance(e, Return):
-        print('return')
+        #'return')
         # # 
         # global x
         # if x==1:
@@ -1905,7 +2151,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
                     if e.exp.get_type().tag != func_type.tag:
                         raise TypeError(f'invalid return type struct')
              
-                # print(e.exp._type)
+                # #e.exp._type)
                 # # #
                 # if isinstance(func_type,Structure):
                 #     check_for_incomplete(func_type,type_table)
@@ -1950,12 +2196,12 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
         typed_inner = typecheck_exp_and_convert(e.exp, symbols,None,type_table)
         e.exp = typed_inner
         if isinstance(e.exp.get_type(),Structure):
-            print('eeor here')
+            #'eeor here')
             
             check_for_incomplete(e.exp.get_type(),type_table)
         
-        # print(e.exp)
-        # print(e.target_type)
+        # #e.exp)
+        # #e.target_type)
         # #
         
         if( isinstance(e.target_type,Pointer) and isinstance(typed_inner.get_type(),Double))or ( 
@@ -1987,10 +2233,10 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
        
         left_type = type_left.get_type()
         if isinstance(type_right.get_type(),Structure):
-            print('eeor here')
+            #'eeor here')
             check_for_incomplete(type_right.get_type(),type_table)
         if isinstance(left_type,Structure):
-            print('eeor here')
+            #'eeor here')
             
             check_for_incomplete(left_type,type_table)
         if isinstance(type_right.get_type(),Structure) and isinstance(left_type,Structure):
@@ -2000,7 +2246,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
         if isinstance(left_type,Structure) and not isinstance(type_right.get_type(),Structure):
             raise TypeError('cannot assign scalar val to struct type')
         if isinstance(type_left,Dot):
-            print(type_left)
+            #type_left)
             # #
             validate_dot_l_value(type_left)
             
@@ -2029,26 +2275,26 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
         return e
 
     elif isinstance(e, Binary):
-        print('binary')
+        #'binary')
   
         typed_e1 = typecheck_exp_and_convert(e.left, symbols,func_type,type_table)
         typed_e2 = typecheck_exp_and_convert(e.right, symbols,func_type,type_table)
         if e.operator in (BinaryOperator.EQUAL,BinaryOperator.NOT_EQUAL):
             t1 = typed_e1.get_type()
             t2 = typed_e2.get_type()
-            # print(t1,t2)
+            # #t1,t2)
             if isinstance(t1,Pointer)  or isinstance(t2,Pointer):
                 
                 common_type = get_common_pointer_type(typed_e1, typed_e2)
             
             elif is_scalar(t1) and is_complete(t1) and is_scalar(t2) and is_complete(t2):
-                # print(t1)
-                # print(t2)
+                # #t1)
+                # #t2)
                 # #
                 common_type = get_common_type(t1, t2)
             else:
-                # print('gfaf')
-                # print(t1,t2)
+                # #'gfaf')
+                # #t1,t2)
                 raise TypeError("Invalid operands to equality expression")
             converted_e1 = convert_to(typed_e1, common_type)
             converted_e2 = convert_to(typed_e2, common_type)
@@ -2270,9 +2516,9 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
     elif isinstance(e, AddOf):
      
         if not isinstance(e.exp, Constant) and isinstance(e.exp, (Var,Subscript,String,Arrow,Dot)):
-            print('inner add of ',e.exp)
+            #'inner add of ',e.exp)
             typed_inner = typecheck_exp(e.exp, symbols,func_type,type_table=type_table)
-            print('typed inner addof',typed_inner)
+            #'typed inner addof',typed_inner)
        
             referenced_t = typed_inner.get_type()
        
@@ -2280,9 +2526,9 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
             # e.exp.set_type(Pointer(referenced_t))
             e.set_type(Pointer(referenced_t))
 
-            print(func_type)
-            print(e.get_type())
-            # exit()
+            #func_type)
+            #e.get_type())
+            # 
             
             if func_type is not None and isinstance(func_type,Pointer):
                 if not isinstance(e.get_type().ref,Pointer) and not isinstance(func_type.ref,Pointer):
@@ -2311,8 +2557,8 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
             # e.exp.set_type(Pointer(referenced_t))
             e.set_type(Pointer(referenced_t))
 
-            print(func_type)
-            print(e.get_type())
+            #func_type)
+            #e.get_type())
 
             if func_type is not None and isinstance(func_type,Pointer):
                 if not isinstance(e.get_type().ref,Pointer) and not isinstance(func_type.ref,Pointer):
@@ -2340,8 +2586,8 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
         typed_e2 = typecheck_exp_and_convert(e.exp2, symbols,func_type,type_table)
         t1 = typed_e1.get_type()
         t2 = typed_e2.get_type()
-        # print(t1)
-        # print(t2)
+        # #t1)
+        # #t2)
         
         if isinstance(t1,Pointer) and isinstance(t1.ref,Structure):
             check_for_incomplete(t1.ref,type_table)
@@ -2376,7 +2622,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
     elif isinstance(e,SizeOf):
      
         typed_inner =typecheck_exp(e.exp,symbols,func_type,type_table)
-        print(typed_inner)
+        #typed_inner)
         check_for_incomplete(typed_inner.get_type(),type_table)
         # #
         if not is_complete(typed_inner.get_type(),type_table):
@@ -2404,7 +2650,7 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
         typed_structure = typecheck_exp_and_convert(e.structure,symbols,func_type,type_table)
         type_s = typed_structure.get_type()
      
-        print(typed_structure)   
+        #typed_structure)   
         # #
         if isinstance(type_s,Structure):
            
@@ -2417,16 +2663,19 @@ def typecheck_exp(e: Exp, symbols: dict, func_type=Optional,type_table=None):
                     found = True 
             if found==False :
                 raise TypeError('Member not found with the same name')
-            member_exp = Dot(typed_structure,e.member)
-            member_exp.set_type(member_def.member_type)
+            e.structure =typed_structure
+            e.set_type(member_def.member_type)
+            # member_exp.set_type(member_def.member_type)
+            # #member_exp)
+            # 
             # #(member_exp)
             # #
-            #('exit dot expr',member_exp)
-            return member_exp
+            #(' dot expr',member_exp)
+            return e
         else:
             raise TypeError("Tried to get member of non-structure")
     elif isinstance(e,Arrow):
-        # print('arrow expr')
+        # #'arrow expr')
         # typed_structure = typecheck_exp_and_convert(e)
         typed_pointer = typecheck_exp_and_convert(e.pointer,symbols,func_type,type_table)
         type_s = typed_pointer.get_type().ref
@@ -2508,8 +2757,8 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
                             # 
             else:
                 if not isinstance(statement.init,Null):
-                    # print(statement.init)
-                    # print(symbols[statement.init.exp.exp.identifier.name]['val_type'])
+                    # #statement.init)
+                    # #symbols[statement.init.exp.exp.identifier.name]['val_type'])
                     # # 
                     if isinstance(statement.init,InitExp) and isinstance(statement.init.exp,Expression) and isinstance(statement.init.exp.exp,Var):
                         # #
@@ -2517,7 +2766,7 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
                             if check_for_incomplete(symbols[statement.init.exp.exp.identifier.name]['val_type'],type_table):
                                 raise TypeError('cannot use in complete struct in for init')
                             # #
-                    print(statement.init)
+                    #statement.init)
                     
                     # #
                     typecheck_statement(statement.init, symbols, fun_type,type_table)
@@ -2556,7 +2805,7 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
         elif isinstance(statement.declaration, VarDecl):
             typecheck_local_variable_declaration(statement.declaration, symbols,type_table)
         elif isinstance(statement.declaration,StructDecl):
-            # exit()
+            # 
             typecheck_structure_decl(statement.declaration,type_table)
             
         else:
@@ -2567,7 +2816,7 @@ def typecheck_statement(statement: Statement, symbols: dict, fun_type=Optional[s
 
     elif isinstance(statement, If):
         typecheck_exp_and_convert(statement.exp, symbols, fun_type,type_table=type_table)
-        print(statement.exp)
+        #statement.exp)
         if not isinstance(statement.exp,Null) and not is_scalar(statement.exp._type):
             raise TypeError('If expression can must be scalar.')
         # #
@@ -2617,22 +2866,22 @@ def typecheck_program(program: Program):
     symbols = {}
     type_table={}
     for stmt in program.function_definition:
-        # print('Type checking',stmt)
+        # #'Type checking',stmt)
         if isinstance(stmt, VarDecl):
-            print('var decl')
+            #'var decl')
             #(stmt)
             typecheck_file_scope_variable_declaration(stmt, symbols,type_table)
         elif isinstance(stmt, FunDecl):
-            print('Fun decl',stmt)
+            #'Fun decl',stmt)
             #(stmt)
             
             typecheck_function_declaration(stmt, symbols, False,type_table)
         elif isinstance(stmt,StructDecl):
-            print('struct decl')
+            #'struct decl')
             typecheck_structure_decl(stmt,type_table)
             #('after struct decl')
         else:
-            print('statement')
+            #'statement')
             typecheck_statement(stmt, symbols,type_table=type_table)
-    #('exiting')
+    #('ing')
     return program, symbols,type_table
