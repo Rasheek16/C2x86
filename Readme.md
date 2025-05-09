@@ -3,7 +3,7 @@
 
 PCC is a fully-featured C compiler for the **x86-64 architecture**, written entirely in Python. 
 Designed for clarity and modularity, it implements the complete C compilation pipeline — from 
-source to executable — without relying on parser generators like Yacc/Lex.
+source to assembly — without relying on parser generators like Yacc/Lex.
 
 📘 Inspired by *Writing a C Compiler* by Nora Sandler, this project extends it significantly by 
 implementing robust semantic analysis, IR generation, optimizations, struct and pointer support, 
