@@ -61,12 +61,12 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
     # 1. Insert AllocateStack at the beginning of the instruction list
     for assembly_function in assembly_functions:
         
-        # print(stack_allocation)
+        # #stack_allocation)
         allocation = round_up_to_multiple_of_16(stack_allocation[assembly_function.name]+8)
-        # print(allocation)
+        # #allocation)
         allocate_instr = AllocateStack(value=allocation)
         assembly_function.instructions.insert(0, allocate_instr)
-        # print(assembly_function.instructions)
+        # #assembly_function.instructions)
     
         # logger.debug(f"Inserted AllocateStack({allocate_instr.value}) at the beginning of function '{assembly_function.name}'.")
         
@@ -76,21 +76,22 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
         # Iterate over each instruction in the function's instruction list
         if isinstance(assembly_function,AssemblyStaticVariable):
             pass
-            # print(assembly_function)
+            # #assembly_function)
             
             # new_instructions=fix_instr(assembly_function.init,new_instructions,assembly_function)
-            # print(assembly_function.init)
+            # #assembly_function.init)
             # assembly_function.init=new_instructions[0]
         elif isinstance(assembly_function,AssemblyFunction):
-            # print(assembly_function)
+            # #assembly_function)
             for instr in assembly_function.instructions:
-                # print(instr)
+                # #instr)
                 # Handle 'Mov' instructions which move data between operands
                 new_instructions=fix_instr(instr,new_instructions)
-                # print(new_instructions)
+                # #new_instructions)
             assembly_function.instructions = new_instructions
-        else:
-            print('Invalid func in ',assembly_function)
+        # else:
+            # print('Invalid func in ',assembly_function)
+            # raise ValueError(f'Invalid func in {assembly_function}')
     
         # Debug Statement: Confirm completion of instruction fixes
         # logger.debug(f"Completed fixing instructions for function '{assembly_function.name}'.")
@@ -98,13 +99,13 @@ def fix_up_instructions(assembly_program: AssemblyProgram, stack_allocation: int
 
 
 def fix_instr(instr,new_instructions:list):
-    print(instr)
+    #instr)
     if isinstance(instr, Mov):
         # Handle large immediate values that need truncation
         if isinstance(instr.src, Imm):
             # If this is a long to int conversion (moving to a 32-bit register/memory)
             if instr._type == AssemblyType.longWord and int(instr.src.value) >= 2147483647 :
-                print('here')
+                #'here')
                 # Properly truncate the value to 32 bits
                 truncated_value = int(instr.src.value) & 0xFFFFFFFF
                 # If value is too large for direct move, use intermediate register
@@ -187,10 +188,10 @@ def fix_instr(instr,new_instructions:list):
 
     # Handle 'Idiv' instructions which perform integer division
     elif isinstance(instr, (Idiv,Div)):
-        # print(instr)
+        # #instr)
         # exit()
         
-        # print('in  idviv',instr)
+        # #'in  idviv',instr)
         
         # Check if the operand is a constant (immediate value) or a Stack operand
         
@@ -225,7 +226,7 @@ def fix_instr(instr,new_instructions:list):
             
         
         else:
-            print('here')
+            #'here')
             new_instructions.append(instr)
             # print
             # exit()
@@ -238,7 +239,7 @@ def fix_instr(instr,new_instructions:list):
     # Handle 'Binary' instructions which perform add, subtract, and multiply operations
     elif isinstance(instr, Binary):
         
-        # print('in bin',instr)
+        # #'in bin',instr)
         
         if instr.operator == BinaryOperator.XOR and not isinstance(instr.src2,Reg):
             mov = Mov(
@@ -313,7 +314,7 @@ def fix_instr(instr,new_instructions:list):
                     src1=Reg(Registers.R10),
                     src2=instr.src2,
                 )
-                # print(mov_to_reg,binary_op)
+                # #mov_to_reg,binary_op)
             
                 # Append the transformed instructions to the new_instructions list
                 new_instructions.extend([mov_to_reg, binary_op])
@@ -343,7 +344,7 @@ def fix_instr(instr,new_instructions:list):
                 # Create a Mov from src1 Stack operand to R11 register
                 # Create a new Binary operation (imul) using R11 as the source
                 if instr._type==AssemblyType.double :
-                    print(instr)
+                    #instr)
                     
                     if not isinstance(instr.src2,Reg): 
                         movl = Mov(
@@ -473,11 +474,11 @@ def fix_instr(instr,new_instructions:list):
             Typically used to reserve space on the stack for local variables or temporaries.
             Since AllocateStack does not contain operands, no replacement is needed.
         """
-        # print(instr.value)
+        # #instr.value)
         # exit()
         
         new_instructions.append(Binary(operator=BinaryOperator.SUBTRACT,assembly_type=AssemblyType.quadWord,src1=Imm(instr.value),src2=Reg(Registers.SP)))
-        print('in allocate')
+        #'in allocate')
         
         # global count
    
@@ -491,11 +492,11 @@ def fix_instr(instr,new_instructions:list):
         """
         # nonlocal count=
         # count+=1
-        # print(instr)
+        # #instr)
         # if count ==2:
         #     exit()
         if instr._type == AssemblyType.double and not isinstance(instr.operand2,Reg):
-            print(instr)
+            #instr)
             # exit()
             mov = Mov(
                 assembly_type=instr._type,
@@ -533,7 +534,7 @@ def fix_instr(instr,new_instructions:list):
                 new_instructions.extend([mov,mov2,compl2])
     
             else:
-                # print('Skipped')
+                # #'Skipped')
                 # exit()
                 
                 new_instructions.extend([mov,compl])
@@ -770,7 +771,7 @@ def fix_instr(instr,new_instructions:list):
         else:
             new_instructions.append(instr)
     elif isinstance(instr,Cvttsd2si):
-        print(instr)
+        #instr)
         if not isinstance(instr.dst,Reg):
             # exit()
             # if instr._type == AssemblyType.byte:
