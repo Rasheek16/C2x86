@@ -133,11 +133,12 @@ class Data(Operand):
     """
     A pseudo identifier (Grammar: Pseudo(identifier)).
     """
-    def __init__(self, name):
+    def __init__(self, name,val=None):
         self.identifier = name
+        self.val = val 
 
     def __repr__(self):
-        return f"Data(identifier={self.identifier})"
+        return f"Data(identifier={self.identifier},val={self.val})"
 
 class Memory(Operand):
     """
@@ -192,7 +193,7 @@ class MovZeroExtend(Instruction):
         # self._type=assembly_type
 
     def __repr__(self):
-        return f"MovZeroExtend(assembly_src = {self.assembly_type_src},assembly_dst = {self.assembly_type_dst},src={repr(self.src)}, dest={repr(self.dest)})"
+        return f"MovZeroExtend(assembly_type_src = {self.assembly_type_src},assembly_dst = {self.assembly_type_dst},src={repr(self.src)}, dest={repr(self.dest)})"
 
 class Mov(Instruction):
     """
