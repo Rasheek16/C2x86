@@ -3,31 +3,159 @@ import sys
 import subprocess
 import time
 from pathlib import Path
+from typing import List
 
 from src.backend import * 
 from src.frontend import * 
 
-def compile_file(input_file: str, output_file: str = None, stage: str = None, library_options: list = None):
+def compile_file(input_files: List[str], output_file: str = None, stage: str = None, library_options: list = None):
     """
-    Compiles a C source file through various compiler stages.
+    Compiles one or more C source files through various compiler stages.
 
-    :param input_file: Path to input .c file
-    :param output_file: Where to write .s or final executable (depending on stage).
+    :param input_files: List of paths to input .c files
+    :param output_file: Where to write final executable (only used in 'run' stage)
     :param stage: One of ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run', '--help', '--validate', '-c'].
     :param library_options: List of library options (e.g., ['-lm', '-lpthread'])
     """
-    preprocessed_file = None  # For clarity in finally:
+    preprocessed_files = []  # To track all .i files created
+    object_files = []        # To track all .o files created
+    assembly_files = []      # To track all .s files created
     library_options = library_options or []
+    
     try:
-        input_path = Path(input_file)
-        if not input_path.exists():
-            print(f"Error: Input file {input_path} does not exist.", file=sys.stderr)
-            sys.exit(1)
+        input_paths = [Path(f) for f in input_files]
+        for path in input_paths:
+            if not path.exists():
+                print(f"Error: Input file {path} does not exist.", file=sys.stderr)
+                sys.exit(1)
 
         if stage not in ['--lex', '--parse', '--tacky', '--codegen', '-S', 'run', '--help', '--validate', '-c']:
             print(f"Error: Unknown stage '{stage}'", file=sys.stderr)
             sys.exit(1)
 
+        # Handle single-file compilation stages
+        if stage in ['--lex', '--parse', '--tacky', '--codegen', '--validate']:
+            if len(input_paths) > 1:
+                print(f"Error: Stage '{stage}' only supports single file input", file=sys.stderr)
+                sys.exit(1)
+            
+            return compile_single_file_stages(input_paths[0], stage)
+
+        # For compilation stages that can handle multiple files
+        for input_path in input_paths:
+            # 1) Preprocess -> .i
+            preprocessed_file = input_path.with_suffix('.i')
+            preprocessed_files.append(preprocessed_file)
+            subprocess.run(
+                ['gcc', '-E', '-P', str(input_path), '-o', str(preprocessed_file)],
+                check=True
+            )
+
+            # Read the preprocessed code
+            with open(preprocessed_file, 'r') as file:
+                code = file.read()
+
+            # 2) Lex
+            tokens = lex(code)
+
+            # 3) Parse
+            ast = parse_program([token for _, token in tokens])
+
+            # 4) Variable Resolution Pass 
+            ast, symbols, type_table = variable_resolution_pass(ast)
+
+            # 5) Emit Tacky IR
+            tacky_ir, symbols1, type_table = emit_tacky(ast, symbols, type_table)
+
+            # 6) Convert To Assembly AST
+            conv = Converter(symbols1, type_table)
+            a_ast, backend_symbol_table = conv.convert_to_assembly_ast(tacky_ir)
+            da = backend_symbol_table
+
+            # 7) Replace Pseudoregisters
+            [a_ast, stack_allocation, backend_symbol_table] = replace_pseudoregisters(a_ast, symbols, da)
+
+            # 8) Fixing Up Instructions
+            fix_up_instructions(a_ast, stack_allocation, backend_symbol_table)
+
+            # 9) Code Generation: Emit real .s assembly
+            output_s_path = input_path.with_suffix('.s').resolve()
+            assembly_files.append(output_s_path)
+            emitter = CodeEmitter(str(output_s_path), symbols, da)
+            emitter.emit_program(a_ast)
+            emitter.save()
+
+            if stage == '-S':
+                print('Assembly File creation stage:')
+                
+                continue 
+
+            # 10) Assemble -> produce object file (.o)
+            object_file = output_s_path.with_suffix('.o').resolve()
+            object_files.append(object_file)
+            subprocess.run(
+                ['gcc', '-c', str(output_s_path), '-o', str(object_file)],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+
+            if stage == '-c':
+                print('Object File creation stage:')
+                continue 
+                
+        if stage in ['-S']:
+            for i in assembly_files:
+                print("Assembly code written to ",i)
+            return  # We're done for these stages
+        if stage == '-c':
+            for i in object_files:
+                # print("Assembly code written to ",i)
+                print('Object files created at ',i)
+            return 
+        
+        # 11) Link -> produce final executable (only for 'run' stage)
+        if not output_file:
+            # Default to first input file's name without extension
+            exe_file = input_paths[0].with_suffix('').resolve()
+        else:
+            exe_file = Path(output_file).resolve()
+
+        # Construct the linking command with all object files and library options
+        linking_command = ['gcc'] + [str(o) for o in object_files] + ['-o', str(exe_file)] + library_options
+
+        subprocess.run(
+            linking_command,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print(f"Compilation successful. Executable created at {exe_file}")
+
+        # 12) Clean up temporary files
+        for f in assembly_files + object_files:
+            if f.exists():
+                f.unlink()
+
+        print('File output:')
+        print(f"Executable: {exe_file}\n")
+
+    except subprocess.CalledProcessError as e:
+        print(f"Compilation or Linking error:\n{e.stderr}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"General error: {e}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        # Clean up all preprocessed files
+        for f in preprocessed_files:
+            if f.exists():
+                f.unlink()
+
+def compile_single_file_stages(input_path: Path, stage: str):
+    """Handle compilation stages that work on single files only."""
+    preprocessed_file = None
+    try:
         # 1) Preprocess -> .i
         preprocessed_file = input_path.with_suffix('.i')
         subprocess.run(
@@ -45,130 +173,70 @@ def compile_file(input_file: str, output_file: str = None, stage: str = None, li
             # Print tokens and exit
             for token in tokens:
                 print(token)
-            return  # Done, exit code 0
+            return
 
         # 3) Parse
         ast = parse_program([token for _, token in tokens])
         if stage == '--parse':
             print("Parsed AST:")
             print(ast)
-            return  # Done, exit code 0
+            return
 
         # 4) Variable Resolution Pass 
-        ast, symbols,type_table = variable_resolution_pass(ast)
+        ast, symbols, type_table = variable_resolution_pass(ast)
         if stage == '--validate':
             print(ast)
             print('Symbols after validation:', symbols)
+            print(type_table)
             return
 
         # 5) Emit Tacky IR
-        tacky_ir, symbols1 = emit_tacky(ast, symbols,type_table)
+        tacky_ir, symbols1, type_table = emit_tacky(ast, symbols, type_table)
         if stage == '--tacky':
             print("Tacky IR:")
             print(tacky_ir)
             print(symbols1)
-            return  # Done, exit code 0
+            print(type_table)
+            return
 
         # 6) Convert To Assembly AST
-        conv = Converter(symbols1)
+        conv = Converter(symbols1, type_table)
         a_ast, backend_symbol_table = conv.convert_to_assembly_ast(tacky_ir)
         da = backend_symbol_table
 
         # 7) Replace Pseudoregisters
-        # This pass replaces all Pseudo operands with Stack operands and returns stack allocation
-        [a_ast,stack_allocation,backend_symbol_table] = replace_pseudoregisters(a_ast,symbols,da)
-        # print(backend_symbol_table)
-        # exit()
-        # print("After Replacing Pseudoregisters:")
-        # print(a_ast)
+        [a_ast, stack_allocation, backend_symbol_table] = replace_pseudoregisters(a_ast, symbols, da)
 
-        # 7) Fixing Up Instructions
-        # This pass inserts AllocateStack and rewrites invalid Mov instructions
-        fix_up_instructions(a_ast, stack_allocation,backend_symbol_table)
-        # print("After Fixing Up Instructions:")
-        # print(a_ast)
-     
+        # 8) Fixing Up Instructions
+        fix_up_instructions(a_ast, stack_allocation, backend_symbol_table)
+        
         if stage == '--codegen':
             print("Assembly AST:")
-            print(a_ast)
-            return  # Done, exit code 0
-
-        # 9) Code Generation: Emit real .s assembly
-        # If no output_file is given, default to input_file.s
-        if not output_file:
-            output_file = input_path.with_suffix('.s')
-        output_s_path = Path(output_file)
-        emitter = CodeEmitter(str(output_s_path),symbols)
-        emitter.emit_program(a_ast)
-        emitter.save()
-
-        if stage == '-S':
-            # Stop here. Do NOT assemble/link.
-            print(f"Assembly code written to {output_s_path}")
-            return  # Exit code 0
-        # 10) Assemble -> produce object file (.o)
-        object_file = output_s_path.with_suffix('.o')
-        subprocess.run(
-            ['gcc', '-c', str(output_s_path), '-o', str(object_file)],
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        if stage == '-c':
-            print(f"Object file created at {object_file}")
-            return 
-
-        # 11) Link -> produce final executable
-        exe_file = input_path.with_suffix('').resolve()  # Remove extension and get absolute path
-
-        # Construct the linking command with library options appended
-        linking_command = ['gcc', str(object_file), '-o', str(exe_file)] + library_options
-
-        subprocess.run(
-            linking_command,
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        print(f"Compilation successful. Executable created at {exe_file}")
-
-        # 12) Delete the .s and .o files after successful linking
-        if output_s_path.exists():
-            output_s_path.unlink()
-        if object_file.exists():
-            object_file.unlink()
-
-        print('File output:')
-        print(f"Executable: {exe_file}\n")
-        # Indicate successful compilation
-        # sys.exit(0)
+            return
 
     except subprocess.CalledProcessError as e:
-        # If compilation or linking fails, print error and exit non-zero
-        print(f"Compilation or Linking error:\n{e.stderr}", file=sys.stderr)
+        print(f"Preprocessing error:\n{e.stderr}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         print(f"General error: {e}", file=sys.stderr)
         sys.exit(1)
     finally:
-        # Always remove the .i file if it was created
         if preprocessed_file and preprocessed_file.exists():
             preprocessed_file.unlink()
-
 
 def usage():
     """
     Displays usage information for the compiler.
     """
-    print("Usage: python compiler.py [stage] <input_file> [<output_file>] [<library_options>]\n")
+    print("Usage: python compiler.py [stage] <input_files...> [<output_file>] [<library_options>]\n")
     print("Stages:")
-    print("  --lex       Lex only; print tokens")
-    print("  --parse     Lex + parse; print AST")
-    print("  --tacky     Lex + parse + emit Tacky IR")
-    print("  --codegen   Lex + parse + emit Tacky IR + replace pseudoregisters + fix instructions + convert to Assembly AST")
-    print("  --validate  Perform variable resolution and display symbols")
-    print("  -S          Emit real assembly to .s and stop (don’t link)")
-    print("  -c          Compile and assemble, but do not link")
+    print("  --lex       Lex only; print tokens (single file only)")
+    print("  --parse     Lex + parse; print AST (single file only)")
+    print("  --tacky     Lex + parse + emit Tacky IR (single file only)")
+    print("  --codegen   Lex + parse + emit Tacky IR + assembly generation (single file only)")
+    print("  --validate  Perform variable resolution and display symbols (single file only)")
+    print("  -S          Emit real assembly to .s files (one per input) and stop")
+    print("  -c          Compile and assemble to .o files (one per input), but do not link")
     print("  run         Preprocess, compile, assemble, and link to produce an executable")
     print("  --help      This help message\n")
     print("Library Options:")
@@ -179,12 +247,11 @@ def usage():
     print("  python compiler.py --tacky myprog.c")
     print("  python compiler.py --codegen myprog.c")
     print("  python compiler.py --validate myprog.c")
-    print("  python compiler.py -S myprog.c myprog.s")
-    print("  python compiler.py -c myprog.c myprog.o")
-    print("  python compiler.py run myprog.c -lm")
-    print("  python compiler.py run myprog.c -lm -lpthread")
+    print("  python compiler.py -S myprog1.c myprog2.c")
+    print("  python compiler.py -c myprog1.c myprog2.c")
+    print("  python compiler.py run myprog1.c myprog2.c -o myprogram -lm")
+    print("  python compiler.py run myprog1.c myprog2.c -lm -lpthread")
     sys.exit(0)
-
 
 def main():
     """
@@ -206,9 +273,23 @@ def main():
         if arg in possible_stages:
             stage = arg
         elif arg.startswith('-l') and len(arg) > 2:
+            # exit()
             library_options.append(arg)
+        elif arg == '-o' and len(sys.argv) > sys.argv.index(arg) + 1:
+            # Skip the -o and its argument here, we'll handle it later
+            continue
+        elif arg.startswith('-'):
+            pass  # Ignore other flags for now
         else:
             filenames.append(arg)
+
+    # Handle -o output file specification
+    output_file = None
+    if '-o' in sys.argv and len(sys.argv) > sys.argv.index('-o') + 1:
+        output_file = sys.argv[sys.argv.index('-o') + 1]
+        # Remove it from filenames if it got added there
+        if output_file in filenames:
+            filenames.remove(output_file)
 
     # If no stage given, default to 'run'
     if stage is None:
@@ -217,23 +298,25 @@ def main():
     if not filenames:
         usage()  # No input file provided
 
-    input_file = filenames[0]
-    output_file = filenames[1] if len(filenames) > 1 else None
-
-    # If user provided "foo" but there's no "foo", check if "foo.c" exists
-    path_in = Path(input_file)
-    if not path_in.exists() and not input_file.endswith('.c'):
-        candidate = path_in.with_suffix('.c')
-        if candidate.exists():
-            path_in = candidate
+    # Check for .c files (add .c extension if needed)
+    input_files = []
+    for f in filenames:
+        path = Path(f)
+        if not path.exists() and not f.endswith('.c'):
+            candidate = path.with_suffix('.c')
+            if candidate.exists():
+                input_files.append(str(candidate))
+            else:
+                print(f"Error: Input file {f} does not exist.", file=sys.stderr)
+                sys.exit(1)
         else:
-            print(f"Error: Input file {input_file} does not exist.", file=sys.stderr)
-            sys.exit(1)
+            input_files.append(f)
 
-    compile_file(str(path_in), output_file=output_file, stage=stage, library_options=library_options)
+    compile_file(input_files, output_file=output_file, stage=stage, library_options=library_options)
 
     end_time = time.time() 
     print(f"Execution Time: {end_time - start_time:.6f} seconds") 
 
 if __name__ == "__main__":
     main()
+
