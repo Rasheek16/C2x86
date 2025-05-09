@@ -39,16 +39,13 @@ def replace_pseudoregisters(
 
         def replace_pseudo_with_operand(operand):
             nonlocal current_offset
-
             if isinstance(operand, Pseudo):
                 name = operand.identifier
                 # exit()
                 if name not in pseudo_map:
                     if name in backend_Symbol_table:
                         symbol = backend_Symbol_table[name]
-                        if name=='tmp.2':
-                            print(symbol)
-                            # exit()
+                       
                         if symbol.is_static:
                             return Data(name)
                         else:
@@ -73,22 +70,29 @@ def replace_pseudoregisters(
                 return Stack(pseudo_map[name])
 
             elif isinstance(operand, PseudoMem):
-         
-                nonlocal cf
+                #(operand)
+                # nonlocal cf
                 array_name = operand.identifier
                 offset =  operand.size 
      
                 if array_name in backend_Symbol_table:
-                    print('Array name is pseudo map')
+                    #('Array name is pseudo map')
                     symbol = backend_Symbol_table[array_name]
-                    if symbol.is_static :
-                        if offset == 0:
-                            # exit()
-                            return Data(array_name)
-                        else:
-                            raise ValueError(f"Cannot convert PseudoMem('{array_name}', {offset}) using Data operand.")
+                    # #(symbol.is_static)
+                    
+                    if symbol.is_static==True:
+                        # if offset==0:
+                        #     # exit()
+                            return Data(array_name,operand.size)
+                        # else:
+                            
+                        #     raise ValueError(f"Cannot convert PseudoMem('{array_name}', {offset}) using Data operand.")
+                    # elif offset!= 0 :
+                    #     return Data(array_name,offset)
                     else:
-        
+                        # #(backend_Symbol_table)
+                        # #(symbol)
+                        # exit()
                     
                         # If the array's base hasn't been allocated yet, allocate it now.
                         if array_name not in pseudo_map:
@@ -110,13 +114,13 @@ def replace_pseudoregisters(
                                 current_offset = align_offset(current_offset, 8)
                             pseudo_map[array_name] = current_offset
 
-                        # print(symbol.assembly_type.size)
+                        # #(symbol.assembly_type.size)
                         base_address = pseudo_map[array_name]
                  
                         final_offset = base_address + offset
                         # final_offset = align_offset(final_offset,)
 
-                  
+                        
                         return Memory(Reg(Registers.BP), final_offset)
                 else:
                     raise ValueError(f"PseudoMem array '{array_name}' not found in backend symbol table.")
@@ -163,7 +167,7 @@ def replace_pseudoregisters(
             elif isinstance(instr, (AllocateStack, Ret, Cdq, JmpCC, Jmp, Label, Call, DeallocateStack, Imm)):
                 pass  # No changes required
             else:
-                print(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_func.name}'.", file=sys.stderr)
+                #(f"Unsupported instruction type: {type(instr).__name__} in function '{assembly_func.name}'.", file=sys.stderr)
                 sys.exit(1)
 
             new_instructions.append(instr)
@@ -176,9 +180,10 @@ def replace_pseudoregisters(
             pass
         else:
             sys.exit(1)
-
+        #(stack_allocations)
         assembly_func.instructions = new_instructions
         total_stack_allocation = abs(current_offset + 8) 
         stack_allocations[assembly_func.name] = total_stack_allocation
-
+        #(stack_allocations)
+        # exit()
     return assembly_program, stack_allocations, backend_Symbol_table
