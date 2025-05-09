@@ -123,7 +123,7 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
         while tokens and isSpecifier(tokens[0]):
             specifiers.append(tokens[0])     
             token,tokens=take_token(tokens)
-        print('Inside parse param list')
+        #'Inside parse param list')
         
         _type,storage_class=parse_type_and_storage_class(specifiers)
     
@@ -145,8 +145,8 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
             
             next_token = Null()
         if not isinstance(declarator,Null):
-            print(declarator)
-            print(tokens)
+            #declarator)
+            #tokens)
             # exit()
             list_params.append(Parameter(_type=_type,name=Identifier(next_token),declarator=declarator))
         
@@ -190,29 +190,29 @@ def parse_param_list(tokens)->Tuple[List[Parameter],str]:
         while tokens and isSpecifier(tokens[0]):
             specifiers.append(tokens[0])     
             token,tokens=take_token(tokens)
-        print('Inside parse param list')
+        #'Inside parse param list')
         # exit()
         _type,storage_class=parse_type_and_storage_class(specifiers)
-        print('_type',_type)
-        print('storage_class',storage_class)
+        #'_type',_type)
+        #'storage_class',storage_class)
         if not isinstance(storage_class,Null):
             raise SyntaxError('Storage class cannot have specifier.')
         if isinstance(_type,Structure):
             _type.tag,tokens = take_token(tokens)
         next_token=tokens[0]
-        print('Next token',next_token)
+        #'Next token',next_token)
      
         declarator, tokens = parse_declarator(tokens)
         
         next_token=tokens[0]
-        print(declarator)
+        #declarator)
         list_params.append(Parameter(_type=_type,name=Identifier(next_token),declarator=declarator))
-        print(list_params)
-        # print(tokens)
+        #list_params)
+        # #tokens)
         # exit()
         if tokens[0] == ")":
                 return list_params,tokens
-        print(tokens)
+        #tokens)
         
         while tokens:
             expect(',',tokens)
@@ -253,13 +253,13 @@ def parse_args_list(tokens)->Tuple[List[Exp],str]:
         
         expect(',',tokens)
         block,tokens = parse_exp(tokens)
-        print('Block',block)
-        print('Tokens',tokens)
+        #'Block',block)
+        #'Tokens',tokens)
         # exit()
        
         arg_body.append(block)
         
-    print('returning')
+    #'returning')
     return arg_body,tokens
     
 
@@ -268,13 +268,13 @@ def parse_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
     Parses a declarator.
     <declarator>::= "*" <declarator> | <direct-declarator>
     """
-    print('Inside parse declarator',tokens[0])
+    #'Inside parse declarator',tokens[0])
     if tokens[0] == "*":
-        print('Found pointer decl')
+        #'Found pointer decl')
         _, tokens = take_token(tokens)
         inner_declarator, tokens = parse_declarator(tokens)
-        print('Inner declarator',inner_declarator)
-        print('Returning pointer decl')
+        #'Inner declarator',inner_declarator)
+        #'Returning pointer decl')
         return PointerDeclarator(inner_declarator), tokens
     else:
         return parse_direct_declarator(tokens)
@@ -284,11 +284,11 @@ def parse_direct_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
     Parses a direct declarator.
     <direct-declarator>::= <simple-declarator> [ <param-list> ]
     """
-    print('Inside parse direct decl',tokens[0])
+    #'Inside parse direct decl',tokens[0])
     simple_declarator, tokens = parse_simple_declarator(tokens)
-    print('Simple declaration',simple_declarator)
-    print(tokens[0])
-    print('called fromhere')
+    #'Simple declaration',simple_declarator)
+    #tokens[0])
+    #'called fromhere')
     
     return parse_declarator_suffix(tokens,simple_declarator)
 
@@ -307,11 +307,11 @@ def safe_decode(s):
 def parse_initializer(tokens,list=None):
     l=[]
     if tokens[0]=='{':
-        print('here')
+        #'here')
         expect('{',tokens)
         expr,tokens=parse_initializer(tokens,l)
         l.append(expr)
-        print('Parsed index 0')
+        #'Parsed index 0')
         while tokens and (tokens[0]==',' and tokens[1]!='}'):
             expect(',',tokens)
             exp,tokens=parse_initializer(tokens,l)
@@ -321,10 +321,10 @@ def parse_initializer(tokens,list=None):
         expect('}',tokens)
         return CompoundInit(l) ,tokens
     else:
-        print('Found expr',tokens[0])
+        #'Found expr',tokens[0])
         exp, tokens = parse_exp(tokens)
-        print(exp)
-        print('NEXT TOKENS',tokens[0])
+        #exp)
+        #'NEXT TOKENS',tokens[0])
         
         if isinstance(exp,String):  # Check if the next token is also a string
          
@@ -336,13 +336,13 @@ def parse_initializer(tokens,list=None):
             if match:
                 # exit()
                 c_str = match.group(1)  
-                print("Raw captured:", repr(c_str))
+                #"Raw captured:", repr(c_str))
 
                 # Now decode using unicode_escape
                 decoded = decoded = safe_decode(c_str)
                 exp.string = decoded
-                # print("Decoded:", repr(decoded))
-                print("Ordinals:", [ord(c) for c in decoded])
+                # #"Decoded:", repr(decoded))
+                #"Ordinals:", [ord(c) for c in decoded])
           
                 lis = [decoded] # Start with first parsed string
             
@@ -358,7 +358,7 @@ def parse_initializer(tokens,list=None):
                 if match:
                 
                     c_str = match.group(1)  
-                    print("Raw captured:", repr(c_str))
+                    #"Raw captured:", repr(c_str))
 
                     # Now decode using unicode_escape
                     decoded = decoded = safe_decode(c_str)
@@ -369,11 +369,11 @@ def parse_initializer(tokens,list=None):
                     expr_new.string = expr_new.string[1:-1]
                 lis.append(expr_new.string)  # Append string content
             exp.string = ''.join(lis)
-            print(exp.string)
+            #exp.string)
             # exit()
   
             
-        print('exp,',exp)
+        #'exp,',exp)
         return SingleInit(exp),tokens
 
 def parse_declarator_suffix(tokens, simple_declarator):
@@ -388,11 +388,11 @@ def parse_declarator_suffix(tokens, simple_declarator):
     """
     if tokens and tokens[0] == '(':
         expect('(', tokens)
-        print('Parsing parameter list')
+        #'Parsing parameter list')
         params, tokens = parse_param_list(tokens)
-        print('Param List:', params)
+        #'Param List:', params)
         expect(')', tokens)
-        print('Exiting parse direct decl')
+        #'Exiting parse direct decl')
         # exit()
         return FunDeclarator(params, simple_declarator), tokens
 
@@ -419,7 +419,7 @@ def parse_simple_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
     Parses a simple declarator.
     <simple-declarator>::= <identifier> | "(" <declarator> ")"
     """
-    print('Inside parse simple decl',tokens[0])
+    #'Inside parse simple decl',tokens[0])
     if isIdentifier(tokens[0]) and not isKeyword(tokens[0]) :
         identifier_token, tokens = take_token(tokens)
         return Ident(Identifier(identifier_token)), tokens
@@ -433,17 +433,17 @@ def parse_simple_declarator(tokens: List[str]) -> Tuple[Declarator, List[str]]:
         raise SyntaxError(f"Expected identifier or '(', got '{tokens}'")
 
 def process_declarator(declarator: Declarator, base_type: Type) -> Tuple[Identifier, Type, List[Identifier]]:
-    print('Inside process declarator',declarator)
+    #'Inside process declarator',declarator)
     """
     Processes a declarator to derive type and identifier information.
     """
     if isinstance(declarator, Ident):
-        print('Exist process declarator , Ident')
+        #'Exist process declarator , Ident')
         return declarator.identifier, base_type,[]
     
     elif isinstance(declarator, PointerDeclarator):
         derived_type = Pointer(base_type)
-        print('Exist process declarator Pointer decl')
+        #'Exist process declarator Pointer decl')
         return process_declarator(declarator.declarator, derived_type)
     elif isinstance(declarator, FunDeclarator):
         if not isinstance(declarator.declarator, Ident):
@@ -451,33 +451,33 @@ def process_declarator(declarator: Declarator, base_type: Type) -> Tuple[Identif
         param_names =[]
         param_types =[]
         for param_info in declarator.params:
-            print(param_info)
+            #param_info)
             param_name, param_type, _ = process_declarator(param_info.declarator, param_info._type)
             if isinstance(param_type, FunType):
                 raise SyntaxError("Function pointers in parameters aren't supported")
             param_names.append(Parameter(_type=param_type,declarator=declarator.declarator,name=Identifier(param_name)))
             param_types.append(param_type)
         derived_type = FunType(param_count=len(param_names),params=param_types,base_type=base_type)
-        print(derived_type)
-        print('Exist process declarator')
+        #derived_type)
+        #'Exist process declarator')
         
         return declarator.declarator.identifier, derived_type, param_names
     elif isinstance(declarator,ArrayDeclarator):
-        print(declarator)
+        #declarator)
         # exit()
-        print('HERE')
-        print('Base type',base_type)
+        #'HERE')
+        #'Base type',base_type)
         derived_type = Array(base_type,declarator.size)
-        print('Derived type',derived_type)
-        print('Sub declarator',declarator.declarator)
-        print(process_declarator(declarator.declarator,derived_type))
+        #'Derived type',derived_type)
+        #'Sub declarator',declarator.declarator)
+        #process_declarator(declarator.declarator,derived_type))
         # exit()
         
         return process_declarator(declarator.declarator,derived_type)
     elif isinstance(declarator,Null):
         return Null(),Void(),[]
     else:
-        print(declarator)
+        #declarator)
         raise ValueError(f"Unknown declarator type: {type(declarator)}")
 
 def parse_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclarator, List[str]]:
@@ -486,11 +486,11 @@ def parse_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclarator, Li
     Parses an abstract declarator.
     <abstract-declarator>::= "*" [ <abstract-declarator> ] | <direct-abstract-declarator>
     """
-    print('Inside parse absytacy declarator')
-    print(tokens)
+    #'Inside parse absytacy declarator')
+    #tokens)
     # exit()
     if tokens[0] == "*":
-        print('Inside parse abstract declaration',tokens[0])
+        #'Inside parse abstract declaration',tokens[0])
         if tokens[0]=='*' or tokens[0]==')':
             _, tokens = take_token(tokens)
      
@@ -514,21 +514,21 @@ def parse_direct_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclara
         return AbstractBase(), tokens  # Handle empty case
 
     if tokens[0] == '(':
-        print('here')
+        #'here')
     
         expect('(', tokens)
         base_type=None
         abstract_declarator, tokens = parse_abstract_declarator(tokens)
         if abstract_declarator:
             base_type = abstract_declarator
-        print(abstract_declarator)
+        #abstract_declarator)
         
         # exit()
         expect(')', tokens)
         while tokens and tokens[0] == '[':
             expect('[', tokens)
             const,tokens = parse_constant(tokens)
-            # print(const)
+            # #const)
             # exit()
             if isinstance(const.value,ConstDouble):
                 raise ValueError('Expression must have integral type.')
@@ -553,7 +553,7 @@ def parse_direct_abstract_declarator(tokens: List[str]) -> Tuple[AbstractDeclara
                 base_type = AbstractBase() #if there is no base type set it to constant
             base_type = AbstractArray(base_type, const)  # Create AbstractArray
         if base_type is None: #if there are no array brackets
-            print('returning')
+            #'returning')
             return AbstractBase(),tokens #return base type if there is no array
        
         return base_type, tokens
@@ -594,9 +594,9 @@ def parse_declarations(tokens):
 
 
 def parse_block(tokens)->Tuple[List[BlockItem],str]:
-    print('inside block')
+    #'inside block')
     
-    print(tokens[:5])
+    #tokens[:5])
     # exit()
     expect("{", tokens)
     # #('block')
@@ -617,7 +617,7 @@ def parse_block(tokens)->Tuple[List[BlockItem],str]:
     
 
 def parse_block_item(tokens):
-    print('parse block item',tokens[0])
+    #'parse block item',tokens[0])
     if tokens[0] in ('int','static','extern','long','unsigned','signed','double','char','void','struct'):
         declaration,tokens = parse_declaration(tokens)
         ##'declaration')
@@ -642,7 +642,7 @@ def parse_specifier(tokens):
     
 def parse_types(types):
    try:
-        print('inside parse types',types)
+        #'inside parse types',types)
         # if 'struct' in types:
         #     exit()
         if len(types)==0:
@@ -656,14 +656,14 @@ def parse_types(types):
         if 'struct' in types:
             # if len(types)>1:
             #     raise SyntaxError('Invalid type specifier combination')
-            # print('here')
-            print('returing strutc')
+            # #'here')
+            #'returing strutc')
             return Structure(tag=None) 
         if 'void' in types:
-            # print('void in types',len(types))
+            # #'void in types',len(types))
             if len(types)>1:
                 raise SyntaxError('Invalid type specifier combination')
-            # print('here')
+            # #'here')
             
             return Void()
                 
@@ -698,8 +698,8 @@ def parse_types(types):
     
         
 def parse_type_and_storage_class(specifiers:List):
-    print('Inside parse type and storage class')
-    # print(specifiers)
+    #'Inside parse type and storage class')
+    # #specifiers)
     try:
         types=[]
         storage_classes:List[str]=[]
@@ -712,7 +712,7 @@ def parse_type_and_storage_class(specifiers:List):
        
       
         _type = parse_types(types)
-        # print(_type)
+        # #_type)
         if len(types)==0 or _type==None:
             raise ValueError('Invalid type specifier.')
         if len(storage_classes)>1:
@@ -722,7 +722,7 @@ def parse_type_and_storage_class(specifiers:List):
         else:
             storage_class=Null()
        
-        print(('Exit parse types and storage class'))
+        #('Exit parse types and storage class'))
         # exit()
         return _type,storage_class
     except Exception as e:
@@ -740,16 +740,16 @@ def parse_storage_class(storage_class):
 
 def parse_declaration(tokens: List[str]):
     """Parses a declaration (variable or function)."""
-    print('Tokens',tokens)
+    #'Tokens',tokens)
     if tokens[0]=='struct' and (tokens[1]=='extern' or tokens[1]=='static'):
         raise SyntaxError('storage class cannot be between struct keyword and identifier')
     if (tokens[0]=='struct' and tokens[2]=='{') or (tokens[2]==';' and tokens[0]=='struct'):
         _,tokens = take_token(tokens)
-        print(tokens)
+        #tokens)
    
         next_token = tokens[0]
         if isIdentifier(next_token) and not isKeyword(next_token):
-            # print(tokens)
+            # #tokens)
         
             if not isIdentifier(next_token) or isKeyword(next_token):
                 raise SyntaxError('expected identifier got',next_token)
@@ -769,7 +769,7 @@ def parse_declaration(tokens: List[str]):
             if len(members)==0:
                 raise SyntaxError('Struct members cannot be empty')
             expect('}',tokens)
-        print('error here',tokens[:3])
+        #'error here',tokens[:3])
         expect(';',tokens)
        
             
@@ -778,7 +778,7 @@ def parse_declaration(tokens: List[str]):
     while tokens and isSpecifier(tokens[0]): #checks if token exists and if it is a specifier
         specifier, tokens = take_token(tokens)
         specifiers.append(specifier)
-    print('Specifier_list',specifiers)
+    #'Specifier_list',specifiers)
     # exit()
     base_type, storage_class = parse_type_and_storage_class(specifiers)
     if isinstance(base_type,Structure):
@@ -799,8 +799,8 @@ def parse_declaration(tokens: List[str]):
             _, tokens = take_token(tokens)
             return FunDecl(name=identifier, params=params, fun_type=decl_type, body=Null(), storage_class=storage_class), tokens
         elif tokens and tokens[0] == '{':#checks if token exists and if it is {
-            print('Found function body')
-            print(params)
+            #'Found function body')
+            #params)
             # exit()
             # exit()
             list_block_items, tokens = parse_block(tokens)
@@ -812,18 +812,18 @@ def parse_declaration(tokens: List[str]):
     else:  # Variable declaration
     
         init = Null()
-        print("Tokens",tokens)
+        #"Tokens",tokens)
         if tokens and tokens[0] == "=": #checks if token exists and if it is =
             expect("=", tokens)
-            print('Found init',tokens)
+            #'Found init',tokens)
             init, tokens = parse_initializer(tokens)
-            print('INIT',init )
+            #'INIT',init )
         expect(";", tokens)
         return VarDecl(name=identifier, init=init, var_type=decl_type, storage_class=storage_class), tokens
 
 def parse_member_declaration(tokens):
     spec_lis = []
-    print(tokens)
+    #tokens)
     while tokens and isSpecifier(tokens[0]):
         specifier , tokens = parse_specifier(tokens)
         spec_lis.append(specifier)
@@ -861,7 +861,7 @@ def parse_func_decl(tokens, func_name: Identifier, _type, storage_class) -> Tupl
             return FunDecl(name=func_name, params=params, fun_type=_type, body=Null(), storage_class=storage_class), tokens  # Function prototype
 
         elif next_token == '{':
-            print(params)
+            #params)
             # exit()
             body, tokens = parse_block(tokens)
             return FunDecl(name=func_name, params=params, fun_type=_type, body=body, storage_class=storage_class), tokens  # Function definition
@@ -885,7 +885,7 @@ def parse_variable_declaration(tokens: List[str], var_name: Identifier, _type, s
     return VarDecl(name=var_name, init=init, var_type=_type, storage_class=storage_class), tokens
 
 def parse_statement(tokens: List[str]) -> Statement:
-    print('parse statement',tokens[0])
+    #'parse statement',tokens[0])
     # exit()
     """
     Parses the <statement> ::= "return" <exp> ";" | <exp> ";" | ";" rule.
@@ -907,14 +907,14 @@ def parse_statement(tokens: List[str]) -> Statement:
         next_token = tokens[0]
         
         if next_token == "return":
-            print('found return ')
+            #'found return ')
             # Parse "return" <exp> ";"
             expect("return", tokens)
             exp_node = Null()
             if tokens[0]!=';':
                 exp_node,tokens = parse_exp(tokens)
             expect(";", tokens)
-            print('returning return')
+            #'returning return')
             
             return Return(exp=exp_node)
         elif next_token == ";":
@@ -987,7 +987,7 @@ def parse_statement(tokens: List[str]) -> Statement:
            
             # Parse initialization
             init, tokens = parse_for_init(tokens)
-            # print('for statewmnt')
+            # #'for statewmnt')
             # Expect and consume first semicolon if it's not a declaration
             if not isinstance(init, InitDecl):
                 ##init)
@@ -1006,9 +1006,9 @@ def parse_statement(tokens: List[str]) -> Statement:
             expect(")", tokens)
             # ##tokens)
             # Parse loop body
-            print('before parsestatewment')
+            #'before parsestatewment')
             body = parse_statement(tokens)
-            print('jere')
+            #'jere')
             # optional get_temp_label() or other side-effect
             
             # Just return the For node (NOT a tuple!)
@@ -1035,7 +1035,7 @@ def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
     Returns:
         Tuple[Statement, List[str]]: The initialization statement and the remaining tokens.
     """
-    # print(tokens)
+    # #tokens)
     if tokens[0] in ('int','extern','static','long','unsigned','signed','double','char','void','struct'):
    
         if tokens[2]=='(':
@@ -1054,7 +1054,7 @@ def parse_for_init(tokens: List[str]) -> Tuple[Statement, List[str]]:
        
         exp, tokens = parse_exp(tokens)
         init_exp = InitExp(exp)
-        print('here')
+        #'here')
         return init_exp, tokens
     
     else:
@@ -1080,15 +1080,15 @@ def parse_optional_parameter(tokens: List[str]) -> Tuple[Statement, List[str]]:
 
 def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
     try:
-        print(tokens[:5])
+        #tokens[:5])
         # exit()
         next_token = tokens[0]
-        print('Parsinf unary expre', next_token)
-        print(tokens)
+        #'Parsinf unary expre', next_token)
+        #tokens)
 
         # exit()
         if next_token in ("-", "~", "!", '*', '&') or next_token.startswith('&') or next_token.startswith('*'):
-            print('Found unary operator', tokens[0])
+            #'Found unary operator', tokens[0])
             operator_token, tokens = take_token(tokens)
             operator = parse_unop(operator_token)
             # Parse the sub-expression after the unary operator
@@ -1099,9 +1099,9 @@ def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
                 return Dereference(expr), tokens
             return Unary(operator=operator, expr=expr), tokens
         elif next_token == 'sizeof' and tokens[1]=='(' and isType(tokens[2]):
-            print('found size of')
+            #'found size of')
             _,tokens=take_token(tokens)
-            # print(tokens)
+            # #tokens)
             # exit()
             if tokens and tokens[0] =='(':
                 expect('(',tokens)
@@ -1118,33 +1118,33 @@ def parse_unary_exp(tokens: List[str]) -> Tuple[Exp, List[str]]:
             
             return SizeOf(exp),tokens
         else:
-            print('Found postfix expr')
+            #'Found postfix expr')
             expr, tokens = parse_postfix_expr(tokens)
-            print('POstfix expr', expr)
-            print(expr)
+            #'POstfix expr', expr)
+            #expr)
             return expr, tokens
     except Exception as e:
         raise e
      
 def parse_postfix_expr(tokens):
-    print('Inside parse posftfix expr',tokens[:5])
+    #'Inside parse posftfix expr',tokens[:5])
     # exit()
     expr=Null()
     
     expr,tokens=parse_primary_expr(tokens)
     while tokens[0] in ('[','.','->'):
         expr,tokens= parse_postfix_op(tokens,expr)
-    # print(expr)
+    # #expr)
     # exit()
     return expr,tokens
 
 def parse_postfix_op(tokens, expr):
-    print(tokens[:5])
+    #tokens[:5])
     # exit()
     try:
         while tokens:
             if tokens[0] == '[':
-                print('Subscript')
+                #'Subscript')
                 expect('[', tokens)
                 exp, tokens = parse_exp(tokens)
                 expr = Subscript(expr, exp)
@@ -1174,10 +1174,10 @@ def parse_postfix_op(tokens, expr):
     
    
 def parse_primary_expr(tokens):
-    print('inside parse primary expr',tokens[0])
-    print('Is identifier ',isIdentifier(tokens[0]))
-    print('Is char constant ',isCharConstant(tokens[0]))
-    print(tokens[0])
+    #'inside parse primary expr',tokens[0])
+    #'Is identifier ',isIdentifier(tokens[0]))
+    #'Is char constant ',isCharConstant(tokens[0]))
+    #tokens[0])
     # exit()
     if not tokens:
             raise SyntaxError("Unexpected end of input when parsing factor.")
@@ -1207,26 +1207,26 @@ def parse_primary_expr(tokens):
         return FunctionCall(identifier=ident,args=args),tokens
     
     if isIntegerConstant(next_token) or isCharConstant(next_token):
-        print('Found integer',tokens[0])
+        #'Found integer',tokens[0])
         val,tokens=parse_constant(tokens)
-        print('Returning integer',val)
+        #'Returning integer',val)
         return val,tokens
         
     if isIdentifier(next_token) and not isKeyword(next_token):
-        print('here')
+        #'here')
         token,tokens=take_token(tokens)
         return Var(Identifier(token)),tokens
     
     if isString(next_token) and not isKeyword(next_token):
-        print('Found string')
+        #'Found string')
         token,tokens = take_token(tokens)
-        print('Returning string')
+        #'Returning string')
         return String(token),tokens
     else:
         raise SyntaxError('Invalid token in primary expression',tokens[0])
 
 def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
-    print('parse expr',tokens[:5])
+    #'parse expr',tokens[:5])
     # exit()
     
     
@@ -1296,34 +1296,34 @@ def parse_exp(tokens: List[str], min_prec: int = 0) -> Tuple[Exp,List[str]]:
                 
                 # Combine lhs and rhs into a Binary AST node
                 lhs = Binary(operator=operator, left=lhs, right=rhs)
-        print('Exist parse exp',tokens)
-        print(lhs)
+        #'Exist parse exp',tokens)
+        #lhs)
         return lhs, tokens
     except Exception as e:
         # sys.exit(1)
         raise e
 
 def parse_cast_expr(tokens:List[str])->Tuple[Exp,List[str]]:
-    print('parse cast expr',tokens[:5])
+    #'parse cast expr',tokens[:5])
 
     # exit()
     next_token=tokens[0]
   
     if next_token=='(' and isSpecifier(tokens[1]):
-        print('found cast')
+        #'found cast')
         expect('(',tokens)
-        # print('tokens',tokens[1])
-        print('before typename')
-        print(tokens)
+        # #'tokens',tokens[1])
+        #'before typename')
+        #tokens)
         _type,tokens=parse_type_name(tokens)
-        print(_type)
+        #_type)
         # if isinstance(_type,Structure):
             # _type.tag = take_token(tokens)
         expect(')',tokens)
         exp,tokens=parse_cast_expr(tokens)
         return Cast(target_type=_type,exp=exp),tokens
     else:
-        print('found unary')
+        #'found unary')
         return parse_unary_exp(tokens)
 
 def parse_type_name(tokens:List[str]):
@@ -1334,11 +1334,11 @@ def parse_type_name(tokens:List[str]):
     
     types=[]
     while next_token and isSpecifier(next_token) and isType(next_token):
-        print('inside while loop')
+        #'inside while loop')
         types.append(next_token)
         _,tokens=take_token(tokens)
         next_token=tokens[0]
-    print(types)
+    #types)
     _type=Null()
     storage_class = Null()
     if len(types)>0:
@@ -1353,18 +1353,18 @@ def parse_type_name(tokens:List[str]):
       
         if not isinstance(storage_class, Null):
             raise SyntaxError('a storage class cannot be specified while type conversion')
-        print('going into parse abs decl')
+        #'going into parse abs decl')
         # exit()
         abstract_declarator,tokens=parse_abstract_declarator(tokens)
-        print('after decl')
+        #'after decl')
         if tokens[0] == ')' and tokens[1]==')':
            
             expect(')', tokens)
-        print(abstract_declarator)
+        #abstract_declarator)
         # exit()
-        print('process decalrator')
+        #'process decalrator')
         _type=process_abstract_declarator(abstract_declarator,_type)
-        print('after process deccalrator')
+        #'after process deccalrator')
         while tokens and tokens[0] == ')' and tokens[1]==")" :
             expect(')', tokens)
     else:
@@ -1471,7 +1471,7 @@ def parse_unop(operator_token: str) -> UnaryOperator:
 
     
 def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
-    print('Inside parse contant',tokens[0])
+    #'Inside parse contant',tokens[0])
     """
     Parses a <const> token according to the grammar:
     <const> ::= <int> | <long> | <uint> | <ulong> | <double>
@@ -1522,13 +1522,13 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
             else:
                 char = char_repr.encode().decode('unicode_escape')
                 ascii_value = ord(char)
-            # print(char_repr)
+            # #char_repr)
             # char = char_repr.encode().decode('unicode_escape')  # Decode escape sequences
-            # print(char)
+            # #char)
             # ascii_value = ord(char)  # Convert character to ASCII / Unicode value
-            # print(r"\\ascii_value")
+            # #r"\\ascii_value")
 
-            # print(f"Character: {char}, ASCII/Unicode: {ascii_value}")
+            # #f"Character: {char}, ASCII/Unicode: {ascii_value}")
             ret =  Constant(Const.constInt(ascii_value)),tokens 
             return ret # Return processed character constant
         
@@ -1577,7 +1577,7 @@ def parse_constant(tokens: List[str]) -> Tuple[Constant, List[str]]:
             #('Inside double')
             number = match.group(0)  # Convert to float
             # #( Constant(Const.constDouble(number)), tokens)
-            print(number)
+            #number)
             # exit()
             return Constant(Const.constDouble(float(number))), tokens
 
