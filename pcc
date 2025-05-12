@@ -228,7 +228,7 @@ def usage():
     """
     Displays usage information for the compiler.
     """
-    print("Usage: python compiler.py [stage] <input_files...> [<output_file>] [<library_options>]\n")
+    print("Usage: python pcc [stage] <input_files...> [<output_file>] [<library_options>]\n")
     print("Stages:")
     print("  --lex       Lex only; print tokens (single file only)")
     print("  --parse     Lex + parse; print AST (single file only)")
@@ -242,15 +242,15 @@ def usage():
     print("Library Options:")
     print("  -l<lib>     Link with the specified library (e.g., -lm for the math library)\n")
     print("Examples:")
-    print("  python compiler.py --lex myprog.c")
-    print("  python compiler.py --parse myprog.c")
-    print("  python compiler.py --tacky myprog.c")
-    print("  python compiler.py --codegen myprog.c")
-    print("  python compiler.py --validate myprog.c")
-    print("  python compiler.py -S myprog1.c myprog2.c")
-    print("  python compiler.py -c myprog1.c myprog2.c")
-    print("  python compiler.py run myprog1.c myprog2.c -o myprogram -lm")
-    print("  python compiler.py run myprog1.c myprog2.c -lm -lpthread")
+    print("  python pcc --lex myprog.c")
+    print("  python pcc --parse myprog.c")
+    print("  python pcc --tacky myprog.c")
+    print("  python pcc --codegen myprog.c")
+    print("  python pcc --validate myprog.c")
+    print("  python pcc -S myprog1.c myprog2.c")
+    print("  python pcc -c myprog1.c myprog2.c")
+    print("  python pcc run myprog1.c myprog2.c -o myprogram -lm")
+    print("  python pcc run myprog1.c myprog2.c -lm -lpthread")
     sys.exit(0)
 
 def main():
