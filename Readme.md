@@ -3,7 +3,7 @@
 
 PCC is a fully-featured C compiler for the **x86-64 architecture**, written entirely in Python. 
 Designed for clarity and modularity, it implements the complete C compilation pipeline — from 
-source to executable — without relying on parser generators like Yacc/Lex.
+source to assembly — without relying on parser generators like Yacc/Lex.
 
 📘 Inspired by *Writing a C Compiler* by Nora Sandler, this project extends it significantly by 
 implementing robust semantic analysis, IR generation, optimizations, struct and pointer support, 
@@ -53,7 +53,7 @@ and full code generation.
 ---
 ## 💻 Usage
 ```bash
-python pcc [stage] <input_file> [output_file] [libraries...]
+ pcc [stage] <input_file> [output_file] [libraries...]
 ```
 
 ### Compilation Stages
@@ -75,10 +75,10 @@ python pcc [stage] <input_file> [output_file] [libraries...]
 ## ✨ Example Commands
 
 ```bash
-python pcc.py --lex examples/hello.c
-python pcc.py --parse examples/loop.c
-python pcc.py --tacky examples/math.c
-python pcc.py run examples/structs.c
+ pcc --lex examples/hello.c
+ pcc --parse examples/loop.c
+ pcc --tacky examples/math.c
+ pcc run examples/structs.c
 ```
 
 ---
