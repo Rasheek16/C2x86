@@ -75,10 +75,10 @@ python pcc [stage] <input_file> [output_file] [libraries...]
 ## ✨ Example Commands
 
 ```bash
-python pcc.py --lex examples/hello.c
-python pcc.py --parse examples/loop.c
-python pcc.py --tacky examples/math.c
-python pcc.py run examples/structs.c
+ pcc --lex examples/hello.c
+ pcc --parse examples/loop.c
+ pcc --tacky examples/math.c
+ pcc run examples/structs.c
 ```
 
 ---
