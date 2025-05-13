@@ -1,0 +1,1 @@
+# This project requires a python version of 3.12.0 or greater 
