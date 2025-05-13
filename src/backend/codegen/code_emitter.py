@@ -763,7 +763,13 @@ def convert_static_init(instr, alignment):
             instr.string= ''
             return '.asciz'
         if instr.null_terminated == False:
-            return f'.asciz "{instr.string.replace("\\", "\\\\").replace("\"", "\\\"")}"'
+            # return f'.asciz "{instr.string.replace("\\", "\\\\").replace("\"", "\\\"")}"'
+            
+            # Fix for  f-string expression part cannot include a backslash 
+            escaped = instr.string.replace("\\", "\\\\").replace("\"", "\\\"")
+            return f'.asciz "{escaped}"'
+
+            
         else:
                 # if instr.string
             return  f'.asciz "{st}"'
