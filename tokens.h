@@ -1,0 +1,68 @@
+typedef struct {
+    const char *name;
+    const char *pattern;
+} TokenPattern;
+
+TokenPattern patterns[] = {
+    {"static", "\\bstatic\\b"},
+    {"extern", "\\bextern\\b"},
+    {"long_keyword", "\\blong\\b"},
+    {"signed_keyword", "\\bsigned\\b"},
+    {"unsigned_keyword", "\\bunsigned\\b"},
+    {"struct_keyword", "\\bstruct\\b"},
+    {"arrow", "->"},
+    {"sizeof_keyword", "\\bsizeof\\b"},
+    {"char", "\\bchar\\b"},
+    {"string", "\\bstring\\b"},
+    {"char_constant", "'(\\\\[\\\\'\"?abfnrtv0]|\\\\x[0-9a-fA-F]{2}|\\\\[0-7]{1,3}|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}|[^'\\\\\\n])'"},
+    {"string_constant", "\"([^\"\\\\\\n]|\\\\[\"'\\\\?abfnrtv]|\\\\[0-7]{1,3}|\\\\x[0-9a-fA-F]+)*\""},
+    {"floating_point_constant", "(([0-9]*\\.[0-9]+|[0-9]+\\.?)[Ee][+-]?[0-9]+|[0-9]*\\.[0-9]+|[0-9]+\\.)[^\\w.]"},
+    {"double_keyword", "\\bdouble\\b"},
+    {"Constant", "([0-9]+)[^\\w.]"},
+    {"int_keyword", "\\bint\\b"},
+    {"void_keyword", "\\bvoid\\b"},
+    {"return_keyword", "\\breturn\\b"},
+    {"Open_bracket", "\\["},
+    {"Close_bracket", "\\]"},
+    {"Open_parenthesis", "\\("},
+    {"Close_parenthesis", "\\)"},
+    {"open_brace", "\\{"},
+    {"close_brace", "\\}"},
+
+
+    {"Semicolon", ";"},
+    {"Complement", "~"},
+    {"Decrement", "--"},
+    {"Negation", "-"},
+    {"Multiplication", "\\*"},
+    {"Addition", "\\+"},
+    {"Division", "/"},
+    {"Remainder", "%"},
+    {"And", "\\&\\&"},
+    {"LessOrEqual", "<="},
+    {"GreaterOrEqual", ">="},
+    {"Or", "\\|\\|"},
+    {"Equal", "=="},
+    {"NotEqual", "!="},
+    {"Not", "!"},
+    {"LessThan", "<"},
+    {"GreaterThan", ">"},
+    {"if_keyword", "\\bif\\b"},
+    {"else_keyword", "\\belse\\b"},
+    {"question_mark", "\\?"},
+    {"colon", ":"},
+    {"Assignment", "="},
+    {"do", "\\bdo\\b"},
+    {"while", "\\bwhile\\b"},
+    {"for", "\\bfor\\b"},
+    {"break", "\\bbreak\\b"},
+    {"continue", "\\bcontinue\\b"},
+    {"comma", ","},
+    {"unsigned_int_constant", "([0-9]+[uU])[^\\w.]"},
+    {"long_int_constant", "([0-9]+[lL])[^\\w.]"},
+    {"signed_long_constant", "([0-9]+([lL][uU]|[uU][lL]))[^\\w.]"},
+    {"Identifier", "[a-zA-Z_]\\w*\\b"},
+    {"Ampersand", "&"}
+};
+
+const int patterns_count = sizeof(patterns) / sizeof(patterns[0]);
