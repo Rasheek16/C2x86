@@ -10,7 +10,7 @@
 
 int main() {
     size_t count;
-    Token *toks = lex("int main() { hello()} ;", &count);
+    Token *toks = lex("int main() { a=1+1;} ;", &count);
 
     if (toks) {
         for (size_t i = 0; i < count; i++) {
